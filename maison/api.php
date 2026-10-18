@@ -15,7 +15,7 @@ if (!preg_match('/^[a-z0-9-]{1,40}$/', $r) || !is_dir(__DIR__ . '/recherches/' .
     exit;
 }
 
-$dir = dirname(__DIR__, 2) . '/maison-data/' . $r;
+$dir = dirname(dirname(__DIR__)) . '/maison-data/' . $r;
 $file = $dir . '/statuts.json';
 $permis = ['a_visiter', 'visitee', 'pas_interesses', ''];
 if (!is_dir($dir)) { @mkdir($dir, 0750, true); }

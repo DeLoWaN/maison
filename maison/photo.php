@@ -19,14 +19,15 @@ function servir($chemin) {
 $local = $base . '/photos/' . $id . '.jpg';
 if (is_file($local)) servir($local);
 
-$cacheDir = dirname(__DIR__, 2) . '/maison-data/' . $r . '/photos';
+$cacheDir = dirname(dirname(__DIR__)) . '/maison-data/' . $r . '/photos';
 $cache = $cacheDir . '/' . $id;
 if (is_file($cache) && filesize($cache) > 0) servir($cache);
 
 $data = json_decode(@file_get_contents($base . '/data.json'), true);
 $url = null;
-foreach (($data['biens'] ?? []) as $b) {
-    if (($b['id'] ?? '') === $id) { $url = $b['photo_url'] ?? null; break; }
+$biens = (is_array($data) && isset($data['biens'])) ? $data['biens'] : array();
+foreach ($biens as $b) {
+    if (isset($b['id']) && $b['id'] === $id) { $url = isset($b['photo_url']) ? $b['photo_url'] : null; break; }
 }
 if (!$url || !preg_match('#^https://#', $url)) { http_response_code(404); exit; }
 
