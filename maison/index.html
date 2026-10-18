@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Recherche de maison</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bitter:wght@500;700&family=Source+Sans+3:wght@400;600;700&display=swap">
+<style>
+/* Une colonne de lecture, gros caractères ; maisons groupées par conseil, la plus récente en haut ; trois boutons de statut partagés par famille */
+:root {
+  --bg: #f2f3f0; --surface: #ffffff; --fg: #1b211e; --muted: #535d58; --line: #d4d9d5;
+  --accent: #2c5a40; --accent-soft: #e0ebe3;
+  --ok: #276f41; --ok-bg: #e2f0e6; --warn: #8a5d0c; --warn-bg: #f6ecd5;
+  --ko: #9c3426; --ko-bg: #f6e1dc; --unk: #535d58; --unk-bg: #eaece9;
+  --new: #1f4f8a; --new-bg: #e1eaf6;
+  --f-display: "Bitter", Georgia, "Times New Roman", serif;
+  --f-body: "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #131715; --surface: #1b201e; --fg: #e8ece9; --muted: #a2aca6; --line: #2f3633;
+    --accent: #8fc7a3; --accent-soft: #22332a;
+    --ok: #82d29b; --ok-bg: #1d3325; --warn: #e6bb62; --warn-bg: #392d15;
+    --ko: #f19484; --ko-bg: #3c201c; --unk: #a9b2ad; --unk-bg: #262c29;
+    --new: #9cc1f0; --new-bg: #1d2a3d;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font-family: var(--f-body); font-size: 18px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px 56px;
+}
+.wrap { max-width: 760px; margin: 0 auto; display: grid; gap: 28px; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; }
+h1 { font-size: 1.9rem; line-height: 1.15; }
+h2 { font-size: 1.35rem; line-height: 1.25; }
+h3 { font-size: 1.15rem; line-height: 1.3; }
+p { margin: 0; }
+a { color: var(--accent); }
+a:focus-visible, summary:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+header { display: grid; gap: 10px; }
+.maj { font-weight: 600; color: var(--muted); }
+.intro { max-width: 60ch; }
+.resume { display: flex; flex-wrap: wrap; gap: 8px; }
+.resume span { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; font-weight: 600; }
+.resume span.nouv { background: var(--new-bg); color: var(--new); border-color: transparent; }
+details.bloc { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+details.bloc > summary { cursor: pointer; padding: 14px 16px; font-weight: 700; list-style-position: inside; }
+details.bloc > div { padding: 0 16px 16px; display: grid; gap: 12px; }
+.choix { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.choix[hidden] { display: none; }
+.choix label { font-weight: 700; }
+.choix select { font: inherit; font-size: 1.05rem; min-height: 44px; padding: 6px 10px; border-radius: 8px; border: 2px solid var(--line); background: var(--surface); color: var(--fg); max-width: 100%; }
+.criteres { margin: 0; padding-left: 22px; display: grid; gap: 4px; }
+.legende { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .95rem; color: var(--muted); }
+.legende span { display: inline-flex; align-items: center; gap: 8px; }
+.legende i { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+section.groupe { display: grid; gap: 14px; }
+.groupe > p, .bloc > div > p.aide { color: var(--muted); max-width: 62ch; }
+.list { display: grid; gap: 16px; }
+.vide { color: var(--muted); font-style: italic; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px; display: grid; gap: 14px; overflow: hidden; }
+.card.retiree { opacity: .8; }
+.photo { display: block; width: calc(100% + 36px); max-width: none; margin: -18px -18px 0; aspect-ratio: 4 / 3; max-height: 320px; object-fit: cover; background: var(--unk-bg); }
+.vide-photo { display: grid; place-items: center; color: var(--muted); font-size: .95rem; aspect-ratio: auto; height: 72px; }
+.card.retiree .photo { filter: grayscale(1); }
+.tete { display: grid; gap: 4px; }
+.badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.badge { font-size: .85rem; font-weight: 700; padding: 2px 10px; border-radius: 999px; }
+.badge.nouv { background: var(--new-bg); color: var(--new); }
+.badge.baisse { background: var(--ok-bg); color: var(--ok); }
+.badge.retr { background: var(--ko-bg); color: var(--ko); }
+.lieu { color: var(--muted); }
+.prix { font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ancien { color: var(--muted); text-decoration: line-through; font-weight: 400; font-size: 1rem; margin-left: 8px; }
+.statuts { display: grid; gap: 6px; }
+.statuts .q { font-weight: 700; font-size: .95rem; }
+.statuts .btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.statuts button {
+  font: inherit; font-size: 1rem; font-weight: 600; min-height: 44px; padding: 8px 14px; border-radius: 999px; cursor: pointer;
+  border: 2px solid var(--line); background: var(--surface); color: var(--fg);
+}
+.statuts button[aria-pressed="true"][data-s="a_visiter"] { background: var(--new); border-color: var(--new); color: var(--surface); }
+.statuts button[aria-pressed="true"][data-s="visitee"] { background: var(--ok); border-color: var(--ok); color: var(--surface); }
+.statuts button[aria-pressed="true"][data-s="pas_interesses"] { background: var(--ko); border-color: var(--ko); color: var(--surface); }
+.statuts button:disabled { opacity: .6; cursor: progress; }
+.statuts .etat { font-size: .9rem; color: var(--muted); min-height: 1.2em; }
+.crit { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr)); gap: 8px; }
+.c { display: grid; grid-template-columns: auto 1fr; gap: 0 10px; padding: 8px 10px; border-radius: 8px; font-size: 1rem; line-height: 1.4; }
+.c .dot { width: 12px; height: 12px; border-radius: 50%; margin-top: 5px; grid-row: 1 / span 2; }
+.c .k { font-size: .82rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--muted); }
+.c .v { min-width: 0; }
+.c.ok { background: var(--ok-bg); } .c.ok .dot { background: var(--ok); }
+.c.warn { background: var(--warn-bg); } .c.warn .dot { background: var(--warn); }
+.c.ko { background: var(--ko-bg); } .c.ko .dot { background: var(--ko); }
+.c.unk { background: var(--unk-bg); } .c.unk .dot { background: transparent; border: 2px solid var(--unk); }
+.questions { display: grid; gap: 4px; }
+.questions strong { font-size: .95rem; }
+.questions ul { margin: 0; padding-left: 22px; display: grid; gap: 2px; }
+.liens { display: grid; gap: 10px; }
+.lien a { display: inline-block; font-weight: 700; text-decoration: none; padding: 10px 16px; border-radius: 8px; background: var(--accent); color: var(--bg); }
+.lien a:hover { text-decoration: underline; }
+.lien small { display: block; color: var(--muted); font-size: .9rem; margin-top: 4px; }
+.lien small.nv { color: var(--warn); }
+.dates { font-size: .92rem; color: var(--muted); }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: .95rem; min-width: 520px; }
+th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: .8rem; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.pill { font-size: .82rem; font-weight: 700; padding: 2px 8px; border-radius: 4px; white-space: nowrap; }
+.pill.ok { background: var(--ok-bg); color: var(--ok); }
+.pill.partiel { background: var(--warn-bg); color: var(--warn); }
+.pill.echec { background: var(--ko-bg); color: var(--ko); }
+.pill.nt { background: var(--unk-bg); color: var(--unk); }
+.erreur { background: var(--ko-bg); color: var(--ko); padding: 14px 16px; border-radius: 10px; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="choix" id="choix" hidden>
+      <label for="sel">Recherche</label>
+      <select id="sel"></select>
+    </div>
+    <h1 id="titre">Recherche de maison</h1>
+    <p class="maj" id="maj">Chargement…</p>
+    <p class="intro">Chaque matin de semaine, les sites d'annonces sont passés en revue. Les maisons qui correspondent à la recherche apparaissent ici. Sous chaque maison, trois boutons permettent de noter où vous en êtes : tout le monde voit le même choix.</p>
+    <div class="resume" id="resume"></div>
+  </header>
+
+  <details class="bloc" id="d-criteres">
+    <summary>Ce qu'on cherche</summary>
+    <div>
+      <ul class="criteres" id="criteres"></ul>
+      <div class="legende">
+        <span><i style="background:var(--ok)"></i>conforme</span>
+        <span><i style="background:var(--warn)"></i>limite ou travaux à prévoir</span>
+        <span><i style="background:var(--ko)"></i>ne va pas</span>
+        <span><i style="border:2px solid var(--unk)"></i>pas indiqué dans l'annonce</span>
+      </div>
+      <p>Les annonces donnent rarement tous les détails : un rond vide veut dire « pas indiqué », pas « absent ». Prix et disponibilité sont à confirmer avec l'agence avant toute visite.</p>
+    </div>
+  </details>
+
+  <div id="contenu"></div>
+
+  <details class="bloc" id="d-sources">
+    <summary>Comment la recherche est faite</summary>
+    <div>
+      <p id="src-resume"></p>
+      <div class="tablewrap"><table><thead><tr><th>Site</th><th>Dernier passage</th><th>Détail</th></tr></thead><tbody id="src-body"></tbody></table></div>
+      <p id="note-passage"></p>
+    </div>
+  </details>
+</div>
+
+<script>
+const CRIT = { zone: "Lieu", pierre: "Caractère", rdc: "Chambre en bas", ch: "Chambres", terrain: "Terrain", dep: "Atelier, garage", wc: "WC séparés", budget: "Budget" };
+const STATUTS = [["a_visiter", "À visiter"], ["visitee", "Visitée"], ["pas_interesses", "Pas intéressés"]];
+const GROUPES = [
+  { k: "top", titre: "À appeler en priorité", texte: "Tout correspond, ou presque, d'après l'annonce.", ouvert: true },
+  { k: "presque", titre: "À étudier de plus près", texte: "Intéressantes, mais un ou deux points demandent des travaux ou une vérification.", ouvert: true },
+  { k: "hors", titre: "Un seul critère ne va pas", texte: "Tout le reste correspond. À regarder seulement si ce point peut se discuter.", ouvert: false },
+  { k: "pas_interesses", titre: "Pas intéressés", texte: "Les maisons que vous avez écartées. Elles ne remontent plus en haut de la page.", ouvert: false },
+  { k: "retiree", titre: "Plus en vente", texte: "Annonces retirées depuis qu'elles ont été repérées.", ouvert: false }
+];
+const ST = { ok: "Lu en entier", partiel: "Lu en partie", echec: "Échec", nt: "Pas encore lu" };
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const euros = n => n == null ? "Prix non indiqué" : n.toLocaleString("fr-FR") + " €";
+const jour = iso => iso ? new Date(iso.slice(0, 10) + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long" }) : "";
+const jourLong = iso => new Date(iso + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+
+let D = null, S = {}, R = null, derniereVisite = null;
+
+function estNouveau(b) {
+  if (b.etat !== "active" || !(b.repere_le > D.lot_initial)) return false;
+  return derniereVisite ? b.repere_le > derniereVisite : true;
+}
+
+function boutons(b) {
+  const cur = (S[b.id] || {}).statut || "";
+  const quand = S[b.id] ? `Noté le ${jour(S[b.id].le)}` : "";
+  return `<div class="statuts" data-id="${esc(b.id)}">
+    <span class="q">Où en êtes-vous ?</span>
+    <div class="btns">${STATUTS.map(([k, l]) => `<button type="button" data-s="${k}" aria-pressed="${cur === k}">${l}</button>`).join("")}</div>
+    <span class="etat" aria-live="polite">${esc(quand)}</span>
+  </div>`;
+}
+
+function carte(b) {
+  const h = b.prix_hist || [];
+  const premier = h.length ? h[0].p : null;
+  const baisse = b.prix != null && premier != null && b.prix < premier;
+  const badges = [
+    estNouveau(b) ? `<span class="badge nouv">Nouvelle</span>` : "",
+    baisse ? `<span class="badge baisse">Prix baissé de ${(premier - b.prix).toLocaleString("fr-FR")} €</span>` : "",
+    b.etat === "retiree" ? `<span class="badge retr">Retirée le ${jour(b.retiree_le)}</span>` : ""
+  ].join("");
+  const liens = (b.liens || []).map(l => `
+    <div class="lien">
+      <a href="${esc(l.url)}" target="_blank" rel="noopener">Voir l'annonce · ${esc(l.site)}</a>
+      ${b.etat === "retiree" ? "" : l.ok
+        ? `<small>Annonce vérifiée en ligne le ${jour(b.verifie_le || D.maj)}</small>`
+        : `<small class="nv">Le site ne répondait pas lors de la vérification : le lien peut ne plus marcher</small>`}
+    </div>`).join("");
+  const photo = (b.photo || b.photo_url)
+    ? `<img class="photo" src="photo.php?r=${encodeURIComponent(R)}&id=${encodeURIComponent(b.id)}" alt="Photo de l'annonce : ${esc(b.titre)}" loading="lazy">`
+    : `<div class="photo vide-photo">Pas de photo</div>`;
+  return `
+  <article class="card${b.etat === "retiree" ? " retiree" : ""}" id="${esc(b.id)}">
+    ${photo}
+    <div class="tete">
+      ${badges ? `<div class="badges">${badges}</div>` : ""}
+      <h3>${esc(b.titre)}</h3>
+      <div class="lieu">${esc(b.lieu)}</div>
+      <div class="prix">${euros(b.prix)}${baisse ? `<span class="ancien">${premier.toLocaleString("fr-FR")} €</span>` : ""}</div>
+    </div>
+    ${b.etat === "active" ? boutons(b) : ""}
+    <div class="crit">
+      ${Object.keys(CRIT).map(k => { const c = (b.crit || {})[k] || ["unk", "Non indiqué"]; return `<div class="c ${c[0]}"><span class="dot"></span><span class="k">${CRIT[k]}</span><span class="v">${esc(c[1])}</span></div>`; }).join("")}
+    </div>
+    ${(b.verifier || []).length ? `<div class="questions"><strong>À demander à l'agence</strong><ul>${b.verifier.map(v => `<li>${esc(v)}</li>`).join("")}</ul></div>` : ""}
+    <div class="liens">${liens}</div>
+    <div class="dates">Repérée le ${jour(b.repere_le)}</div>
+  </article>`;
+}
+
+function groupeDe(b) {
+  if (b.etat === "retiree") return "retiree";
+  if (b.etat !== "active") return null;
+  if ((S[b.id] || {}).statut === "pas_interesses") return "pas_interesses";
+  return b.verdict;
+}
+
+function rendre() {
+  document.getElementById("maj").textContent = "Mis à jour le " + jourLong(D.maj);
+  document.getElementById("titre").textContent = D.titre || "Recherche de maison";
+  document.title = D.titre || "Recherche de maison";
+  document.getElementById("criteres").innerHTML = (D.criteres || []).map(c => `<li>${esc(c)}</li>`).join("");
+  const ouverts = new Set([...document.querySelectorAll("details.bloc[open]")].map(d => d.id));
+  const tri = (a, b) => (b.repere_le || "").localeCompare(a.repere_le || "") || (a.prix ?? 1e9) - (b.prix ?? 1e9);
+  const parGroupe = k => D.biens.filter(b => groupeDe(b) === k).sort(k === "retiree" ? (a, b) => (b.retiree_le || "").localeCompare(a.retiree_le || "") : tri);
+  const nNouv = D.biens.filter(estNouveau).length;
+  const nVis = D.biens.filter(b => b.etat === "active" && (S[b.id] || {}).statut === "a_visiter").length;
+  document.getElementById("resume").innerHTML = [
+    nNouv ? `<span class="nouv"><b>${nNouv}</b> nouvelle${nNouv > 1 ? "s" : ""} depuis votre dernière visite</span>` : "",
+    `<span><b>${parGroupe("top").length}</b> à appeler</span>`,
+    `<span><b>${parGroupe("presque").length}</b> à étudier</span>`,
+    nVis ? `<span><b>${nVis}</b> à visiter</span>` : ""
+  ].join("");
+  document.getElementById("contenu").innerHTML = GROUPES.map(g => {
+    const liste = parGroupe(g.k);
+    if (!liste.length && !g.ouvert) return "";
+    const corps = liste.length ? liste.map(carte).join("") : `<p class="vide">Aucune maison pour l'instant.</p>`;
+    return g.ouvert
+      ? `<section class="groupe" aria-labelledby="g-${g.k}"><h2 id="g-${g.k}">${g.titre} · ${liste.length}</h2><p>${g.texte}</p><div class="list">${corps}</div></section>`
+      : `<details class="bloc" id="g-${g.k}"${ouverts.has("g-" + g.k) ? " open" : ""}><summary>${g.titre} · ${liste.length}</summary><div><p class="aide">${g.texte}</p><div class="list">${corps}</div></div></details>`;
+  }).join(`<div style="height:4px"></div>`);
+  const Sx = D.sources || [];
+  const n = k => Sx.filter(s => s.statut === k).length;
+  document.getElementById("src-resume").textContent = `Dernier passage le ${jour(D.maj)} : ${n("ok")} sites lus en entier, ${n("partiel")} en partie, ${n("echec")} en échec, ${n("nt")} pas encore lus.`;
+  document.getElementById("src-body").innerHTML = Sx.map(s => `<tr><td>${esc(s.nom)}</td><td><span class="pill ${s.statut}">${ST[s.statut] || s.statut}</span>${s.statut !== "ok" && s.dernier_ok ? `<br><small>Dernière lecture complète : ${jour(s.dernier_ok)}</small>` : ""}</td><td>${esc(s.note)}</td></tr>`).join("");
+  document.getElementById("note-passage").textContent = D.note_passage || "";
+}
+
+document.addEventListener("click", async ev => {
+  const btn = ev.target.closest(".statuts button");
+  if (!btn) return;
+  const box = btn.closest(".statuts");
+  const id = box.dataset.id;
+  const statut = btn.getAttribute("aria-pressed") === "true" ? "" : btn.dataset.s;
+  box.querySelectorAll("button").forEach(b => b.disabled = true);
+  box.querySelector(".etat").textContent = "Enregistrement…";
+  try {
+    const r = await fetch("api.php?r=" + encodeURIComponent(R), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, statut }) });
+    if (!r.ok) throw new Error(r.status);
+    S = await r.json();
+    rendre();
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ block: "nearest" });
+  } catch (e) {
+    box.querySelectorAll("button").forEach(b => b.disabled = false);
+    box.querySelector(".etat").textContent = "Le choix n'a pas pu être enregistré. Vérifiez la connexion et réessayez.";
+  }
+});
+
+function charger(r) {
+  R = r;
+  try { localStorage.setItem("recherche", r); derniereVisite = localStorage.getItem("derniere-visite:" + r); } catch (e) { derniereVisite = null; }
+  const u = new URL(location.href); u.searchParams.set("r", r); history.replaceState(null, "", u.pathname + u.search + location.hash);
+  document.getElementById("maj").textContent = "Chargement…";
+  return Promise.all([
+    fetch("recherches/" + encodeURIComponent(r) + "/data.json", { cache: "no-store" }).then(x => { if (!x.ok) throw new Error(x.status); return x.json(); }),
+    fetch("api.php?r=" + encodeURIComponent(r), { cache: "no-store" }).then(x => x.ok ? x.json() : {}).catch(() => ({}))
+  ]).then(([d, st]) => {
+    D = d; S = st || {};
+    rendre();
+    try { localStorage.setItem("derniere-visite:" + r, D.maj); } catch (e) {}
+  });
+}
+
+fetch("recherches.json", { cache: "no-store" }).then(x => x.json()).then(liste => {
+  const sel = document.getElementById("sel");
+  sel.innerHTML = liste.map(x => `<option value="${esc(x.id)}">${esc(x.nom)}</option>`).join("");
+  if (liste.length > 1) document.getElementById("choix").hidden = false;
+  let r = new URLSearchParams(location.search).get("r");
+  if (!liste.some(x => x.id === r)) { try { r = localStorage.getItem("recherche"); } catch (e) { r = null; } }
+  if (!liste.some(x => x.id === r)) r = liste[0].id;
+  sel.value = r;
+  sel.addEventListener("change", () => charger(sel.value).catch(erreur));
+  return charger(r).then(() => {
+    if (location.hash) { const el = document.getElementById(location.hash.slice(1)); if (el) { const det = el.closest("details"); if (det) det.open = true; el.scrollIntoView(); } }
+  });
+}).catch(erreur);
+
+function erreur() {
+  document.getElementById("maj").textContent = "";
+  document.getElementById("contenu").innerHTML = `<p class="erreur">La liste des maisons n'a pas pu être chargée. Rechargez la page dans quelques minutes.</p>`;
+}
+</script>
+</body>
+</html>

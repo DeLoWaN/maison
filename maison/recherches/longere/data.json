@@ -1,0 +1,702 @@
+{
+ "titre": "Longère Vendes–Caen–Bayeux",
+ "criteres": [
+  "Maison ancienne en pierre, longère de préférence",
+  "350 000 € maximum, travaux compris",
+  "Autour de Vendes, Caen et Bayeux, à 30 minutes de Vendes au plus",
+  "Une chambre au rez-de-chaussée, ou une pièce du bas qu'on peut transformer en chambre",
+  "3 chambres au minimum, 4 idéalement, plus un bureau",
+  "Terrain de 950 m² au moins",
+  "Garage, atelier ou dépendance d'au moins 30 m²",
+  "WC séparés"
+ ],
+ "maj": "2026-10-18",
+ "lot_initial": "2026-10-18",
+ "biens": [
+  {
+   "id": "fontenay-279",
+   "etat": "active",
+   "verdict": "top",
+   "titre": "Propriété en vieille pierre, 4 chambres, annexes de 48 et 77 m²",
+   "commune": "Fontenay-le-Pesnel",
+   "lieu": "Fontenay-le-Pesnel · entre Vendes et Caen",
+   "prix": 279575,
+   "prix_hist": [
+    {
+     "d": "2026-10-18",
+     "p": 279575
+    }
+   ],
+   "repere_le": "2026-10-18",
+   "verifie_le": "2026-10-18",
+   "retiree_le": null,
+   "crit": {
+    "zone": [
+     "ok",
+     "Cœur de zone"
+    ],
+    "pierre": [
+     "ok",
+     "Vieille pierre"
+    ],
+    "rdc": [
+     "warn",
+     "Pas de chambre au RDC, annexe accolée de 48 m² à aménager"
+    ],
+    "ch": [
+     "ok",
+     "4 chambres à l'étage, 150 m²"
+    ],
+    "terrain": [
+     "ok",
+     "3 650 m²"
+    ],
+    "dep": [
+     "ok",
+     "Atelier de 77 m²"
+    ],
+    "wc": [
+     "ok",
+     "WC au RDC"
+    ],
+    "budget": [
+     "ok",
+     "Environ 70 000 € de marge pour les travaux"
+    ]
+   },
+   "verifier": [
+    "Coût pour créer la chambre dans l'annexe de 48 m² (isolation, sol, ouverture)",
+    "DPE D, chauffage central : quelle énergie ?",
+    "État réel de la seconde partie « aménagée ultérieurement »"
+   ],
+   "liens": [
+    {
+     "site": "SeLoger · Century 21 CJN",
+     "url": "https://www.seloger.com/annonce/achat/normandie/calvados-14/fontenay-le-pesnel-14250/262HFC62BUNP",
+     "ok": true
+    }
+   ],
+   "photo": "photos/fontenay-279.jpg",
+   "photo_url": "https://mms.seloger.com/7/0/d/0/70d0faf0-af0b-4c35-a7b8-0e0816c61ea8.jpg?ci_seal=0ee0d23fba1ab61a0f6ec01b9601e1407ccb0b11"
+  },
+  {
+   "id": "hottot-294",
+   "etat": "active",
+   "verdict": "top",
+   "titre": "Longère en pierre de 1850, rénovée, 185 m²",
+   "commune": "Hottot-les-Bagues",
+   "lieu": "Hottot-les-Bagues · 4 km à l'ouest de Vendes",
+   "prix": 294000,
+   "prix_hist": [
+    {
+     "d": "2026-10-18",
+     "p": 294000
+    }
+   ],
+   "repere_le": "2026-10-18",
+   "verifie_le": "2026-10-18",
+   "retiree_le": null,
+   "crit": {
+    "zone": [
+     "ok",
+     "À moins de 15 min de Vendes"
+    ],
+    "pierre": [
+     "ok",
+     "Longère en pierre"
+    ],
+    "rdc": [
+     "ok",
+     "Chambre et salle d'eau au RDC"
+    ],
+    "ch": [
+     "ok",
+     "4 chambres + bureau"
+    ],
+    "terrain": [
+     "ok",
+     "2 499 m²"
+    ],
+    "dep": [
+     "warn",
+     "Garage et cave, tailles non indiquées"
+    ],
+    "wc": [
+     "warn",
+     "2 WC, un seul situé dans l'annonce"
+    ],
+    "budget": [
+     "ok",
+     "Sans travaux, DPE C"
+    ]
+   },
+   "verifier": [
+    "Taille du garage : un atelier de 30 m² y tient-il ?",
+    "Où se trouve le second WC"
+   ],
+   "liens": [
+    {
+     "site": "SeLoger · De Fombelle Immobilier",
+     "url": "https://www.seloger.com/annonce/26GE9SPHRHBK",
+     "ok": true
+    }
+   ],
+   "photo": "photos/hottot-294.jpg",
+   "photo_url": "https://mms.seloger.com/b/5/0/8/b508dfdf-daa3-4552-b4a0-904012eaa1af.jpg?ci_seal=e90df60fc8c40154048e6b8356cebcf097846719"
+  },
+  {
+   "id": "vendes-265",
+   "etat": "active",
+   "verdict": "top",
+   "titre": "Longère en pierre de 1850, sans travaux",
+   "commune": "Vendes",
+   "lieu": "Vendes · 20 min de Caen",
+   "prix": 265000,
+   "prix_hist": [
+    {
+     "d": "2026-10-18",
+     "p": 265000
+    }
+   ],
+   "repere_le": "2026-10-18",
+   "verifie_le": "2026-10-18",
+   "retiree_le": null,
+   "crit": {
+    "zone": [
+     "ok",
+     "Vendes"
+    ],
+    "pierre": [
+     "ok",
+     "Longère en pierre"
+    ],
+    "rdc": [
+     "ok",
+     "Chambre et douche au RDC"
+    ],
+    "ch": [
+     "warn",
+     "3 chambres, 100 m² seulement"
+    ],
+    "terrain": [
+     "ok",
+     "Environ 1 900 m², en partie constructible"
+    ],
+    "dep": [
+     "warn",
+     "Chalet atelier, taille non indiquée"
+    ],
+    "wc": [
+     "unk",
+     "1 WC, séparé ou non ?"
+    ],
+    "budget": [
+     "ok",
+     "85 000 € de marge"
+    ]
+   },
+   "verifier": [
+    "100 m² seulement : la marge de budget permettrait une extension",
+    "Taille du chalet",
+    "Chauffage électrique, DPE D"
+   ],
+   "liens": [
+    {
+     "site": "SeLoger · Pozzo Immobilier",
+     "url": "https://www.seloger.com/annonce/achat/normandie/calvados-14/vendes-14250/26KZWHG1YTVB",
+     "ok": true
+    }
+   ],
+   "photo": "photos/vendes-265.jpg",
+   "photo_url": null
+  },
+  {
+   "id": "noyers-142",
+   "etat": "retiree",
+   "verdict": "top",
+   "titre": "Maison en pierre, 5 chambres, vie de plain-pied",
+   "commune": "Val d'Arry",
+   "lieu": "Noyers-Bocage (Val d'Arry) · environ 20 min de Caen par l'A84",
+   "prix": null,
+   "prix_hist": [],
+   "repere_le": "2026-10-18",
+   "verifie_le": null,
+   "retiree_le": "2026-10-18",
+   "crit": {
+    "zone": [
+     "ok",
+     "Val d'Arry"
+    ],
+    "pierre": [
+     "ok",
+     "Pierre"
+    ],
+    "rdc": [
+     "ok",
+     "Chambres au RDC (3 sur 5 à l'étage)"
+    ],
+    "ch": [
+     "ok",
+     "5 chambres, 142 m²"
+    ],
+    "terrain": [
+     "warn",
+     "Environ 900 m²"
+    ],
+    "dep": [
+     "unk",
+     "Garage mentionné"
+    ],
+    "wc": [
+     "unk",
+     "Non indiqué"
+    ],
+    "budget": [
+     "unk",
+     "Prix non trouvé"
+    ]
+   },
+   "verifier": [],
+   "liens": [
+    {
+     "site": "Les Clefs de chez moi · iad France",
+     "url": "https://www.lesclefsdechezmoi.fr/achat-immobilier/calvados/val-d-arry/maisons/maison-5chambres-142m2-5020876.html",
+     "ok": false
+    }
+   ],
+   "photo": null,
+   "photo_url": null
+  },
+  {
+   "id": "evrecy-307",
+   "etat": "active",
+   "verdict": "presque",
+   "titre": "Maison en pierre avec dépendance dans le prolongement",
+   "commune": "Évrecy",
+   "lieu": "À 5 min d'Évrecy · sud-ouest de Caen",
+   "prix": 307000,
+   "prix_hist": [
+    {
+     "d": "2026-10-18",
+     "p": 307000
+    }
+   ],
+   "repere_le": "2026-10-18",
+   "verifie_le": "2026-10-18",
+   "retiree_le": null,
+   "crit": {
+    "zone": [
+     "ok",
+     "Secteur d'Évrecy"
+    ],
+    "pierre": [
+     "ok",
+     "Pierre"
+    ],
+    "rdc": [
+     "warn",
+     "Pas de chambre au RDC, dépendance accolée à transformer"
+    ],
+    "ch": [
+     "ok",
+     "3 chambres + bureau à l'étage"
+    ],
+    "terrain": [
+     "ok",
+     "1 100 m²"
+    ],
+    "dep": [
+     "warn",
+     "Atelier, mais la chambre en prendrait une partie"
+    ],
+    "wc": [
+     "ok",
+     "WC au RDC"
+    ],
+    "budget": [
+     "warn",
+     "43 000 € de marge pour les travaux"
+    ]
+   },
+   "verifier": [
+    "Une chambre et un atelier de 30 m² tiennent-ils tous les deux dans la dépendance ?",
+    "Coût de la transformation",
+    "DPE"
+   ],
+   "liens": [
+    {
+     "site": "FNAIM · Cabinet Faudais",
+     "url": "https://www.fnaim.fr/annonce-immobiliere/53023933/17-acheter-maison-evrecy-14210.htm",
+     "ok": true
+    }
+   ],
+   "photo": "photos/evrecy-307.jpg",
+   "photo_url": "https://imagesv2.fnaim.fr/images1/img/6a0ba94a7d2d66c9009878f7.jpg"
+  },
+  {
+   "id": "villers-145",
+   "etat": "active",
+   "verdict": "presque",
+   "titre": "Longère semi-rénovée de 145 m²",
+   "commune": "Villers-Bocage",
+   "lieu": "Près de Villers-Bocage · accès A84",
+   "prix": 232000,
+   "prix_hist": [
+    {
+     "d": "2026-10-18",
+     "p": 232000
+    }
+   ],
+   "repere_le": "2026-10-18",
+   "verifie_le": "2026-10-18",
+   "retiree_le": null,
+   "crit": {
+    "zone": [
+     "ok",
+     "Secteur de Villers-Bocage"
+    ],
+    "pierre": [
+     "ok",
+     "Longère"
+    ],
+    "rdc": [
+     "ok",
+     "Bureau et salle d'eau au RDC"
+    ],
+    "ch": [
+     "ok",
+     "4 chambres à l'étage"
+    ],
+    "terrain": [
+     "unk",
+     "Non indiqué"
+    ],
+    "dep": [
+     "unk",
+     "Garage mentionné"
+    ],
+    "wc": [
+     "unk",
+     "Non indiqué"
+    ],
+    "budget": [
+     "ok",
+     "118 000 € de marge, travaux à finir"
+    ]
+   },
+   "verifier": [
+    "Annonce en ligne depuis 7 mois : encore en vente ?",
+    "Surface du terrain",
+    "Ce qui reste à terminer (salle d'eau de l'étage)"
+   ],
+   "liens": [
+    {
+     "site": "Zimo · annonce leboncoin",
+     "url": "https://www.zimo.fr/annonce/longere-7-pieces-145-m2/019f5c61-11fc-7672-b934-e12747cdf532",
+     "ok": true
+    }
+   ],
+   "photo": "photos/villers-145.jpg",
+   "photo_url": "https://zimo-images.s3.fr-par.scw.cloud/photo_12e35fee-0c18-45dd-b986-babbe194eef3.jpg"
+  },
+  {
+   "id": "laize-250",
+   "etat": "active",
+   "verdict": "presque",
+   "titre": "Longère du XIXe à rénover, 153 m²",
+   "commune": "Laize-Clinchamps",
+   "lieu": "Laize-Clinchamps · 10 min au sud de Caen",
+   "prix": 250000,
+   "prix_hist": [
+    {
+     "d": "2026-10-18",
+     "p": 250000
+    }
+   ],
+   "repere_le": "2026-10-18",
+   "verifie_le": "2026-10-18",
+   "retiree_le": null,
+   "crit": {
+    "zone": [
+     "ok",
+     "Sud de Caen, tout proche"
+    ],
+    "pierre": [
+     "ok",
+     "Longère du XIXe"
+    ],
+    "rdc": [
+     "warn",
+     "Salle à manger ou 2e cuisine à transformer, salle d'eau déjà au RDC"
+    ],
+    "ch": [
+     "ok",
+     "3 chambres + une pièce à rénover"
+    ],
+    "terrain": [
+     "ok",
+     "1 137 m²"
+    ],
+    "dep": [
+     "ko",
+     "Aucune dépendance mentionnée"
+    ],
+    "wc": [
+     "ok",
+     "WC séparé au RDC"
+    ],
+    "budget": [
+     "warn",
+     "100 000 € pour tout rénover : c'est juste"
+    ]
+   },
+   "verifier": [
+    "Faire chiffrer la rénovation complète avant tout",
+    "Mitoyenneté non précisée",
+    "Place pour construire un atelier sur le terrain"
+   ],
+   "liens": [
+    {
+     "site": "iad France",
+     "url": "https://www.iadfrance.fr/annonce/maison-vente-7-pieces-laize-clinchamps-153m2/r2118034",
+     "ok": true
+    }
+   ],
+   "photo": "photos/laize-250.jpg",
+   "photo_url": "https://images.iadfrance.fr/property/broadcast/2026/09/23/01a0cecb3a4be6d6ffb174bb0ee1f30f.jpg?format=jpeg&width=800"
+  },
+  {
+   "id": "bretteville-296",
+   "etat": "active",
+   "verdict": "hors",
+   "titre": "Maison en pierre du XVIIIe, 165 m²",
+   "commune": "Bretteville-sur-Laize",
+   "lieu": "À 5 min de Bretteville-sur-Laize · sud de Caen",
+   "prix": 296000,
+   "prix_hist": [
+    {
+     "d": "2026-10-18",
+     "p": 296000
+    }
+   ],
+   "repere_le": "2026-10-18",
+   "verifie_le": null,
+   "retiree_le": null,
+   "crit": {
+    "zone": [
+     "ok",
+     "Sud de Caen"
+    ],
+    "pierre": [
+     "ok",
+     "Pierre, en parfait état"
+    ],
+    "rdc": [
+     "ok",
+     "Chambre et salle d'eau au RDC"
+    ],
+    "ch": [
+     "ok",
+     "4 chambres + grenier"
+    ],
+    "terrain": [
+     "ko",
+     "Un peu plus de 500 m²"
+    ],
+    "dep": [
+     "ok",
+     "Garage de 50 m² + appentis"
+    ],
+    "wc": [
+     "unk",
+     "Non indiqué"
+    ],
+    "budget": [
+     "ok",
+     "Pas de travaux"
+    ]
+   },
+   "verifier": [
+    "Seul le terrain ne va pas"
+   ],
+   "liens": [
+    {
+     "site": "Square Habitat",
+     "url": "https://www.squarehabitat.fr/square-habitat-normandie/annonces/biens/achat-ancien/maison/bretteville-sur-laize/bbc6a862-ce76-4aab-89c1-624a2190d6c7",
+     "ok": false
+    }
+   ],
+   "photo": "photos/bretteville-296.jpg",
+   "photo_url": "https://www.squarehabitat.fr/medias/biens/m/d267727c-cd0d-4d8f-81a0-7edb434dd7ca.webp"
+  },
+  {
+   "id": "evrecy-385",
+   "etat": "active",
+   "verdict": "hors",
+   "titre": "Maison de maître en pierre, ancien corps de ferme",
+   "commune": "Évrecy",
+   "lieu": "Évrecy",
+   "prix": 385000,
+   "prix_hist": [
+    {
+     "d": "2026-10-18",
+     "p": 385000
+    }
+   ],
+   "repere_le": "2026-10-18",
+   "verifie_le": "2026-10-18",
+   "retiree_le": null,
+   "crit": {
+    "zone": [
+     "ok",
+     "Évrecy"
+    ],
+    "pierre": [
+     "ok",
+     "Pierre"
+    ],
+    "rdc": [
+     "unk",
+     "Répartition des pièces à confirmer"
+    ],
+    "ch": [
+     "ok",
+     "5 chambres, 188 m²"
+    ],
+    "terrain": [
+     "unk",
+     "Non indiqué"
+    ],
+    "dep": [
+     "unk",
+     "Garage"
+    ],
+    "wc": [
+     "unk",
+     "Non indiqué"
+    ],
+    "budget": [
+     "ko",
+     "35 000 € au-dessus du budget"
+    ]
+   },
+   "verifier": [
+    "À regarder seulement si une négociation de 10 % paraît possible"
+   ],
+   "liens": [
+    {
+     "site": "Les Clefs de chez moi",
+     "url": "https://www.lesclefsdechezmoi.fr/achat-immobilier/calvados/evrecy/maisons/maison-4chambres-188m2-4266011.html",
+     "ok": true
+    }
+   ],
+   "photo": "photos/evrecy-385.jpg",
+   "photo_url": "https://d147o3bvayp01f.cloudfront.net/eyJidWNrZXQiOiJwcm9kLmFkcy5pbWFnZXMubGNkY20uZnIiLCJlZGl0cyI6eyJyZXNpemUiOnsid2lkdGgiOjEwMjR9fSwia2V5IjoiaW1wLzQyNjYwMTEvMTRkNTcyYjctMTJjZS00MmYwLWExMTYtY2IwZDBhYzA4MzkxL2RpS1lpNXM4UldMWE14T1d6MG9SZlhwSUdrME5OaU11OVRMcFVpM1otYnJhbmRlZC5qcGcifQ=="
+  }
+ ],
+ "sources": [
+  {
+   "nom": "SeLoger",
+   "statut": "ok",
+   "note": "Recherche par commune et fiches",
+   "dernier_ok": "2026-10-18"
+  },
+  {
+   "nom": "Zimo",
+   "statut": "ok",
+   "note": "Longères du Calvados ; relaie leboncoin, Ouest-France Immo, Green-Acres",
+   "dernier_ok": "2026-10-18"
+  },
+  {
+   "nom": "FNAIM",
+   "statut": "ok",
+   "note": "Listes et fiches Villers-Bocage, Évrecy",
+   "dernier_ok": "2026-10-18"
+  },
+  {
+   "nom": "iad France",
+   "statut": "ok",
+   "note": "Fiche Laize-Clinchamps",
+   "dernier_ok": "2026-10-18"
+  },
+  {
+   "nom": "Etreproprio",
+   "statut": "ok",
+   "note": "Liste Tilly-sur-Seulles et fiche Avenay",
+   "dernier_ok": "2026-10-18"
+  },
+  {
+   "nom": "Vizzit",
+   "statut": "ok",
+   "note": "Liste Tilly-sur-Seulles",
+   "dernier_ok": "2026-10-18"
+  },
+  {
+   "nom": "Optimhome",
+   "statut": "ok",
+   "note": "Fiche Val d'Arry : annonce retirée",
+   "dernier_ok": "2026-10-18"
+  },
+  {
+   "nom": "Les Clefs de chez moi",
+   "statut": "partiel",
+   "note": "Listes lues ; plusieurs fiches en erreur",
+   "dernier_ok": null
+  },
+  {
+   "nom": "Square Habitat",
+   "statut": "partiel",
+   "note": "Listes lues ; fiche Bretteville-sur-Laize en erreur",
+   "dernier_ok": null
+  },
+  {
+   "nom": "Immonot (notaires)",
+   "statut": "partiel",
+   "note": "Page 1 sur 26 du Calvados seulement",
+   "dernier_ok": null
+  },
+  {
+   "nom": "PAP",
+   "statut": "partiel",
+   "note": "Page 1 du Calvados seulement",
+   "dernier_ok": null
+  },
+  {
+   "nom": "Leboncoin",
+   "statut": "nt",
+   "note": "Sera lu dans le navigateur à partir du premier passage automatique",
+   "dernier_ok": null
+  },
+  {
+   "nom": "Ouest-France Immo",
+   "statut": "nt",
+   "note": "Sera lu dans le navigateur à partir du premier passage automatique",
+   "dernier_ok": null
+  },
+  {
+   "nom": "Bien'ici",
+   "statut": "nt",
+   "note": "Sera lu dans le navigateur à partir du premier passage automatique",
+   "dernier_ok": null
+  },
+  {
+   "nom": "Green-Acres",
+   "statut": "echec",
+   "note": "Erreur ; couvert en partie via Zimo",
+   "dernier_ok": null
+  },
+  {
+   "nom": "immobilier.notaires.fr",
+   "statut": "echec",
+   "note": "Page vide ; notaires couverts en partie via Immonot",
+   "dernier_ok": null
+  },
+  {
+   "nom": "Logic-Immo",
+   "statut": "nt",
+   "note": "Pas encore testé",
+   "dernier_ok": null
+  }
+ ],
+ "note_passage": "Le secteur de Bayeux n'a pas encore été fouillé : ce sera fait au premier passage automatique, lundi 19 octobre. L'annonce de Noyers-Bocage a été retirée du site le 18 octobre."
+}
