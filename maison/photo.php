@@ -23,7 +23,8 @@ $cacheDir = dirname(dirname(__DIR__)) . '/maison-data/' . $r . '/photos';
 $cache = $cacheDir . '/' . $id;
 if (is_file($cache) && filesize($cache) > 0) servir($cache);
 
-$data = json_decode(@file_get_contents($base . '/data.json'), true);
+$vivant = dirname(dirname(__DIR__)) . '/maison-data/' . $r . '/data.json';
+$data = json_decode(@file_get_contents(is_file($vivant) ? $vivant : $base . '/data.json'), true);
 $url = null;
 $biens = (is_array($data) && isset($data['biens'])) ? $data['biens'] : array();
 foreach ($biens as $b) {

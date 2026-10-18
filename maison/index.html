@@ -298,7 +298,7 @@ function charger(r) {
   const u = new URL(location.href); u.searchParams.set("r", r); history.replaceState(null, "", u.pathname + u.search + location.hash);
   document.getElementById("maj").textContent = "Chargement…";
   return Promise.all([
-    fetch("recherches/" + encodeURIComponent(r) + "/data.json", { cache: "no-store" }).then(x => { if (!x.ok) throw new Error(x.status); return x.json(); }),
+    fetch("data.php?r=" + encodeURIComponent(r), { cache: "no-store" }).then(x => { if (!x.ok) throw new Error(x.status); return x.json(); }),
     fetch("api.php?r=" + encodeURIComponent(r), { cache: "no-store" }).then(x => x.ok ? x.json() : {}).catch(() => ({}))
   ]).then(([d, st]) => {
     D = d; S = st || {};
