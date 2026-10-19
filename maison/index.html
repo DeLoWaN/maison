@@ -77,8 +77,17 @@ details.bloc > div { padding: 0 16px 16px; display: grid; gap: 12px; }
 .trouver input { font: inherit; font-size: 1.2rem; width: 5.5em; min-height: 48px; padding: 6px 10px; border-radius: 10px; border: 2px solid var(--line); background: var(--surface); color: var(--fg); }
 .trouver button { font: inherit; font-weight: 700; font-size: 1.05rem; min-height: 48px; padding: 6px 16px; border-radius: 10px; border: 2px solid var(--accent); background: var(--accent); color: var(--surface); cursor: pointer; }
 .trouver output { flex-basis: 100%; color: var(--ko); font-weight: 600; }
-.ou { margin-top: 16px; }
-.ou strong { display: block; margin-bottom: 8px; }
+.ou { margin-top: 4px; }
+.ou > summary { cursor: pointer; display: inline-flex; align-items: center; min-height: 48px; padding: 8px 16px; border-radius: 10px; border: 2px solid var(--accent); color: var(--accent); font-weight: 700; list-style: none; }
+.ou > summary::-webkit-details-marker { display: none; }
+.ou > summary::before { content: "▸"; margin-right: 8px; }
+.ou[open] > summary { margin-bottom: 10px; }
+.ou[open] > summary::before { content: "▾"; }
+.ou .carte { height: 320px; }
+.outils-carte { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 8px; }
+.outils-carte button { font: inherit; font-weight: 700; min-height: 44px; padding: 6px 14px; border-radius: 10px; border: 2px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; }
+.leaflet-control-layers { font-size: 15px; }
+.leaflet-control-layers label { padding: 2px 0; }
 .carte { height: 230px; border-radius: 12px; border: 1px solid var(--line); background: var(--unk-bg); overflow: hidden; z-index: 0; }
 .carte .vide { display: grid; place-items: center; height: 100%; color: var(--muted); }
 .ou p { margin: 8px 0 0; color: var(--muted); font-size: 1rem; }
@@ -222,6 +231,7 @@ th { font-size: .8rem; letter-spacing: .05em; text-transform: uppercase; color: 
       <span><i style="background:var(--ko)"></i>Pas intéressés</span>
       <span><i style="background:var(--fg)"></i>Pas encore décidé</span>
       <span><i style="background:var(--surface);border:2px dashed var(--fg)"></i>Rond pointillé : seulement le village, adresse pas retrouvée</span>
+      <span><i style="background:#2c5a40"></i>V : Vendes</span>
     </div>
     <div class="carte" id="vue-carte"></div>
     <p class="aide">Le numéro dans chaque rond est celui de la maison. Touchez un rond pour voir la maison et aller à sa fiche.</p>
@@ -354,7 +364,7 @@ function carte(b) {
       ${Object.keys(CRIT).map(k => { const c = (b.crit || {})[k] || ["unk", "Non indiqué"]; return `<div class="c ${c[0]}"><span class="dot"></span><span class="k">${(D.libelles || {})[k] || CRIT[k]}</span><span class="v">${esc(c[1])}</span></div>`; }).join("")}
     </div>
     ${blocAdresse(b)}
-    <div class="ou"><strong>Où se trouve-t-elle ?</strong><div class="carte" data-carte="${esc(b.id)}"></div><p data-carte-note="${esc(b.id)}"></p></div>
+    <details class="ou"><summary>Voir où elle se trouve</summary><div class="carte" data-carte="${esc(b.id)}"></div><p data-carte-note="${esc(b.id)}"></p></details>
     ${(b.verifier || []).length ? `<div class="questions"><strong>À demander à l'agence</strong><ul>${b.verifier.map(v => `<li>${esc(v)}</li>`).join("")}</ul></div>` : ""}
     <div class="liens">${liens}</div>
     <div class="dates">Repérée le ${jour(b.repere_le)}</div>
@@ -406,6 +416,15 @@ function situer(b, g) {
 }
 const kmEntre = (a, b) => { const R = 6371, r = Math.PI / 180, dLa = (b[1] - a[1]) * r, dLo = (b[0] - a[0]) * r; const x = Math.sin(dLa / 2) ** 2 + Math.cos(a[1] * r) * Math.cos(b[1] * r) * Math.sin(dLo / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(x)); };
 const FOND = "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}";
+const PHOTO = "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}";
+// Épingles de taille fixe (en pixels) : elles restent visibles quel que soit le zoom.
+const epingle = (coul, txt) => L.divIcon({ className: "pt-wrap", iconSize: [34, 44], iconAnchor: [17, 42],
+  html: `<svg width="34" height="44" viewBox="0 0 34 44" aria-hidden="true"><path d="M17 2C8.7 2 2 8.6 2 16.8 2 28 17 42 17 42s15-14 15-25.2C32 8.6 25.3 2 17 2z" fill="${coul}" stroke="#fff" stroke-width="3"/><text x="17" y="21" text-anchor="middle" font-size="13" font-weight="700" fill="#fff" font-family="system-ui,sans-serif">${txt}</text></svg>` });
+function fondsCarte(carte) {
+  const plan = L.tileLayer(FOND, { maxZoom: 19, maxNativeZoom: 18, attribution: "© IGN" }).addTo(carte);
+  const photo = L.tileLayer(PHOTO, { maxZoom: 19, attribution: "© IGN" });
+  L.control.layers({ "Plan": plan, "Photo aérienne": photo }, null, { collapsed: false, position: "topright" }).addTo(carte);
+}
 function dessinerCarte(el) {
   if (el.dataset.fait) return; el.dataset.fait = "1";
   const b = (D.biens || []).find(x => x.id === el.dataset.carte);
@@ -415,26 +434,34 @@ function dessinerCarte(el) {
     const p = await situerPrecis(b, g);
     if (!p) { el.innerHTML = `<div class="vide">Commune introuvable sur la carte</div>`; return; }
     const ici = [p.ll[1], p.ll[0]];
-    const v = g.com["vendes"];
-    const carte = L.map(el, { dragging: !L.Browser.mobile, scrollWheelZoom: false, tap: false, attributionControl: true });
-    L.tileLayer(FOND, { maxZoom: 18, attribution: "© IGN" }).addTo(carte);
-    L.circle(ici, { radius: p.adresse && b.adresse.confiance !== "forte" ? 150 : p.precis ? 60 : 1100, color: "#9c3426", weight: 3, fillColor: "#9c3426", fillOpacity: .15 }).addTo(carte)
-      .bindTooltip(p.nom, { permanent: true, direction: "top", offset: [0, -8] });
-    if (v && norm(p.nom) !== "vendes") {
-      const vv = [v.ll[1], v.ll[0]];
-      L.circleMarker(vv, { radius: 7, color: "#2c5a40", weight: 3, fillColor: "#2c5a40", fillOpacity: 1 }).addTo(carte)
-        .bindTooltip("Vendes", { permanent: true, direction: "bottom", offset: [0, 6] });
-      carte.fitBounds(L.latLngBounds([ici, vv]), { padding: [36, 36], maxZoom: 13 });
-      const km = Math.round(kmEntre(p.ll, v.ll));
-      note.textContent = `${p.adresse ? (b.adresse.confiance === "forte" ? "Le cercle rouge montre l'adresse retrouvée" : "Le cercle rouge montre l'adresse probable, à confirmer") : p.precis ? "Adresse indiquée par l'annonce" : "Le cercle rouge montre le village de " + p.nom + " : l'annonce ne donne pas l'adresse exacte"}. Environ ${km} km de Vendes à vol d'oiseau.`;
+    const v = g.com["vendes"], vv = v ? [v.ll[1], v.ll[0]] : null;
+    const exact = !!(p.adresse || p.precis);
+    const carte = L.map(el, { dragging: !L.Browser.mobile, scrollWheelZoom: false, tap: false });
+    fondsCarte(carte);
+    if (exact) {
+      L.marker(ici, { icon: epingle("#9c3426", b.num || ""), title: "La maison" }).addTo(carte);
     } else {
-      carte.setView(ici, 13);
-      note.textContent = p.adresse ? "Le cercle rouge montre l'adresse retrouvée." : p.precis ? "Adresse indiquée par l'annonce." : `Le cercle rouge montre le village de ${p.nom} : l'annonce ne donne pas l'adresse exacte.`;
+      L.circle(ici, { radius: 1100, color: "#9c3426", weight: 3, dashArray: "8 6", fillColor: "#9c3426", fillOpacity: .12 }).addTo(carte);
     }
+    if (vv && norm(p.nom) !== "vendes") L.marker(vv, { icon: epingle("#2c5a40", "V"), title: "Vendes" }).addTo(carte);
+    const prochePlan = () => carte.setView(ici, exact ? 17 : 13);
+    const avecVendes = () => vv ? carte.fitBounds(L.latLngBounds([ici, vv]), { padding: [50, 50], maxZoom: 14 }) : prochePlan();
+    if (exact) prochePlan(); else avecVendes();
+    const km = vv ? Math.round(kmEntre(p.ll, v.ll)) : null;
+    const quoi = p.adresse
+      ? (b.adresse.confiance === "forte" ? "L'épingle rouge montre l'adresse retrouvée." : "L'épingle rouge montre l'adresse probable, à confirmer.")
+      : p.precis ? "L'épingle rouge montre l'adresse indiquée par l'annonce."
+      : `La zone rouge montre le village de ${p.nom} : l'adresse exacte n'est pas connue.`;
+    note.textContent = quoi + (km ? ` L'épingle verte V, c'est Vendes : environ ${km} km à vol d'oiseau.` : "");
+    const outils = document.createElement("div"); outils.className = "outils-carte";
+    const bouton = (txt, f) => { const x = document.createElement("button"); x.type = "button"; x.textContent = txt; x.onclick = f; outils.append(x); };
+    if (exact) bouton("Voir la maison de près", prochePlan);
+    if (vv) bouton("Voir avec Vendes", avecVendes);
     const a = document.createElement("a");
     a.href = `https://www.google.com/maps/search/?api=1&query=${ici[0]},${ici[1]}`; a.target = "_blank"; a.rel = "noopener";
-    a.textContent = "Ouvrir la carte en grand";
-    note.after(a);
+    a.textContent = "Ouvrir dans Google Maps";
+    outils.append(a);
+    note.after(outils);
   }).catch(() => { el.dataset.fait = ""; el.innerHTML = `<div class="vide">Carte indisponible pour le moment</div>`; });
 }
 const obsCartes = "IntersectionObserver" in window
@@ -469,7 +496,7 @@ async function dessinerVue() {
   if (tour !== VUE_N) return; // un rendu plus récent est en cours
   if (!VUE) {
     VUE = L.map(el, { dragging: !L.Browser.mobile, scrollWheelZoom: false, tap: false });
-    L.tileLayer(FOND, { maxZoom: 18, attribution: "© IGN" }).addTo(VUE);
+    fondsCarte(VUE);
     VUE.couche = L.layerGroup().addTo(VUE);
   }
   VUE.couche.clearLayers();
@@ -490,8 +517,7 @@ async function dessinerVue() {
       .bindPopup(`<div class="popup"><b>N° ${esc(b.num || "")} · ${esc(b.titre)}</b>${esc(b.lieu || "")} · ${euros(b.prix)}<br>${adresseConnue(b) ? esc(b.adresse.texte) + (b.adresse.confiance === "forte" ? "" : " (probable)") : "Adresse pas retrouvée : position du village"}<br><button type="button" data-aller="${esc(b.id)}">Voir la fiche</button></div>`);
   });
   const v = g.com["vendes"];
-  if (v) L.circleMarker([v.ll[1], v.ll[0]], { radius: 8, color: "#2c5a40", weight: 3, fillColor: "#2c5a40", fillOpacity: 1 }).addTo(VUE.couche)
-    .bindTooltip("Vendes", { permanent: true, direction: "bottom", offset: [0, 6] });
+  if (v) L.marker([v.ll[1], v.ll[0]], { icon: epingle("#2c5a40", "V"), title: "Vendes", zIndexOffset: -100 }).addTo(VUE.couche).bindTooltip("Vendes");
   if (VUE_R !== R) {
     VUE_R = R;
     if (pts.length) VUE.fitBounds(L.latLngBounds(pts.concat(v ? [[v.ll[1], v.ll[0]]] : [])), { padding: [30, 30], maxZoom: 13 });
