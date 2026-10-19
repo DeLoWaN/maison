@@ -173,7 +173,16 @@ const GROUPES = [
   { k: "retiree", titre: "Plus en vente", texte: "Annonces retirées depuis qu'elles ont été repérées.", ouvert: false }
 ];
 const ST = { ok: "Lu en entier", partiel: "Lu en partie", echec: "Échec", nt: "Pas encore lu" };
-const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+// Si le serveur n'a pas pu récupérer la photo (site qui refuse l'hébergeur), le navigateur
+// du visiteur la charge directement depuis le site d'annonces ; sinon, « Pas de photo ».
+function secoursPhoto(img) {
+  const s = img.dataset.secours;
+  if (s && !img.dataset.essai) { img.dataset.essai = "1"; img.referrerPolicy = "no-referrer"; img.src = s; return; }
+  const d = document.createElement("div");
+  d.className = "photo vide-photo"; d.textContent = "Pas de photo";
+  img.replaceWith(d);
+}
+const esc = s =>String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const euros = n => n == null ? "Prix non indiqué" : n.toLocaleString("fr-FR") + " €";
 const jour = iso => iso ? new Date(iso.slice(0, 10) + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long" }) : "";
 const jourLong = iso => new Date(iso + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -212,7 +221,7 @@ function carte(b) {
         : `<small class="nv">Le site ne répondait pas lors de la vérification : le lien peut ne plus marcher</small>`}
     </div>`).join("");
   const photo = (b.photo || b.photo_url)
-    ? `<img class="photo" src="photo.php?r=${encodeURIComponent(R)}&id=${encodeURIComponent(b.id)}" alt="Photo de l'annonce : ${esc(b.titre)}" loading="lazy">`
+    ? `<img class="photo" src="photo.php?r=${encodeURIComponent(R)}&id=${encodeURIComponent(b.id)}" data-secours="${esc(/^https:\/\//.test(b.photo_url || "") ? b.photo_url : "")}" onerror="secoursPhoto(this)" alt="Photo de l'annonce : ${esc(b.titre)}" loading="lazy">`
     : `<div class="photo vide-photo">Pas de photo</div>`;
   return `
   <article class="card${b.etat === "retiree" ? " retiree" : ""}" id="${esc(b.id)}">
