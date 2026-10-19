@@ -120,6 +120,13 @@ section.groupe { display: grid; gap: 14px; }
 .photo { display: block; width: calc(100% + 36px); max-width: none; margin: -18px -18px 0; aspect-ratio: 4 / 3; max-height: 320px; object-fit: cover; background: var(--unk-bg); }
 .vide-photo { display: grid; place-items: center; color: var(--muted); font-size: .95rem; aspect-ratio: auto; height: 72px; }
 .card.retiree .photo { filter: grayscale(1); }
+.galerie { position: relative; margin: -18px -18px 0; outline-offset: -4px; }
+.galerie .photo { margin: 0; width: 100%; }
+.gal-btn { position: absolute; top: 50%; transform: translateY(-50%); width: 52px; height: 52px; border-radius: 50%; border: 2px solid #fff; background: rgba(0,0,0,.55); color: #fff; font: 700 2.2rem/1 var(--f-body); padding: 0 0 4px; cursor: pointer; display: grid; place-items: center; z-index: 2; }
+.gal-btn:hover { background: rgba(0,0,0,.75); }
+.gal-prec { left: 10px; } .gal-suiv { right: 10px; }
+.gal-n { position: absolute; z-index: 2; right: 10px; bottom: 10px; padding: 3px 10px; border-radius: 999px; background: rgba(0,0,0,.6); color: #fff; font-weight: 700; font-size: .95rem; }
+.galerie.ko::after { content: "Photo indisponible"; position: absolute; inset: 0; display: grid; place-items: center; background: var(--unk-bg); color: var(--muted); }
 .tete { display: grid; gap: 4px; }
 .badges { display: flex; flex-wrap: wrap; gap: 6px; }
 .badge { font-size: .85rem; font-weight: 700; padding: 2px 10px; border-radius: 999px; }
@@ -280,6 +287,51 @@ const GROUPES = [
 const ST = { ok: "Lu en entier", partiel: "Lu en partie", echec: "Échec", nt: "Pas encore lu" };
 // Si le serveur n'a pas pu récupérer la photo (site qui refuse l'hébergeur), le navigateur
 // du visiteur la charge directement depuis le site d'annonces ; sinon, « Pas de photo ».
+// ---- Galerie de photos : flèches gauche / droite, glisser du doigt sur téléphone ----
+// Les photos s'affichent depuis le site de l'annonce ; la première peut retomber sur la copie du serveur.
+const GAL = {};
+function galerieHtml(b, gal) {
+  return `<div class="galerie" data-id="${esc(b.id)}" data-i="0" tabindex="0" aria-roledescription="galerie" aria-label="Photos de la maison, ${gal.length} photos">
+    <img class="photo" src="${esc(gal[0])}" referrerpolicy="no-referrer" onerror="photoKo(this)" alt="Photo 1 sur ${gal.length} : ${esc(b.titre)}" loading="lazy">
+    <button type="button" class="gal-btn gal-prec" aria-label="Photo précédente">‹</button>
+    <button type="button" class="gal-btn gal-suiv" aria-label="Photo suivante">›</button>
+    <span class="gal-n" aria-live="polite">1 / ${gal.length}</span>
+  </div>`;
+}
+function photoKo(img) {
+  const g = img.closest(".galerie");
+  if (g && g.dataset.i === "0" && !img.dataset.essai) { img.dataset.essai = "1"; img.src = `photo.php?r=${encodeURIComponent(R)}&id=${encodeURIComponent(g.dataset.id)}`; return; }
+  if (g) g.classList.add("ko");
+}
+function montrer(g, i) {
+  const gal = GAL[g.dataset.id]; if (!gal) return;
+  const n = gal.length; i = (i + n) % n;
+  g.dataset.i = String(i); g.classList.remove("ko");
+  const img = g.querySelector("img");
+  delete img.dataset.essai;
+  img.src = gal[i];
+  img.alt = img.alt.replace(/^Photo \d+ sur/, `Photo ${i + 1} sur`);
+  g.querySelector(".gal-n").textContent = `${i + 1} / ${n}`;
+  const suivante = new Image(); suivante.referrerPolicy = "no-referrer"; suivante.src = gal[(i + 1) % n];
+}
+document.addEventListener("click", ev => {
+  const btn = ev.target.closest(".gal-btn"); if (!btn) return;
+  const g = btn.closest(".galerie");
+  montrer(g, +g.dataset.i + (btn.classList.contains("gal-suiv") ? 1 : -1));
+});
+document.addEventListener("keydown", ev => {
+  const g = ev.target.closest && ev.target.closest(".galerie"); if (!g) return;
+  if (ev.key === "ArrowRight") { ev.preventDefault(); montrer(g, +g.dataset.i + 1); }
+  if (ev.key === "ArrowLeft") { ev.preventDefault(); montrer(g, +g.dataset.i - 1); }
+});
+let toucheX = null;
+document.addEventListener("touchstart", ev => { toucheX = ev.target.closest(".galerie") ? ev.touches[0].clientX : null; }, { passive: true });
+document.addEventListener("touchend", ev => {
+  const g = ev.target.closest(".galerie"); if (!g || toucheX === null) return;
+  const dx = ev.changedTouches[0].clientX - toucheX; toucheX = null;
+  if (Math.abs(dx) > 40) montrer(g, +g.dataset.i + (dx < 0 ? 1 : -1));
+});
+
 function secoursPhoto(img) {
   const s = img.dataset.secours;
   if (s && !img.dataset.essai) { img.dataset.essai = "1"; img.referrerPolicy = "no-referrer"; img.src = s; return; }
@@ -348,7 +400,9 @@ function carte(b) {
         ? `<small>Annonce vérifiée en ligne le ${jour(b.verifie_le || D.maj)}</small>`
         : `<small class="nv">Le site ne répondait pas lors de la vérification : le lien peut ne plus marcher</small>`}
     </div>`).join("");
-  const photo = (b.photo || b.photo_url)
+  const gal = (b.photos || []).filter(u => /^https:\/\//.test(u));
+  if (gal.length > 1) GAL[b.id] = gal;
+  const photo = gal.length > 1 ? galerieHtml(b, gal) : (b.photo || b.photo_url)
     ? `<img class="photo" src="photo.php?r=${encodeURIComponent(R)}&id=${encodeURIComponent(b.id)}" data-secours="${esc(/^https:\/\//.test(b.photo_url || "") ? b.photo_url : "")}" onerror="secoursPhoto(this)" alt="Photo de l'annonce : ${esc(b.titre)}" loading="lazy">`
     : `<div class="photo vide-photo">Pas de photo</div>`;
   return `
