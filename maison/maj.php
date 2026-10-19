@@ -3,6 +3,8 @@
 // POST maj.php?r=longere, corps = data.json complet.
 // La liste est rangée hors du dossier déployé (<home>/maison-data/<r>/data.json),
 // avec une copie datée de chaque version (les 60 dernières sont gardées).
+require_once __DIR__ . '/auth-lib.php';
+auth_exiger(); // réservé aux comptes Google de la famille
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); echo '{"erreur":"POST attendu"}'; exit; }
@@ -24,7 +26,7 @@ if (!$ok) { http_response_code(400); echo '{"erreur":"format invalide"}'; exit; 
 
 // Numéro de maison : attribué une fois pour toutes par le serveur, unique sur tout le site
 // (toutes recherches confondues), jamais réutilisé. La veille n'a pas à s'en occuper.
-require __DIR__ . '/numeros-lib.php';
+require_once __DIR__ . '/numeros-lib.php';
 $d['biens'] = numeroter($r, $d['biens']);
 
 // Adresses retrouvées : la veille relit une liste où l'adresse est masquée (data.php).

@@ -5,6 +5,8 @@
 // GET  api.php?r=longere                -> {"<id>": {"statut": "...", "le": "AAAA-MM-JJ HH:MM"}}
 // POST api.php?r=longere {id, statut}   -> enregistre ("" efface le statut)
 
+require_once __DIR__ . '/auth-lib.php';
+auth_exiger(); // réservé aux comptes Google de la famille
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 
