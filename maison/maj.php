@@ -27,6 +27,24 @@ if (!$ok) { http_response_code(400); echo '{"erreur":"format invalide"}'; exit; 
 require __DIR__ . '/numeros-lib.php';
 $d['biens'] = numeroter($r, $d['biens']);
 
+// Adresses retrouvées : la veille relit une liste où l'adresse est masquée (data.php).
+// Si elle renvoie une adresse sans texte, on garde celle déjà enregistrée.
+$fichierVivant = dirname(dirname(__DIR__)) . '/maison-data/' . $r . '/data.json';
+$ancien = is_file($fichierVivant) ? json_decode((string) @file_get_contents($fichierVivant), true) : null;
+$adresses = array();
+if (is_array($ancien) && isset($ancien['biens']) && is_array($ancien['biens'])) {
+    foreach ($ancien['biens'] as $b) {
+        if (isset($b['id'], $b['adresse']['texte'])) $adresses[$b['id']] = $b['adresse'];
+    }
+}
+foreach ($d['biens'] as $i => $b) {
+    $id = $b['id'];
+    $recu = isset($b['adresse']) && is_array($b['adresse']) ? $b['adresse'] : null;
+    if (isset($adresses[$id]) && ($recu === null || !isset($recu['texte']) || $recu['texte'] === '')) {
+        $d['biens'][$i]['adresse'] = $adresses[$id];
+    }
+}
+
 $dir = dirname(dirname(__DIR__)) . '/maison-data/' . $r;
 $hist = $dir . '/historique';
 if (!is_dir($hist)) @mkdir($hist, 0750, true);
