@@ -449,7 +449,7 @@ function dessinerCarte(el) {
     }
     if (vv && norm(p.nom) !== "vendes") L.marker(vv, { icon: CHEZ(), title: "Chez Damien et Aurélia", zIndexOffset: -100 }).addTo(carte);
     const prochePlan = () => carte.setView(ici, exact ? 17 : 13);
-    const avecVendes = () => vv ? carte.fitBounds(L.latLngBounds([ici, vv]), { padding: [50, 50], maxZoom: 14 }) : prochePlan();
+    const avecVendes = () => vv ? carte.fitBounds(L.latLngBounds([ici, vv]), { paddingTopLeft: [95, 60], paddingBottomRight: [95, 30], maxZoom: 14 }) : prochePlan();
     avecVendes(); // à l'ouverture : la maison et chez Damien et Aurélia dans le même cadre
     const km = vv ? Math.round(kmEntre(p.ll, v.ll)) : null;
     const quoi = p.adresse
