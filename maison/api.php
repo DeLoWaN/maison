@@ -4,9 +4,12 @@
 // pour qu'un déploiement ne les efface jamais.
 // GET  api.php?r=longere                -> {"<id>": {"statut": "...", "le": "AAAA-MM-JJ HH:MM"}}
 // POST api.php?r=longere {id, statut}   -> enregistre ("" efface le statut)
+// Avis de Damien et Aurélia (pouce levé ou baissé), rangé à part dans avis.json :
+// GET  api.php?r=longere&avis=1              -> {"<id>": {"avis": "pour"|"contre", "le": "...", "par": "..."}}
+// POST api.php?r=longere&avis=1 {id, avis}   -> enregistre ("" efface) ; réservé à leurs comptes
 
 require_once __DIR__ . '/auth-lib.php';
-auth_exiger(); // réservé aux comptes Google de la famille
+$moi = auth_exiger(); // réservé aux comptes Google de la famille
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 
@@ -18,8 +21,10 @@ if (!preg_match('/^[a-z0-9-]{1,40}$/', $r) || !is_dir(__DIR__ . '/recherches/' .
 }
 
 $dir = dirname(dirname(__DIR__)) . '/maison-data/' . $r;
-$file = $dir . '/statuts.json';
-$permis = ['a_visiter', 'visitee', 'pas_interesses', ''];
+$avis = isset($_GET['avis']);
+$file = $dir . ($avis ? '/avis.json' : '/statuts.json');
+$champ = $avis ? 'avis' : 'statut';
+$permis = $avis ? ['pour', 'contre', ''] : ['a_visiter', 'visitee', 'pas_interesses', ''];
 if (!is_dir($dir)) { @mkdir($dir, 0750, true); }
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
@@ -36,7 +41,12 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $in = json_decode(file_get_contents('php://input'), true);
 $id = is_array($in) && isset($in['id']) ? (string) $in['id'] : '';
-$statut = is_array($in) && isset($in['statut']) ? (string) $in['statut'] : null;
+$statut = is_array($in) && isset($in[$champ]) ? (string) $in[$champ] : null;
+if ($avis && !auth_peut_aviser($moi)) {
+    http_response_code(403);
+    echo '{"erreur":"avis réservé à Damien et Aurélia"}';
+    exit;
+}
 if (!preg_match('/^[a-z0-9-]{1,60}$/', $id) || !in_array($statut, $permis, true)) {
     http_response_code(400);
     echo '{"erreur":"requête invalide"}';
@@ -56,7 +66,9 @@ if ($statut === '') {
     unset($data[$id]);
 } else {
     date_default_timezone_set('Europe/Paris');
-    $data[$id] = ['statut' => $statut, 'le' => date('Y-m-d H:i')];
+    $data[$id] = $avis
+        ? ['avis' => $statut, 'le' => date('Y-m-d H:i'), 'par' => auth_prenom($moi)]
+        : ['statut' => $statut, 'le' => date('Y-m-d H:i')];
 }
 
 ftruncate($fp, 0);

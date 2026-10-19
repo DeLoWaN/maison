@@ -9,7 +9,7 @@ header('Cache-Control: no-store');
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $u = auth_utilisateur();
     if ($u === null) { http_response_code(401); echo json_encode(array('erreur' => 'connexion requise', 'https' => auth_https())); exit; }
-    echo json_encode(array('email' => $u));
+    echo json_encode(array('email' => $u, 'avis' => auth_peut_aviser($u)));
     exit;
 }
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); exit; }

@@ -19,6 +19,23 @@ function auth_empreintes() {
     );
 }
 
+// Comptes qui donnent l'avis « Damien et Aurélia » (les parents le voient sans pouvoir le changer).
+function auth_aviseurs() {
+    return array(
+        'dc06959ba0335f038504be0dba3cba2a2124797613eb3bb30683d59555f10d45' => 'Damien',
+        'ef73979e4255d2aee18a039089a3431f2b33af68dfaed27f1367a0ba07590dd5' => 'Damien',
+    );
+}
+function auth_peut_aviser($email) {
+    $a = auth_aviseurs();
+    return isset($a[hash('sha256', strtolower(trim((string) $email)))]);
+}
+function auth_prenom($email) {
+    $a = auth_aviseurs();
+    $h = hash('sha256', strtolower(trim((string) $email)));
+    return isset($a[$h]) ? $a[$h] : '';
+}
+
 function auth_autorise($email) {
     return in_array(hash('sha256', strtolower(trim((string) $email))), auth_empreintes(), true);
 }

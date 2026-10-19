@@ -148,6 +148,21 @@ section.groupe { display: grid; gap: 14px; }
 .statuts button[aria-pressed="true"][data-s="visitee"] { background: var(--ok); border-color: var(--ok); color: var(--surface); }
 .statuts button[aria-pressed="true"][data-s="pas_interesses"] { background: var(--ko); border-color: var(--ko); color: var(--surface); }
 .statuts button:disabled { opacity: .6; cursor: progress; }
+.avis-da { display: grid; gap: 6px; padding: 10px 12px; border-radius: 10px; border: 1px dashed var(--line); }
+.avis-da .q { font-weight: 700; font-size: .95rem; }
+.avis-da .btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.avis-da button { font: inherit; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 6px 14px; border-radius: 999px; border: 2px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; }
+.avis-da button:disabled { opacity: .6; cursor: progress; }
+.avis-da .pouce { display: inline-flex; }
+.avis-da .pouce.pour { color: var(--ok); }
+.avis-da .pouce.contre { color: var(--ko); transform: rotate(180deg); }
+.avis-da button[aria-pressed="true"][data-a="pour"] { background: var(--ok); border-color: var(--ok); color: var(--surface); }
+.avis-da button[aria-pressed="true"][data-a="contre"] { background: var(--ko); border-color: var(--ko); color: var(--surface); }
+.avis-da button[aria-pressed="true"] .pouce { color: var(--surface); }
+.avis-da .etat { font-size: .9rem; color: var(--muted); min-height: 1.2em; }
+.avis-da .lu { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; }
+.avis-da.pour { background: var(--ok-bg); border-style: solid; border-color: transparent; }
+.avis-da.contre { background: var(--ko-bg); border-style: solid; border-color: transparent; }
 .statuts .etat { font-size: .9rem; color: var(--muted); min-height: 1.2em; }
 .crit { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr)); gap: 8px; }
 .c { display: grid; grid-template-columns: auto 1fr; gap: 0 10px; padding: 8px 10px; border-radius: 8px; font-size: 1rem; line-height: 1.4; }
@@ -345,7 +360,7 @@ const euros = n => n == null ? "Prix non indiqué" : n.toLocaleString("fr-FR") +
 const jour = iso => iso ? new Date(iso.slice(0, 10) + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long" }) : "";
 const jourLong = iso => new Date(iso + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
-let D = null, S = {}, R = null, derniereVisite = null;
+let D = null, S = {}, A = {}, R = null, derniereVisite = null, AVISEUR = false;
 
 function estNouveau(b) {
   if (b.etat !== "active" || !(b.repere_le > D.lot_initial)) return false;
@@ -361,6 +376,40 @@ function boutons(b) {
     <span class="etat" aria-live="polite">${esc(quand)}</span>
   </div>`;
 }
+
+// Avis de Damien et Aurélia : deux pouces, à part des boutons des parents (eux le voient sans pouvoir le changer).
+const POUCE = `<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M2 21h3V9H2v12zm20-11c0-1.1-.9-2-2-2h-6.3l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L13.17 1 6.59 7.59C6.22 7.95 6 8.45 6 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>`;
+function avisHtml(b) {
+  const a = (A[b.id] || {}).avis || "";
+  const etat = a ? `${a === "pour" ? "On aime" : "Pas pour nous"}${A[b.id].par ? ` (${esc(A[b.id].par)}, le ${jour(A[b.id].le)})` : ""}` : "Pas encore d'avis";
+  if (!AVISEUR) {
+    return `<div class="avis-da${a ? " " + a : ""}"><span class="q">Avis de Damien et Aurélia</span><span class="lu">${a ? `<span class="pouce ${a}">${POUCE}</span>` : ""}${etat}</span></div>`;
+  }
+  return `<div class="avis-da" data-id="${esc(b.id)}">
+    <span class="q">Avis de Damien et Aurélia</span>
+    <div class="btns">
+      <button type="button" data-a="pour" aria-pressed="${a === "pour"}" title="On aime"><span class="pouce pour">${POUCE}</span>On aime</button>
+      <button type="button" data-a="contre" aria-pressed="${a === "contre"}" title="Pas pour nous"><span class="pouce contre">${POUCE}</span>Pas pour nous</button>
+    </div>
+    <span class="etat" aria-live="polite">${a ? esc(etat) : ""}</span>
+  </div>`;
+}
+document.addEventListener("click", async ev => {
+  const btn = ev.target.closest(".avis-da button"); if (!btn) return;
+  const box = btn.closest(".avis-da"), id = box.dataset.id;
+  const avis = btn.getAttribute("aria-pressed") === "true" ? "" : btn.dataset.a;
+  box.querySelectorAll("button").forEach(b => b.disabled = true);
+  box.querySelector(".etat").textContent = "Enregistrement…";
+  try {
+    const r = await fetch("api.php?avis=1&r=" + encodeURIComponent(R), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, avis }) });
+    if (!r.ok) throw new Error(r.status);
+    A = await r.json();
+    box.outerHTML = avisHtml(D.biens.find(b => b.id === id));
+  } catch (e) {
+    box.querySelectorAll("button").forEach(b => b.disabled = false);
+    box.querySelector(".etat").textContent = "L'avis n'a pas pu être enregistré. Réessayez.";
+  }
+});
 
 // Adresse retrouvée par recoupement de données publiques : la confiance doit se voir d'un coup d'œil.
 const adresseConnue = b => !!(b.adresse && b.adresse.texte && (b.adresse.confiance === "forte" || b.adresse.confiance === "probable"));
@@ -418,6 +467,7 @@ function carte(b) {
       ${b.surface ? `<div class="surface">${esc(b.surface)} m² habitables${b.prix ? ` · ${Math.round(b.prix / b.surface).toLocaleString("fr-FR")} € le m²` : ""}</div>` : ""}
     </div>
     ${b.etat === "active" ? boutons(b) : ""}
+    ${b.etat === "active" ? avisHtml(b) : ""}
     <div class="crit">
       ${Object.keys(CRIT).map(k => { const c = (b.crit || {})[k] || ["unk", "Non indiqué"]; return `<div class="c ${c[0]}"><span class="dot"></span><span class="k">${(D.libelles || {})[k] || CRIT[k]}</span><span class="v">${esc(c[1])}</span></div>`; }).join("")}
     </div>
@@ -691,9 +741,10 @@ function charger(r) {
   document.getElementById("maj").textContent = "Chargement…";
   return Promise.all([
     fetch("data.php?r=" + encodeURIComponent(r), { cache: "no-store" }).then(x => { if (!x.ok) throw new Error(x.status); return x.json(); }),
-    fetch("api.php?r=" + encodeURIComponent(r), { cache: "no-store" }).then(x => x.ok ? x.json() : {}).catch(() => ({}))
-  ]).then(([d, st]) => {
-    D = d; S = st || {};
+    fetch("api.php?r=" + encodeURIComponent(r), { cache: "no-store" }).then(x => x.ok ? x.json() : {}).catch(() => ({})),
+    fetch("api.php?avis=1&r=" + encodeURIComponent(r), { cache: "no-store" }).then(x => x.ok ? x.json() : {}).catch(() => ({}))
+  ]).then(([d, st, av]) => {
+    D = d; S = st || {}; A = av || {};
     rendre();
     try { localStorage.setItem("derniere-visite:" + r, D.maj); } catch (e) {}
   });
@@ -755,7 +806,7 @@ function ecranConnexion() {
 
 fetch("login.php", { cache: "no-store" })
   .then(r => r.ok ? r.json() : null)
-  .then(u => u && u.email ? demarrer(u.email) : ecranConnexion())
+  .then(u => { if (u && u.email) { AVISEUR = !!u.avis; demarrer(u.email); } else ecranConnexion(); })
   .catch(() => ecranConnexion());
 
 function erreur() {
