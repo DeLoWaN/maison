@@ -464,7 +464,7 @@ function dessinerCarte(el) {
       ? (b.adresse.confiance === "forte" ? "L'épingle rouge, c'est la maison à vendre (adresse retrouvée)." : "L'épingle rouge, c'est la maison à vendre (adresse probable, à confirmer).")
       : p.precis ? "L'épingle rouge, c'est la maison à vendre (adresse donnée par l'annonce)."
       : `La zone rouge, c'est le village de la maison à vendre (${p.nom}) : l'adresse exacte n'est pas connue.`;
-    note.textContent = quoi + (km ? ` L'épingle verte (petite maison blanche), c'est chez Damien et Aurélia : environ ${km} km à vol d'oiseau.` : "");
+    note.textContent = quoi + (vv ? ` L'épingle verte (petite maison blanche), c'est chez Damien et Aurélia : ${km >= 1 ? "environ " + km + " km" : "moins d'un kilomètre"} à vol d'oiseau.` : "");
     const outils = document.createElement("div"); outils.className = "outils-carte";
     const bouton = (txt, f) => { const x = document.createElement("button"); x.type = "button"; x.textContent = txt; x.onclick = f; outils.append(x); };
     if (exact) bouton("Voir la maison de près", prochePlan);
