@@ -79,6 +79,12 @@ function auth_fermer() { auth_cookie('x', time() - 3600); }
 
 // À appeler en tête des pages de données : répond 401 si personne n'est connecté.
 function auth_exiger() {
+    if (!auth_https()) {
+        http_response_code(403);
+        header('Content-Type: application/json; charset=utf-8');
+        echo '{"erreur":"https requis"}';
+        exit;
+    }
     $u = auth_utilisateur();
     if ($u === null) {
         http_response_code(401);

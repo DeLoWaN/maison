@@ -8,7 +8,7 @@ header('Cache-Control: no-store');
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $u = auth_utilisateur();
-    if ($u === null) { http_response_code(401); echo '{"erreur":"connexion requise"}'; exit; }
+    if ($u === null) { http_response_code(401); echo json_encode(array('erreur' => 'connexion requise', 'https' => auth_https())); exit; }
     echo json_encode(array('email' => $u));
     exit;
 }
