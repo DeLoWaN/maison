@@ -425,6 +425,13 @@ const epingle = (coul, txt) => L.divIcon({ className: "pt-wrap", iconSize: [34, 
 // Repère « chez Damien et Aurélia » (centre de Vendes) : une étiquette avec une petite maison, différente des épingles.
 const CHEZ = () => L.divIcon({ className: "pt-wrap", iconSize: [34, 44], iconAnchor: [17, 42],
   html: `<div class="chez-pin"><svg width="34" height="44" viewBox="0 0 34 44" aria-hidden="true"><path d="M17 2C8.7 2 2 8.6 2 16.8 2 28 17 42 17 42s15-14 15-25.2C32 8.6 25.3 2 17 2z" fill="#2c5a40" stroke="#fff" stroke-width="3"/><path d="M17 9.5 9.5 16h2v7h4v-4.5h3V23h4v-7h2z" fill="#fff"/></svg><span class="chez">Damien et Aurélia</span></div>` });
+// Position de chez Damien et Aurélia : enregistrée côté serveur (lieux.php, réservé à la famille) ;
+// à défaut, le centre de Vendes.
+let PLIEUX = null;
+function lieuChez(g) {
+  if (!PLIEUX) PLIEUX = fetch("lieux.php", { cache: "no-store" }).then(r => r.ok ? r.json() : {}).catch(() => ({}));
+  return PLIEUX.then(l => l && l.chez ? { ll: [l.chez.lon, l.chez.lat], nom: "chez Damien et Aurélia" } : g.com["vendes"]);
+}
 function fondsCarte(carte) {
   const plan = L.tileLayer(FOND, { maxZoom: 19, maxNativeZoom: 18, attribution: "© IGN" }).addTo(carte);
   const photo = L.tileLayer(PHOTO, { maxZoom: 19, attribution: "© IGN" });
@@ -439,7 +446,7 @@ function dessinerCarte(el) {
     const p = await situerPrecis(b, g);
     if (!p) { el.innerHTML = `<div class="vide">Commune introuvable sur la carte</div>`; return; }
     const ici = [p.ll[1], p.ll[0]];
-    const v = g.com["vendes"], vv = v ? [v.ll[1], v.ll[0]] : null;
+    const v = await lieuChez(g), vv = v ? [v.ll[1], v.ll[0]] : null;
     const exact = !!(p.adresse || p.precis);
     const carte = L.map(el, { dragging: !L.Browser.mobile, scrollWheelZoom: false, tap: false });
     fondsCarte(carte);
@@ -521,7 +528,7 @@ async function dessinerVue() {
     L.marker(ll, { icon, title: `N° ${b.num || ""} · ${b.titre}`, keyboard: true }).addTo(VUE.couche)
       .bindPopup(`<div class="popup"><b>N° ${esc(b.num || "")} · ${esc(b.titre)}</b>${esc(b.lieu || "")} · ${euros(b.prix)}<br>${adresseConnue(b) ? esc(b.adresse.texte) + (b.adresse.confiance === "forte" ? "" : " (probable)") : "Adresse pas retrouvée : position du village"}<br><button type="button" data-aller="${esc(b.id)}">Voir la fiche</button></div>`);
   });
-  const v = g.com["vendes"];
+  const v = await lieuChez(g);
   if (v) L.marker([v.ll[1], v.ll[0]], { icon: CHEZ(), title: "Chez Damien et Aurélia", zIndexOffset: -100 }).addTo(VUE.couche);
   if (VUE_R !== R) {
     VUE_R = R;
