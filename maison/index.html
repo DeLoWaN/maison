@@ -6,6 +6,8 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Recherche de maison</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bitter:wght@500;700&family=Source+Sans+3:wght@400;600;700&display=swap">
 <style>
 /* Une colonne de lecture, gros caractères ; maisons groupées par conseil, la plus récente en haut ; trois boutons de statut partagés par famille */
@@ -67,6 +69,13 @@ details.bloc > div { padding: 0 16px 16px; display: grid; gap: 12px; }
 .onglets button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
 .onglets button[aria-pressed="true"] .s { color: var(--surface); opacity: .9; }
 .onglets button[aria-pressed="true"] .n::before { content: "✓ "; }
+.ou { margin-top: 16px; }
+.ou strong { display: block; margin-bottom: 8px; }
+.carte { height: 230px; border-radius: 12px; border: 1px solid var(--line); background: var(--unk-bg); overflow: hidden; z-index: 0; }
+.carte .vide { display: grid; place-items: center; height: 100%; color: var(--muted); }
+.ou p { margin: 8px 0 0; color: var(--muted); font-size: 1rem; }
+.ou a { display: inline-block; margin-top: 6px; font-weight: 700; color: var(--accent); }
+.leaflet-container { font: inherit; }
 .criteres { margin: 0; padding-left: 22px; display: grid; gap: 4px; }
 .legende { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .95rem; color: var(--muted); }
 .legende span { display: inline-flex; align-items: center; gap: 8px; }
@@ -244,11 +253,84 @@ function carte(b) {
     <div class="crit">
       ${Object.keys(CRIT).map(k => { const c = (b.crit || {})[k] || ["unk", "Non indiqué"]; return `<div class="c ${c[0]}"><span class="dot"></span><span class="k">${(D.libelles || {})[k] || CRIT[k]}</span><span class="v">${esc(c[1])}</span></div>`; }).join("")}
     </div>
+    <div class="ou"><strong>Où se trouve-t-elle ?</strong><div class="carte" data-carte="${esc(b.id)}"></div><p data-carte-note="${esc(b.id)}"></p></div>
     ${(b.verifier || []).length ? `<div class="questions"><strong>À demander à l'agence</strong><ul>${b.verifier.map(v => `<li>${esc(v)}</li>`).join("")}</ul></div>` : ""}
     <div class="liens">${liens}</div>
     <div class="dates">Repérée le ${jour(b.repere_le)}</div>
   </article>`;
 }
+
+
+// ---- Cartes : position de la commune (les annonces ne donnent presque jamais l'adresse) ----
+// Coordonnées des communes du Calvados et des anciennes communes fusionnées (geo.api.gouv.fr),
+// gardées 30 jours dans le navigateur. Un bien peut aussi porter geo = {lat, lon, precision}.
+const norm = t => String(t || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+let GEO = null;
+function geoCalvados() {
+  if (GEO) return GEO;
+  try { const c = JSON.parse(localStorage.getItem("geo14") || "null"); if (c && c.v === 1 && Date.now() - c.t < 30 * 864e5) return GEO = Promise.resolve(c); } catch (e) {}
+  const u = "https://geo.api.gouv.fr/";
+  return GEO = Promise.all([
+    fetch(u + "communes?codeDepartement=14&fields=nom,centre,code&format=json").then(r => r.json()),
+    fetch(u + "communes_associees_deleguees?codeDepartement=14&fields=nom,centre,chefLieu&format=json").then(r => r.json())
+  ]).then(([com, del]) => {
+    const c = { v: 1, t: Date.now(), com: {}, del: [] };
+    com.forEach(x => { if (x.centre) c.com[norm(x.nom)] = { nom: x.nom, code: x.code, ll: x.centre.coordinates }; });
+    del.forEach(x => { if (x.centre) c.del.push({ nom: x.nom, n: norm(x.nom), chef: x.chefLieu, ll: x.centre.coordinates }); });
+    try { localStorage.setItem("geo14", JSON.stringify(c)); } catch (e) {}
+    return c;
+  }).catch(e => { GEO = null; throw e; });
+}
+function situer(b, g) {
+  if (b.geo && b.geo.lat && b.geo.lon) return { ll: [b.geo.lon, b.geo.lat], nom: b.commune, precis: b.geo.precision === "adresse" };
+  const com = g.com[norm(b.commune)];
+  const lieu = " " + norm(b.lieu) + " ";
+  // Ancienne commune citée dans le lieu (« Cheux (Thue et Mue) ») : plus précis que la commune nouvelle.
+  const del = g.del.filter(d => (!com || d.chef === com.code) && lieu.includes(" " + d.n + " ")).sort((a, b) => b.n.length - a.n.length)[0];
+  if (del) return { ll: del.ll, nom: del.nom };
+  if (com) return { ll: com.ll, nom: com.nom };
+  return null;
+}
+const kmEntre = (a, b) => { const R = 6371, r = Math.PI / 180, dLa = (b[1] - a[1]) * r, dLo = (b[0] - a[0]) * r; const x = Math.sin(dLa / 2) ** 2 + Math.cos(a[1] * r) * Math.cos(b[1] * r) * Math.sin(dLo / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(x)); };
+const FOND = "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}";
+function dessinerCarte(el) {
+  if (el.dataset.fait) return; el.dataset.fait = "1";
+  const b = (D.biens || []).find(x => x.id === el.dataset.carte);
+  const note = document.querySelector(`[data-carte-note="${CSS.escape(el.dataset.carte)}"]`);
+  if (!b || typeof L === "undefined") { el.innerHTML = `<div class="vide">Carte indisponible</div>`; return; }
+  geoCalvados().then(g => {
+    const p = situer(b, g);
+    if (!p) { el.innerHTML = `<div class="vide">Commune introuvable sur la carte</div>`; return; }
+    const ici = [p.ll[1], p.ll[0]];
+    const v = g.com["vendes"];
+    const carte = L.map(el, { dragging: !L.Browser.mobile, scrollWheelZoom: false, tap: false, attributionControl: true });
+    L.tileLayer(FOND, { maxZoom: 18, attribution: "© IGN" }).addTo(carte);
+    L.circle(ici, { radius: p.precis ? 60 : 1100, color: "#9c3426", weight: 3, fillColor: "#9c3426", fillOpacity: .15 }).addTo(carte)
+      .bindTooltip(p.nom, { permanent: true, direction: "top", offset: [0, -8] });
+    if (v && norm(p.nom) !== "vendes") {
+      const vv = [v.ll[1], v.ll[0]];
+      L.circleMarker(vv, { radius: 7, color: "#2c5a40", weight: 3, fillColor: "#2c5a40", fillOpacity: 1 }).addTo(carte)
+        .bindTooltip("Vendes", { permanent: true, direction: "bottom", offset: [0, 6] });
+      carte.fitBounds(L.latLngBounds([ici, vv]), { padding: [36, 36], maxZoom: 13 });
+      const km = Math.round(kmEntre(p.ll, v.ll));
+      note.textContent = `${p.precis ? "Adresse indiquée par l'annonce" : "Le cercle rouge montre le village de " + p.nom + " : l'annonce ne donne pas l'adresse exacte"}. Environ ${km} km de Vendes à vol d'oiseau.`;
+    } else {
+      carte.setView(ici, 13);
+      note.textContent = p.precis ? "Adresse indiquée par l'annonce." : `Le cercle rouge montre le village de ${p.nom} : l'annonce ne donne pas l'adresse exacte.`;
+    }
+    const a = document.createElement("a");
+    a.href = `https://www.google.com/maps/search/?api=1&query=${ici[0]},${ici[1]}`; a.target = "_blank"; a.rel = "noopener";
+    a.textContent = "Ouvrir la carte en grand";
+    note.after(a);
+  }).catch(() => { el.dataset.fait = ""; el.innerHTML = `<div class="vide">Carte indisponible pour le moment</div>`; });
+}
+const obsCartes = "IntersectionObserver" in window
+  ? new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { obsCartes.unobserve(e.target); dessinerCarte(e.target); } }), { rootMargin: "300px" })
+  : null;
+function preparerCartes() {
+  document.querySelectorAll(".carte[data-carte]").forEach(el => obsCartes ? obsCartes.observe(el) : dessinerCarte(el));
+}
+document.addEventListener("toggle", ev => { if (ev.target.matches && ev.target.matches("details")) preparerCartes(); }, true);
 
 function groupeDe(b) {
   if (b.etat === "retiree") return "retiree";
@@ -286,6 +368,7 @@ function rendre() {
   document.getElementById("src-resume").textContent = `Dernier passage le ${jour(D.maj)} : ${n("ok")} sites lus en entier, ${n("partiel")} en partie, ${n("echec")} en échec, ${n("nt")} pas encore lus.`;
   document.getElementById("src-body").innerHTML = Sx.map(s => `<tr><td>${esc(s.nom)}</td><td><span class="pill ${s.statut}">${ST[s.statut] || s.statut}</span>${s.statut !== "ok" && s.dernier_ok ? `<br><small>Dernière lecture complète : ${jour(s.dernier_ok)}</small>` : ""}</td><td>${esc(s.note)}</td></tr>`).join("");
   document.getElementById("note-passage").textContent = D.note_passage || "";
+  preparerCartes();
 }
 
 document.addEventListener("click", async ev => {
