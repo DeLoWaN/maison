@@ -290,7 +290,7 @@ const adresseConnue = b => !!(b.adresse && b.adresse.texte && (b.adresse.confian
 function blocAdresse(b) {
   const a = b.adresse;
   if (!a) return "";
-  const lien = (String(a.preuves || "").match(/https:\/\/data\.ademe\.fr\/\S+/) || [])[0];
+  const lien = (/^https:\/\/data\.ademe\.fr\//.test(a.lien || "") ? a.lien : null) || (String(a.preuves || "").match(/https:\/\/data\.ademe\.fr\/\S+/) || [])[0];
   const preuves = a.preuves ? `<details><summary>Comment elle a été retrouvée</summary>${esc(a.preuves.replace(/\s*— vue DPE : \S+/, ""))}${lien ? ` <a href="${esc(lien)}" target="_blank" rel="noopener">Voir le diagnostic dans la base publique</a>` : ""}</details>` : "";
   if (!adresseConnue(b)) {
     return `<div class="adresse"><strong>Adresse pas retrouvée</strong><p>Les annonces ne donnent pas assez d'indices pour la retrouver. La carte montre seulement le village.</p>${preuves}</div>`;
