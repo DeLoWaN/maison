@@ -87,6 +87,7 @@ details.bloc > div { padding: 0 16px 16px; display: grid; gap: 12px; }
 .outils-carte { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 8px; }
 .outils-carte button { font: inherit; font-weight: 700; min-height: 44px; padding: 6px 14px; border-radius: 10px; border: 2px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; }
 .leaflet-control-layers { font-size: 15px; }
+.chez { position: absolute; transform: translate(-50%, -50%); display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; padding: 5px 10px; border-radius: 8px; border: 2px solid #fff; background: #2c5a40; color: #fff; font: 700 14px/1.1 var(--f-body); box-shadow: 0 1px 4px rgba(0,0,0,.4); }
 .leaflet-control-layers label { padding: 2px 0; }
 .carte { height: 230px; border-radius: 12px; border: 1px solid var(--line); background: var(--unk-bg); overflow: hidden; z-index: 0; }
 .carte .vide { display: grid; place-items: center; height: 100%; color: var(--muted); }
@@ -231,7 +232,7 @@ th { font-size: .8rem; letter-spacing: .05em; text-transform: uppercase; color: 
       <span><i style="background:var(--ko)"></i>Pas intéressés</span>
       <span><i style="background:var(--fg)"></i>Pas encore décidé</span>
       <span><i style="background:var(--surface);border:2px dashed var(--fg)"></i>Rond pointillé : seulement le village, adresse pas retrouvée</span>
-      <span><i style="background:#2c5a40"></i>V : Vendes</span>
+      <span><i style="background:#2c5a40;border-radius:4px"></i>Chez Damien et Aurélia</span>
     </div>
     <div class="carte" id="vue-carte"></div>
     <p class="aide">Le numéro dans chaque rond est celui de la maison. Touchez un rond pour voir la maison et aller à sa fiche.</p>
@@ -420,6 +421,9 @@ const PHOTO = "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1
 // Épingles de taille fixe (en pixels) : elles restent visibles quel que soit le zoom.
 const epingle = (coul, txt) => L.divIcon({ className: "pt-wrap", iconSize: [34, 44], iconAnchor: [17, 42],
   html: `<svg width="34" height="44" viewBox="0 0 34 44" aria-hidden="true"><path d="M17 2C8.7 2 2 8.6 2 16.8 2 28 17 42 17 42s15-14 15-25.2C32 8.6 25.3 2 17 2z" fill="${coul}" stroke="#fff" stroke-width="3"/><text x="17" y="21" text-anchor="middle" font-size="13" font-weight="700" fill="#fff" font-family="system-ui,sans-serif">${txt}</text></svg>` });
+// Repère « chez Damien et Aurélia » (centre de Vendes) : une étiquette avec une petite maison, différente des épingles.
+const CHEZ = () => L.divIcon({ className: "pt-wrap", iconSize: null, iconAnchor: [0, 0],
+  html: `<div class="chez"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5 1 7.5h2V14h4v-4h2v4h4V7.5h2z" fill="#fff"/></svg>Damien et Aurélia</div>` });
 function fondsCarte(carte) {
   const plan = L.tileLayer(FOND, { maxZoom: 19, maxNativeZoom: 18, attribution: "© IGN" }).addTo(carte);
   const photo = L.tileLayer(PHOTO, { maxZoom: 19, attribution: "© IGN" });
@@ -439,24 +443,24 @@ function dessinerCarte(el) {
     const carte = L.map(el, { dragging: !L.Browser.mobile, scrollWheelZoom: false, tap: false });
     fondsCarte(carte);
     if (exact) {
-      L.marker(ici, { icon: epingle("#9c3426", b.num || ""), title: "La maison" }).addTo(carte);
+      L.marker(ici, { icon: epingle("#9c3426", ""), title: "La maison à vendre" }).addTo(carte);
     } else {
       L.circle(ici, { radius: 1100, color: "#9c3426", weight: 3, dashArray: "8 6", fillColor: "#9c3426", fillOpacity: .12 }).addTo(carte);
     }
-    if (vv && norm(p.nom) !== "vendes") L.marker(vv, { icon: epingle("#2c5a40", "V"), title: "Vendes" }).addTo(carte);
+    if (vv && norm(p.nom) !== "vendes") L.marker(vv, { icon: CHEZ(), title: "Chez Damien et Aurélia", zIndexOffset: -100 }).addTo(carte);
     const prochePlan = () => carte.setView(ici, exact ? 17 : 13);
     const avecVendes = () => vv ? carte.fitBounds(L.latLngBounds([ici, vv]), { padding: [50, 50], maxZoom: 14 }) : prochePlan();
     if (exact) prochePlan(); else avecVendes();
     const km = vv ? Math.round(kmEntre(p.ll, v.ll)) : null;
     const quoi = p.adresse
-      ? (b.adresse.confiance === "forte" ? "L'épingle rouge montre l'adresse retrouvée." : "L'épingle rouge montre l'adresse probable, à confirmer.")
-      : p.precis ? "L'épingle rouge montre l'adresse indiquée par l'annonce."
-      : `La zone rouge montre le village de ${p.nom} : l'adresse exacte n'est pas connue.`;
-    note.textContent = quoi + (km ? ` L'épingle verte V, c'est Vendes : environ ${km} km à vol d'oiseau.` : "");
+      ? (b.adresse.confiance === "forte" ? "L'épingle rouge, c'est la maison à vendre (adresse retrouvée)." : "L'épingle rouge, c'est la maison à vendre (adresse probable, à confirmer).")
+      : p.precis ? "L'épingle rouge, c'est la maison à vendre (adresse donnée par l'annonce)."
+      : `La zone rouge, c'est le village de la maison à vendre (${p.nom}) : l'adresse exacte n'est pas connue.`;
+    note.textContent = quoi + (km ? ` L'étiquette verte, c'est chez Damien et Aurélia : environ ${km} km à vol d'oiseau.` : "");
     const outils = document.createElement("div"); outils.className = "outils-carte";
     const bouton = (txt, f) => { const x = document.createElement("button"); x.type = "button"; x.textContent = txt; x.onclick = f; outils.append(x); };
     if (exact) bouton("Voir la maison de près", prochePlan);
-    if (vv) bouton("Voir avec Vendes", avecVendes);
+    if (vv) bouton("Voir aussi chez Damien et Aurélia", avecVendes);
     const a = document.createElement("a");
     a.href = `https://www.google.com/maps/search/?api=1&query=${ici[0]},${ici[1]}`; a.target = "_blank"; a.rel = "noopener";
     a.textContent = "Ouvrir dans Google Maps";
@@ -517,7 +521,7 @@ async function dessinerVue() {
       .bindPopup(`<div class="popup"><b>N° ${esc(b.num || "")} · ${esc(b.titre)}</b>${esc(b.lieu || "")} · ${euros(b.prix)}<br>${adresseConnue(b) ? esc(b.adresse.texte) + (b.adresse.confiance === "forte" ? "" : " (probable)") : "Adresse pas retrouvée : position du village"}<br><button type="button" data-aller="${esc(b.id)}">Voir la fiche</button></div>`);
   });
   const v = g.com["vendes"];
-  if (v) L.marker([v.ll[1], v.ll[0]], { icon: epingle("#2c5a40", "V"), title: "Vendes", zIndexOffset: -100 }).addTo(VUE.couche).bindTooltip("Vendes");
+  if (v) L.marker([v.ll[1], v.ll[0]], { icon: CHEZ(), title: "Chez Damien et Aurélia", zIndexOffset: -100 }).addTo(VUE.couche);
   if (VUE_R !== R) {
     VUE_R = R;
     if (pts.length) VUE.fitBounds(L.latLngBounds(pts.concat(v ? [[v.ll[1], v.ll[0]]] : [])), { padding: [30, 30], maxZoom: 13 });
