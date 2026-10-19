@@ -2,6 +2,13 @@
 
 Ce fichier complète la consigne de la tâche planifiée. Lis-le à chaque passage, depuis l'onglet du site : `await (await fetch('consignes.md?x=' + Date.now())).text()`. En cas de contradiction, la consigne de la tâche l'emporte.
 
+## Surface habitable
+
+Chaque bien a un champ `surface` : la surface habitable en m², nombre entier (ex. `"surface": 148`). La page l'affiche sous le prix.
+- Prends la surface habitable annoncée par la fiche (souvent dans le titre de la page : « Maison 6 pièces 150 m² », « à vendre / 185m² »). Ne la confonds pas avec le terrain, le séjour, le garage ou les annexes.
+- Si les sites d'un même bien donnent des surfaces différentes, garde celle de la fiche la plus détaillée et signale l'écart dans verifier.
+- Bien nouveau : renseigne-la. Bien déjà suivi sans surface : renseigne-la à l'étape 3. Ne la change pas ensuite sauf erreur manifeste.
+
 ## Galerie de photos de chaque maison
 
 La page affiche toutes les photos d'une annonce, avec des flèches pour passer de l'une à l'autre. Le champ `photos` d'un bien est rempli par le serveur ; ne l'écris jamais toi-même dans data.json (le serveur garde la galerie quand le champ manque).

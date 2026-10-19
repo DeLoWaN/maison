@@ -35,16 +35,22 @@ $fichierVivant = dirname(dirname(__DIR__)) . '/maison-data/' . $r . '/data.json'
 $ancien = is_file($fichierVivant) ? json_decode((string) @file_get_contents($fichierVivant), true) : null;
 $adresses = array();
 $galeries = array();
+$surfaces = array();
 if (is_array($ancien) && isset($ancien['biens']) && is_array($ancien['biens'])) {
     foreach ($ancien['biens'] as $b) {
         if (isset($b['id'], $b['adresse']['texte'])) $adresses[$b['id']] = $b['adresse'];
         if (isset($b['id'], $b['photos']) && is_array($b['photos']) && count($b['photos'])) $galeries[$b['id']] = $b['photos'];
+        if (isset($b['id'], $b['surface']) && is_numeric($b['surface']) && $b['surface'] > 0) $surfaces[$b['id']] = $b['surface'];
     }
 }
 // Galerie de photos : si la veille renvoie un bien sans photos, on garde celles déjà enregistrées.
 foreach ($d['biens'] as $i => $b) {
     if (isset($galeries[$b['id']]) && (!isset($b['photos']) || !is_array($b['photos']) || !count($b['photos']))) {
         $d['biens'][$i]['photos'] = $galeries[$b['id']];
+    }
+    // Même chose pour la surface habitable.
+    if (isset($surfaces[$b['id']]) && (!isset($b['surface']) || !is_numeric($b['surface']) || $b['surface'] <= 0)) {
+        $d['biens'][$i]['surface'] = $surfaces[$b['id']];
     }
 }
 foreach ($d['biens'] as $i => $b) {

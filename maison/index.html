@@ -135,6 +135,7 @@ section.groupe { display: grid; gap: 14px; }
 .badge.retr { background: var(--ko-bg); color: var(--ko); }
 .lieu { color: var(--muted); }
 .prix { font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.surface { font-size: 1.15rem; font-weight: 600; font-variant-numeric: tabular-nums; }
 .ancien { color: var(--muted); text-decoration: line-through; font-weight: 400; font-size: 1rem; margin-left: 8px; }
 .statuts { display: grid; gap: 6px; }
 .statuts .q { font-weight: 700; font-size: .95rem; }
@@ -414,6 +415,7 @@ function carte(b) {
       <h3>${esc(b.titre)}</h3>
       <div class="lieu">${esc(b.lieu)}</div>
       <div class="prix">${euros(b.prix)}${baisse ? `<span class="ancien">${premier.toLocaleString("fr-FR")} €</span>` : ""}</div>
+      ${b.surface ? `<div class="surface">${esc(b.surface)} m² habitables${b.prix ? ` · ${Math.round(b.prix / b.surface).toLocaleString("fr-FR")} € le m²` : ""}</div>` : ""}
     </div>
     ${b.etat === "active" ? boutons(b) : ""}
     <div class="crit">
@@ -580,7 +582,7 @@ async function dessinerVue() {
     const icon = L.divIcon({ className: "pt-wrap", iconSize: [30, 30], iconAnchor: [15, 15],
       html: `<div class="pt${exact ? "" : " village"}" style="border-color:${c};background:${exact ? c : fond};color:${exact ? fond : c}">${esc(b.num || "•")}</div>` });
     L.marker(ll, { icon, title: `N° ${b.num || ""} · ${b.titre}`, keyboard: true }).addTo(VUE.couche)
-      .bindPopup(`<div class="popup"><b>N° ${esc(b.num || "")} · ${esc(b.titre)}</b>${esc(b.lieu || "")} · ${euros(b.prix)}<br>${adresseConnue(b) ? esc(b.adresse.texte) + (b.adresse.confiance === "forte" ? "" : " (probable)") : "Adresse pas retrouvée : position du village"}<br><button type="button" data-aller="${esc(b.id)}">Voir la fiche</button></div>`);
+      .bindPopup(`<div class="popup"><b>N° ${esc(b.num || "")} · ${esc(b.titre)}</b>${esc(b.lieu || "")} · ${euros(b.prix)}${b.surface ? ` · ${esc(b.surface)} m²` : ""}<br>${adresseConnue(b) ? esc(b.adresse.texte) + (b.adresse.confiance === "forte" ? "" : " (probable)") : "Adresse pas retrouvée : position du village"}<br><button type="button" data-aller="${esc(b.id)}">Voir la fiche</button></div>`);
   });
   const v = await lieuChez(g);
   if (v) L.marker([v.ll[1], v.ll[0]], { icon: CHEZ(), title: "Chez Damien et Aurélia", zIndexOffset: -100 }).addTo(VUE.couche);
