@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Réception des photos</title>
+<style>body { font: 18px/1.5 system-ui, sans-serif; margin: 24px; background: #fff; color: #1b211e; }</style>
+</head>
+<body>
+<p id="etat">Réception…</p>
+<script>
+// Page de passage pour la veille : une fiche d'annonce relève sa galerie de photos et ouvre cette page
+// avec les données après le # (jamais envoyées au serveur dans l'adresse). La page les enregistre
+// ensuite avec la session de la famille. Format : #{"envois":[{"r":"longere","id":"...","photos":[...]}]}
+(async () => {
+  const etat = document.getElementById("etat");
+  let d = null;
+  try { d = JSON.parse(decodeURIComponent(location.hash.slice(1))); } catch (e) {}
+  history.replaceState(null, "", location.pathname);
+  if (!d || !Array.isArray(d.envois)) { etat.textContent = "RIEN : données absentes ou illisibles"; return; }
+  const lignes = [];
+  for (const e of d.envois) {
+    try {
+      const r = await fetch("photos.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(e) });
+      const t = await r.json().catch(() => ({}));
+      lignes.push(r.ok ? `OK ${e.r}/${e.id} : ${t.photos} photos` : `ECHEC ${e.r}/${e.id} : ${r.status} ${t.erreur || ""}`);
+    } catch (err) { lignes.push(`ECHEC ${e.r}/${e.id} : réseau`); }
+  }
+  etat.textContent = lignes.join(" | ");
+})();
+</script>
+</body>
+</html>
