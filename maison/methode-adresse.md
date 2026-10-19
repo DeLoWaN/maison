@@ -32,6 +32,9 @@ Chaque site publie des détails différents. Lis chaque lien, en commençant par
 - **Bien'ici** (le plus riche) : consommation en kWh/m²/an, émissions en kg CO₂/m²/an, « Date de réalisation du DPE », fourchette de dépense annuelle (« entre X € et Y € par an »).
   - La page met quelques secondes à s'afficher : attendre 5 s avant de lire.
 - **Ouest-France Immo** : « Consommation (Energie primaire) X kWh/m².an », « Emissions Y kgCO2/m².an », surface du terrain au m² près.
+  - Les chiffres sont dans une vignette graphique : le texte brut de la page ne les contient pas toujours au bon endroit. Ce qui marche : prendre le plus petit élément qui contient à la fois « kWh » et « kgCO2 » et lire son texte (`C 171 kWh/m² .an 6* kgCO2/m² .an` = lettre, consommation, émissions).
+  - Surfaces : les lignes qui ne contiennent que « N m² » donnent la surface habitable puis le terrain.
+  - Attention : la fourchette « entre X € et Y € » peut venir d'un bloc commun à plusieurs annonces (même fourchette vue sur deux maisons différentes de Sommervieu). Ne t'en sers que si elle est dans le texte de l'annonce elle-même.
   - Certaines annonces n'affichent aucun DPE.
 - **iad France** : chiffres du DPE souvent présents.
 - **SeLoger, Etreproprio** : seulement les lettres DPE/GES, l'année de construction et le terrain.
@@ -68,8 +71,15 @@ Pièges vus :
 - La consommation de l'annonce peut ne correspondre à aucun DPE de la base (ancien DPE, erreur de saisie : 196 annoncés, 173 au DPE). Passe alors au cadastre.
 - Un même bâtiment a parfois deux DPE identiques : c'est un doublon, pas deux candidats.
 - Garde le lien de la vue filtrée (filteredViewUrl) comme preuve.
+- Date du DPE connue mais rien dans le code postal : refais la recherche sur tout le Calvados (`code_departement_ban_eq=14`, date ±3 jours, consommation ±10). Les agences de la Suisse normande ou de Bayeux mettent souvent le nom de la ville du bureau.
+- Quelques DPE de 2023 annoncés sur Bien'ici sont absents de la base, même sans filtre de département : dans ce cas, conclure « non trouvée » plutôt que forcer un candidat.
+- Résultats du 19 octobre 2026 sur 86 maisons : la recherche « date du DPE » (Bien'ici) a donné une adresse forte presque à chaque fois ; consommation et émissions identiques (Ouest-France) suffisent souvent quand un seul DPE de la commune a la bonne surface.
 
 ## Étape 3 : cadastre
+Le cadastre Etalab et la BAN répondent depuis un onglet du navigateur intégré (fetch), pas toujours depuis le shell du conteneur.
+Exemple qui a marché : un terrain annoncé au m² près correspondait à une seule parcelle de la commune, et le DPE de l'adresse voisine avait les mêmes émissions et la même surface que l'annonce.
+Les grands terrains (plus de 2000 m²) sont presque toujours faits de plusieurs parcelles : la recherche d'une parcelle unique échoue, il faut passer par les sommes (point 2).
+
 1. **Terrain donné au m² près** : charge les parcelles de la commune et de toutes les communes du code postal. Cherche `contenance` = terrain ±3 m², puis fais une recherche inverse au centre de chaque parcelle.
    - Une parcelle de surface exacte, avec un DPE cohérent (surface, période) à l'adresse voisine : confiance forte.
 2. **Pour confirmer un candidat DPE** : prends la parcelle qui contient l'adresse et ses voisines à moins de 150 m. Cherche une somme de 1 à 4 parcelles égale au terrain ±3 %.
