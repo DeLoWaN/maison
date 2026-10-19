@@ -134,11 +134,28 @@ section.groupe { display: grid; gap: 14px; }
 .connexion .msg { color: var(--ko); font-weight: 600; }
 .session { margin: 28px 0 8px; color: var(--muted); font-size: 1rem; }
 .session button { font: inherit; background: none; border: 0; color: var(--accent); font-weight: 700; text-decoration: underline; cursor: pointer; padding: 0; }
-.adresse { margin-top: 16px; padding: 12px 14px; border-radius: 12px; background: var(--accent-soft); }
-.adresse strong { display: block; margin-bottom: 4px; }
-.adresse .txt { font-size: 1.15rem; font-weight: 700; }
-.adresse p { margin: 6px 0 0; color: var(--muted); font-size: .98rem; }
-.adresse details { margin-top: 6px; color: var(--muted); font-size: .95rem; }
+.adresse { margin-top: 16px; padding: 12px 14px 12px 16px; border-radius: 12px; border-left: 8px solid var(--unk); background: var(--unk-bg); display: grid; gap: 6px; }
+.adresse.forte { border-left-color: var(--ok); background: var(--ok-bg); }
+.adresse.probable { border-left-color: var(--warn); background: var(--warn-bg); }
+.adresse strong { display: block; }
+.adresse .txt { font-size: 1.2rem; font-weight: 700; }
+.adresse .conf { justify-self: start; display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 1.05rem; padding: 4px 12px; border-radius: 999px; color: var(--surface); background: var(--unk); }
+.adresse.forte .conf { background: var(--ok); }
+.adresse.probable .conf { background: var(--warn); }
+.adresse .jauge { letter-spacing: 2px; }
+.adresse p { margin: 0; font-size: 1rem; }
+.adresse details { color: var(--muted); font-size: .95rem; }
+.badge.adr-forte { background: var(--ok-bg); color: var(--ok); }
+.badge.adr-probable { background: var(--warn-bg); color: var(--warn); }
+.vue { display: grid; gap: 10px; }
+.vue .carte { height: 440px; }
+@media (max-width: 600px) { .vue .carte { height: 380px; } }
+.vue .legende i { width: 16px; height: 16px; border: 2px solid transparent; }
+.pt { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; border: 3px solid; font: 700 13px/1 var(--f-body); box-shadow: 0 1px 3px rgba(0,0,0,.35); }
+.pt.village { border-style: dashed; }
+.leaflet-div-icon.pt-wrap { background: none; border: 0; }
+.vue .popup b { display: block; font-size: 1.05rem; }
+.vue .popup button { font: inherit; font-weight: 700; margin-top: 6px; padding: 6px 12px; border-radius: 8px; border: 0; background: var(--accent); color: var(--surface); cursor: pointer; }
 .questions strong { font-size: .95rem; }
 .questions ul { margin: 0; padding-left: 22px; display: grid; gap: 2px; }
 .liens { display: grid; gap: 10px; }
@@ -184,6 +201,19 @@ th { font-size: .8rem; letter-spacing: .05em; text-transform: uppercase; color: 
     <p class="intro">Chaque jour de semaine, les sites d'annonces sont passés en revue. Les maisons qui correspondent à la recherche apparaissent ici. Sous chaque maison, trois boutons permettent de noter où vous en êtes : tout le monde voit le même choix.</p>
     <div class="resume" id="resume"></div>
   </header>
+
+  <section class="vue" aria-labelledby="vue-titre">
+    <h2 id="vue-titre">Toutes les maisons sur la carte</h2>
+    <div class="legende" id="vue-legende">
+      <span><i style="background:var(--new)"></i>À visiter</span>
+      <span><i style="background:var(--ok)"></i>Visitée</span>
+      <span><i style="background:var(--ko)"></i>Pas intéressés</span>
+      <span><i style="background:var(--fg)"></i>Pas encore décidé</span>
+      <span><i style="background:var(--surface);border:2px dashed var(--fg)"></i>Rond pointillé : seulement le village, adresse pas retrouvée</span>
+    </div>
+    <div class="carte" id="vue-carte"></div>
+    <p class="aide">Le numéro dans chaque rond est celui de la maison. Touchez un rond pour voir la maison et aller à sa fiche.</p>
+  </section>
 
   <details class="bloc" id="d-criteres">
     <summary>Ce qu'on cherche</summary>
@@ -255,6 +285,28 @@ function boutons(b) {
   </div>`;
 }
 
+// Adresse retrouvée par recoupement de données publiques : la confiance doit se voir d'un coup d'œil.
+const adresseConnue = b => !!(b.adresse && b.adresse.texte && (b.adresse.confiance === "forte" || b.adresse.confiance === "probable"));
+function blocAdresse(b) {
+  const a = b.adresse;
+  if (!a) return "";
+  const lien = (String(a.preuves || "").match(/https:\/\/data\.ademe\.fr\/\S+/) || [])[0];
+  const preuves = a.preuves ? `<details><summary>Comment elle a été retrouvée</summary>${esc(a.preuves.replace(/\s*— vue DPE : \S+/, ""))}${lien ? ` <a href="${esc(lien)}" target="_blank" rel="noopener">Voir le diagnostic dans la base publique</a>` : ""}</details>` : "";
+  if (!adresseConnue(b)) {
+    return `<div class="adresse"><strong>Adresse pas retrouvée</strong><p>Les annonces ne donnent pas assez d'indices pour la retrouver. La carte montre seulement le village.</p>${preuves}</div>`;
+  }
+  const forte = a.confiance === "forte";
+  return `<div class="adresse ${a.confiance}">
+    <strong>Adresse retrouvée</strong>
+    <span class="txt">${esc(a.texte)}</span>
+    <span class="conf"><span class="jauge" aria-hidden="true">${forte ? "●●●" : "●●○"}</span>${forte ? "Confiance forte" : "Confiance moyenne"}</span>
+    <p>${forte
+      ? "Plusieurs indices publics concordent (diagnostic énergétique, surface, dépenses d'énergie). C'est très probablement elle, mais demandez confirmation à l'agence avant de vous déplacer."
+      : "Un seul indice solide, ou un détail qui ne colle pas. C'est peut-être une maison voisine : vérifiez avec l'agence avant de vous déplacer."}</p>
+    ${preuves}
+  </div>`;
+}
+
 function carte(b) {
   const h = b.prix_hist || [];
   const premier = h.length ? h[0].p : null;
@@ -262,7 +314,8 @@ function carte(b) {
   const badges = [
     estNouveau(b) ? `<span class="badge nouv">Nouvelle</span>` : "",
     baisse ? `<span class="badge baisse">Prix baissé de ${(premier - b.prix).toLocaleString("fr-FR")} €</span>` : "",
-    b.etat === "retiree" ? `<span class="badge retr">Retirée le ${jour(b.retiree_le)}</span>` : ""
+    b.etat === "retiree" ? `<span class="badge retr">Retirée le ${jour(b.retiree_le)}</span>` : "",
+    adresseConnue(b) ? `<span class="badge adr-${b.adresse.confiance}">${b.adresse.confiance === "forte" ? "Adresse retrouvée" : "Adresse probable"}</span>` : ""
   ].join("");
   const liens = (b.liens || []).map(l => `
     <div class="lien">
@@ -288,7 +341,7 @@ function carte(b) {
     <div class="crit">
       ${Object.keys(CRIT).map(k => { const c = (b.crit || {})[k] || ["unk", "Non indiqué"]; return `<div class="c ${c[0]}"><span class="dot"></span><span class="k">${(D.libelles || {})[k] || CRIT[k]}</span><span class="v">${esc(c[1])}</span></div>`; }).join("")}
     </div>
-    ${b.adresse && b.adresse.texte ? `<div class="adresse"><strong>Adresse retrouvée</strong><span class="txt">${esc(b.adresse.texte)}</span><p>Confiance ${b.adresse.confiance === "forte" ? "forte" : "moyenne"} : retrouvée en recoupant des données publiques (diagnostic énergétique, cadastre). À confirmer avec l'agence avant de vous déplacer.</p>${b.adresse.preuves ? `<details><summary>Comment elle a été retrouvée</summary>${esc(b.adresse.preuves)}</details>` : ""}</div>` : ""}
+    ${blocAdresse(b)}
     <div class="ou"><strong>Où se trouve-t-elle ?</strong><div class="carte" data-carte="${esc(b.id)}"></div><p data-carte-note="${esc(b.id)}"></p></div>
     ${(b.verifier || []).length ? `<div class="questions"><strong>À demander à l'agence</strong><ul>${b.verifier.map(v => `<li>${esc(v)}</li>`).join("")}</ul></div>` : ""}
     <div class="liens">${liens}</div>
@@ -353,7 +406,7 @@ function dessinerCarte(el) {
     const v = g.com["vendes"];
     const carte = L.map(el, { dragging: !L.Browser.mobile, scrollWheelZoom: false, tap: false, attributionControl: true });
     L.tileLayer(FOND, { maxZoom: 18, attribution: "© IGN" }).addTo(carte);
-    L.circle(ici, { radius: p.precis ? 60 : 1100, color: "#9c3426", weight: 3, fillColor: "#9c3426", fillOpacity: .15 }).addTo(carte)
+    L.circle(ici, { radius: p.adresse && b.adresse.confiance !== "forte" ? 150 : p.precis ? 60 : 1100, color: "#9c3426", weight: 3, fillColor: "#9c3426", fillOpacity: .15 }).addTo(carte)
       .bindTooltip(p.nom, { permanent: true, direction: "top", offset: [0, -8] });
     if (v && norm(p.nom) !== "vendes") {
       const vv = [v.ll[1], v.ll[0]];
@@ -361,7 +414,7 @@ function dessinerCarte(el) {
         .bindTooltip("Vendes", { permanent: true, direction: "bottom", offset: [0, 6] });
       carte.fitBounds(L.latLngBounds([ici, vv]), { padding: [36, 36], maxZoom: 13 });
       const km = Math.round(kmEntre(p.ll, v.ll));
-      note.textContent = `${p.adresse ? "Le cercle rouge montre l'adresse retrouvée" : p.precis ? "Adresse indiquée par l'annonce" : "Le cercle rouge montre le village de " + p.nom + " : l'annonce ne donne pas l'adresse exacte"}. Environ ${km} km de Vendes à vol d'oiseau.`;
+      note.textContent = `${p.adresse ? (b.adresse.confiance === "forte" ? "Le cercle rouge montre l'adresse retrouvée" : "Le cercle rouge montre l'adresse probable, à confirmer") : p.precis ? "Adresse indiquée par l'annonce" : "Le cercle rouge montre le village de " + p.nom + " : l'annonce ne donne pas l'adresse exacte"}. Environ ${km} km de Vendes à vol d'oiseau.`;
     } else {
       carte.setView(ici, 13);
       note.textContent = p.adresse ? "Le cercle rouge montre l'adresse retrouvée." : p.precis ? "Adresse indiquée par l'annonce." : `Le cercle rouge montre le village de ${p.nom} : l'annonce ne donne pas l'adresse exacte.`;
@@ -378,6 +431,67 @@ const obsCartes = "IntersectionObserver" in window
 function preparerCartes() {
   document.querySelectorAll(".carte[data-carte]").forEach(el => obsCartes ? obsCartes.observe(el) : dessinerCarte(el));
 }
+// ---- Carte d'ensemble : toutes les maisons en vente de la recherche affichée, couleur selon le statut ----
+let VUE = null, VUE_R = null, VUE_N = 0;
+function couleurStatut(b) {
+  const cs = getComputedStyle(document.documentElement), v = n => cs.getPropertyValue(n).trim();
+  const s = (S[b.id] || {}).statut;
+  return s === "a_visiter" ? v("--new") : s === "visitee" ? v("--ok") : s === "pas_interesses" ? v("--ko") : v("--fg");
+}
+function allerA(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const det = el.closest("details"); if (det && !det.open) { det.open = true; preparerCartes(); }
+  document.querySelectorAll(".card.repere").forEach(c => c.classList.remove("repere"));
+  el.classList.add("repere");
+  el.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+async function dessinerVue() {
+  const el = document.getElementById("vue-carte");
+  if (typeof L === "undefined") { el.innerHTML = `<div class="vide">Carte indisponible</div>`; return; }
+  const tour = ++VUE_N;
+  const biens = (D.biens || []).filter(b => b.etat === "active");
+  let g;
+  try { g = await geoCalvados(); } catch (e) { el.innerHTML = `<div class="vide">Carte indisponible pour le moment</div>`; return; }
+  const pos = await Promise.all(biens.map(b => situerPrecis(b, g).catch(() => null)));
+  if (tour !== VUE_N) return; // un rendu plus récent est en cours
+  if (!VUE) {
+    VUE = L.map(el, { dragging: !L.Browser.mobile, scrollWheelZoom: false, tap: false });
+    L.tileLayer(FOND, { maxZoom: 18, attribution: "© IGN" }).addTo(VUE);
+    VUE.couche = L.layerGroup().addTo(VUE);
+  }
+  VUE.couche.clearLayers();
+  const fond = getComputedStyle(document.documentElement).getPropertyValue("--surface").trim();
+  const vus = {}, pts = [];
+  biens.forEach((b, i) => {
+    const p = pos[i]; if (!p) return;
+    let ll = [p.ll[1], p.ll[0]];
+    // Plusieurs maisons du même village : on les écarte un peu pour qu'elles restent lisibles.
+    const k = ll.map(x => x.toFixed(3)).join(",");
+    const n = vus[k] = (vus[k] || 0) + 1;
+    if (n > 1) { const a = n * 2.4, r = 0.0016 * Math.sqrt(n); ll = [ll[0] + r * Math.sin(a), ll[1] + r * 1.5 * Math.cos(a)]; }
+    pts.push(ll);
+    const c = couleurStatut(b), exact = !!(p.adresse || p.precis);
+    const icon = L.divIcon({ className: "pt-wrap", iconSize: [30, 30], iconAnchor: [15, 15],
+      html: `<div class="pt${exact ? "" : " village"}" style="border-color:${c};background:${exact ? c : fond};color:${exact ? fond : c}">${esc(b.num || "•")}</div>` });
+    L.marker(ll, { icon, title: `N° ${b.num || ""} · ${b.titre}`, keyboard: true }).addTo(VUE.couche)
+      .bindPopup(`<div class="popup"><b>N° ${esc(b.num || "")} · ${esc(b.titre)}</b>${esc(b.lieu || "")} · ${euros(b.prix)}<br>${adresseConnue(b) ? esc(b.adresse.texte) + (b.adresse.confiance === "forte" ? "" : " (probable)") : "Adresse pas retrouvée : position du village"}<br><button type="button" data-aller="${esc(b.id)}">Voir la fiche</button></div>`);
+  });
+  const v = g.com["vendes"];
+  if (v) L.circleMarker([v.ll[1], v.ll[0]], { radius: 8, color: "#2c5a40", weight: 3, fillColor: "#2c5a40", fillOpacity: 1 }).addTo(VUE.couche)
+    .bindTooltip("Vendes", { permanent: true, direction: "bottom", offset: [0, 6] });
+  if (VUE_R !== R) {
+    VUE_R = R;
+    if (pts.length) VUE.fitBounds(L.latLngBounds(pts.concat(v ? [[v.ll[1], v.ll[0]]] : [])), { padding: [30, 30], maxZoom: 13 });
+    else if (v) VUE.setView([v.ll[1], v.ll[0]], 11);
+  }
+  setTimeout(() => VUE.invalidateSize(), 0);
+}
+document.addEventListener("click", ev => {
+  const b = ev.target.closest("[data-aller]");
+  if (b) { if (VUE) VUE.closePopup(); allerA(b.dataset.aller); }
+});
+
 document.addEventListener("toggle", ev => { if (ev.target.matches && ev.target.matches("details")) preparerCartes(); }, true);
 
 
@@ -440,6 +554,7 @@ function rendre() {
   document.getElementById("src-body").innerHTML = Sx.map(s => `<tr><td>${esc(s.nom)}</td><td><span class="pill ${s.statut}">${ST[s.statut] || s.statut}</span>${s.statut !== "ok" && s.dernier_ok ? `<br><small>Dernière lecture complète : ${jour(s.dernier_ok)}</small>` : ""}</td><td>${esc(s.note)}</td></tr>`).join("");
   document.getElementById("note-passage").textContent = D.note_passage || "";
   preparerCartes();
+  dessinerVue();
 }
 
 document.addEventListener("click", async ev => {
