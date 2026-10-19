@@ -41,7 +41,7 @@ body {
   padding-right: max(16px, env(safe-area-inset-right, 0px));
   padding-block: 24px 56px;
 }
-.wrap { max-width: 760px; margin: 0 auto; display: grid; gap: 28px; }
+.wrap { max-width: 860px; margin: 0 auto; display: grid; gap: 28px; }
 h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; }
 h1 { font-size: 1.9rem; line-height: 1.15; }
 h2 { font-size: 1.35rem; line-height: 1.25; }
@@ -90,7 +90,18 @@ details.bloc > div { padding: 0 16px 16px; display: grid; gap: 12px; }
 .legende i { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
 section.groupe { display: grid; gap: 14px; }
 .groupe > p, .bloc > div > p.aide { color: var(--muted); max-width: 62ch; }
-.list { display: grid; gap: 16px; }
+.list { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(390px, 100%), 1fr)); align-items: start; }
+#appli:not([hidden]) { display: grid; gap: 28px; }
+/* Ordinateur : en-tête et carte d'ensemble côte à côte, maisons en plusieurs colonnes */
+@media (min-width: 1100px) {
+  .wrap { max-width: 1680px; }
+  #appli:not([hidden]) { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); column-gap: 32px; align-items: start; }
+  #appli > header { grid-column: 1; grid-row: 1; }
+  #appli > #d-criteres { grid-column: 1; grid-row: 2; }
+  #appli > .vue { grid-column: 2; grid-row: 1 / span 2; }
+  #appli > .vue .carte { height: 560px; }
+  #appli > #contenu, #appli > #d-sources, #appli > .session { grid-column: 1 / -1; }
+}
 .vide { color: var(--muted); font-style: italic; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px; display: grid; gap: 14px; overflow: hidden; }
 .card.retiree { opacity: .8; }
