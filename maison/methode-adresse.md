@@ -1,6 +1,6 @@
 # Méthode : retrouver l'adresse d'une maison à partir de ses annonces
 
-Méthode testée le 19 octobre 2026 sur 10 maisons (9 adresses trouvées, dont 6 avec une confiance forte).
+Méthode testée le 19 octobre 2026 sur 10 maisons (9 adresses trouvées, dont 7 avec une confiance forte, après correction d'une erreur relevée par Damien).
 À suivre dans l'ordre, sans réinventer : chaque étape indique ce qui marche et ce qui a échoué.
 
 ## Règles
@@ -51,7 +51,8 @@ Extraction, sur le texte de la page :
 - lieux cités dans la description (hameau, lieu-dit, « à 5 km de… »).
 
 ## Étape 2 : chercher dans la base DPE
-Essaie dans cet ordre, et arrête-toi dès qu'un résultat unique apparaît.
+Essaie dans cet ordre, et arrête-toi dès qu'un résultat unique apparaît sur lequel au moins deux valeurs concordent.
+0. Date du DPE connue : commune (`code_insee_ban_eq`) et `date_etablissement_dpe` à ±3 jours, `type_batiment_eq=maison`.
 1. Commune (`code_insee_ban_eq`) et consommation à ±3 (`_gte`/`_lte`). Garder ensuite les résultats dont les émissions sont à ±2.
 2. Sans chiffres : `etiquette_dpe_eq`, `etiquette_ges_eq`, `type_batiment_eq=maison`, surface à ±8 %.
 3. Dépense annuelle : `cout_total_5_usages` ≈ (min + max) / 2, à ±2 %. La fourchette affichée vaut à peu près cette dépense ±15 %. Indice très discriminant.
@@ -60,6 +61,9 @@ Essaie dans cet ordre, et arrête-toi dès qu'un résultat unique apparaît.
 6. **Rien dans la commune** : refais la même recherche sur le code postal (`code_postal_ban_eq`). Les agences donnent souvent la ville voisine (« Villers-Bocage » était à Maisoncelles-Pelvey) ou l'ancienne commune.
 
 Pièges vus :
+- **Ne déduis jamais la date du DPE de la date de publication de l'annonce.** Un DPE peut avoir plusieurs années (DPE de janvier 2022 pour une annonce de 2026). Cherche la vraie date sur Bien'ici (« Date de réalisation du DPE ») avant de conclure. Un DPE récent qui colle en surface et en lettres mais pas en date est un faux positif : c'est l'erreur commise sur la première version de cette méthode.
+- Quand la date du DPE est connue, la recherche « commune + date ±3 jours » donne presque toujours un résultat unique. C'est la recherche à faire en premier.
+- La consommation affichée par l'annonce peut s'écarter de celle de la base (252 annoncés, 242,7 au DPE) alors que la date, les émissions et la dépense concordent exactement. Fie-toi à l'ensemble, pas à une seule valeur.
 - La surface du DPE peut différer de celle de l'annonce (dépendance comptée ou non : 183,6 m² au DPE pour 110 m² annoncés). N'écarte pas un candidat sur la seule surface si la consommation, les émissions et la dépense concordent.
 - La consommation de l'annonce peut ne correspondre à aucun DPE de la base (ancien DPE, erreur de saisie : 196 annoncés, 173 au DPE). Passe alors au cadastre.
 - Un même bâtiment a parfois deux DPE identiques : c'est un doublon, pas deux candidats.
