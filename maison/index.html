@@ -55,10 +55,18 @@ header { display: grid; gap: 10px; }
 details.bloc { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
 details.bloc > summary { cursor: pointer; padding: 14px 16px; font-weight: 700; list-style-position: inside; }
 details.bloc > div { padding: 0 16px 16px; display: grid; gap: 12px; }
-.choix { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.choix { margin: 0 0 22px; }
 .choix[hidden] { display: none; }
-.choix label { font-weight: 700; }
-.choix select { font: inherit; font-size: 1.05rem; min-height: 44px; padding: 6px 10px; border-radius: 8px; border: 2px solid var(--line); background: var(--surface); color: var(--fg); max-width: 100%; }
+.choix .q { margin: 0 0 10px; font-weight: 700; font-size: 1.1rem; }
+.onglets { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.onglets button { font: inherit; text-align: left; cursor: pointer; min-height: 76px; padding: 14px 18px; border-radius: 14px; border: 3px solid var(--line); background: var(--surface); color: var(--fg); display: grid; gap: 2px; }
+.onglets button .n { font-family: var(--f-display); font-size: 1.3rem; font-weight: 700; line-height: 1.2; }
+.onglets button .s { font-size: 1rem; color: var(--muted); }
+.onglets button:hover { border-color: var(--accent); }
+.onglets button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.onglets button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.onglets button[aria-pressed="true"] .s { color: var(--surface); opacity: .9; }
+.onglets button[aria-pressed="true"] .n::before { content: "✓ "; }
 .criteres { margin: 0; padding-left: 22px; display: grid; gap: 4px; }
 .legende { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .95rem; color: var(--muted); }
 .legende span { display: inline-flex; align-items: center; gap: 8px; }
@@ -126,10 +134,10 @@ th { font-size: .8rem; letter-spacing: .05em; text-transform: uppercase; color: 
 <body>
 <div class="wrap">
   <header>
-    <div class="choix" id="choix" hidden>
-      <label for="sel">Recherche</label>
-      <select id="sel"></select>
-    </div>
+    <nav class="choix" id="choix" aria-label="Choisir la recherche" hidden>
+      <p class="q">Quelle recherche voulez-vous voir ?</p>
+      <div class="onglets" id="onglets"></div>
+    </nav>
     <h1 id="titre">Recherche de maison</h1>
     <p class="maj" id="maj">Chargement…</p>
     <p class="intro">Chaque jour de semaine, les sites d'annonces sont passés en revue. Les maisons qui correspondent à la recherche apparaissent ici. Sous chaque maison, trois boutons permettent de noter où vous en êtes : tout le monde voit le même choix.</p>
@@ -317,14 +325,20 @@ function charger(r) {
 }
 
 fetch("recherches.json", { cache: "no-store" }).then(x => x.json()).then(liste => {
-  const sel = document.getElementById("sel");
-  sel.innerHTML = liste.map(x => `<option value="${esc(x.id)}">${esc(x.nom)}</option>`).join("");
+  const ong = document.getElementById("onglets");
+  ong.innerHTML = liste.map(x => `<button type="button" data-r="${esc(x.id)}" aria-pressed="false"><span class="n">${esc(x.nom)}</span>${x.sous ? `<span class="s">${esc(x.sous)}</span>` : ""}</button>`).join("");
   if (liste.length > 1) document.getElementById("choix").hidden = false;
   let r = new URLSearchParams(location.search).get("r");
   if (!liste.some(x => x.id === r)) { try { r = localStorage.getItem("recherche"); } catch (e) { r = null; } }
   if (!liste.some(x => x.id === r)) r = liste[0].id;
-  sel.value = r;
-  sel.addEventListener("change", () => charger(sel.value).catch(erreur));
+  const marquer = v => ong.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.r === v)));
+  marquer(r);
+  ong.addEventListener("click", ev => {
+    const b = ev.target.closest("button[data-r]");
+    if (!b || b.dataset.r === R) return;
+    marquer(b.dataset.r);
+    charger(b.dataset.r).catch(erreur);
+  });
   return charger(r).then(() => {
     if (location.hash) { const el = document.getElementById(location.hash.slice(1)); if (el) { const det = el.closest("details"); if (det) det.open = true; el.scrollIntoView(); } }
   });

@@ -1,10 +1,12 @@
 [
  {
   "id": "longere",
-  "nom": "Longère Vendes–Caen–Bayeux"
+  "nom": "Longères",
+  "sous": "Maison ancienne en pierre, une chambre en bas"
  },
  {
   "id": "plainpied",
-  "nom": "Deux chambres au rez-de-chaussée"
+  "nom": "Deux chambres en bas",
+  "sous": "Plain-pied ou deux chambres au rez-de-chaussée, tout type de maison"
  }
 ]
