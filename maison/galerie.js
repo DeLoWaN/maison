@@ -33,7 +33,7 @@
   for (var i = 0; i < toks.length && P.length < 2; i++) { P = grouper(urls.filter(function (u) { return u.indexOf(toks[i]) >= 0; })); cle = toks[i]; }
   // 2) Sinon, photos rangées au même endroit que la photo principale (même site, même dossier).
   if (P.length < 2) {
-    var dossier = function (u) { try { var x = new URL(u); return x.host + x.pathname.split("/").slice(0, 4).join("/"); } catch (e) { return ""; } };
+    var dossier = function (u) { try { var x = new URL(u); return x.host + x.pathname.split("/").slice(0, -1).slice(0, 4).join("/"); } catch (e) { return ""; } };
     var ref = og ? dossier(og) : "";
     if (!ref) {
       var n = {}; urls.forEach(function (u) { var d = dossier(u); n[d] = (n[d] || 0) + 1; });
