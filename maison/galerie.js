@@ -9,8 +9,8 @@
   // On s'arrête avant le bloc des annonces voisines, dont les photos ne sont pas celles de la maison.
   var coupe = html.search(/annonces similaires|biens similaires|vous aimerez aussi|autres annonces|dans le m[eê]me secteur|ces biens pourraient/i);
   if (coupe > html.length * 0.3) html = html.slice(0, coupe);
-  var urls = (html.match(/https?:\/\/[^"'\s<>()\\,]+?\.(?:jpe?g|png|webp)(?:\?[^"'\s<>()\\,]*)?/gi) || []).filter(function (u) {
-    return !/logo|avatar|favicon|icon|sprite|agence|agent|realtor|client\/|picto|banner|placeholder/i.test(u);
+  var urls = (html.match(/https?:\/\/[^"'\s<>()\\,]+/gi) || []).filter(function (u) {
+    return /\.(?:jpe?g|png|webp)(?:[_?#]|$)/i.test(u) && !/logo|avatar|favicon|icon|sprite|agence|agent|realtor|client\/|picto|banner|placeholder/i.test(u);
   });
   // Plusieurs tailles d'une même photo : on garde une taille d'écran (600 à 1100 px de large), sinon la plus grande.
   var w = function (u) { var m = u.match(/(\d{3,4})[-x](\d{3,4})/) || u.match(/width=(\d{3,4})/); return m ? +m[1] : 0; };
