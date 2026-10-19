@@ -132,7 +132,7 @@ th { font-size: .8rem; letter-spacing: .05em; text-transform: uppercase; color: 
     </div>
     <h1 id="titre">Recherche de maison</h1>
     <p class="maj" id="maj">Chargement…</p>
-    <p class="intro">Chaque matin de semaine, les sites d'annonces sont passés en revue. Les maisons qui correspondent à la recherche apparaissent ici. Sous chaque maison, trois boutons permettent de noter où vous en êtes : tout le monde voit le même choix.</p>
+    <p class="intro">Chaque jour de semaine, les sites d'annonces sont passés en revue. Les maisons qui correspondent à la recherche apparaissent ici. Sous chaque maison, trois boutons permettent de noter où vous en êtes : tout le monde voit le même choix.</p>
     <div class="resume" id="resume"></div>
   </header>
 
@@ -234,7 +234,7 @@ function carte(b) {
     </div>
     ${b.etat === "active" ? boutons(b) : ""}
     <div class="crit">
-      ${Object.keys(CRIT).map(k => { const c = (b.crit || {})[k] || ["unk", "Non indiqué"]; return `<div class="c ${c[0]}"><span class="dot"></span><span class="k">${CRIT[k]}</span><span class="v">${esc(c[1])}</span></div>`; }).join("")}
+      ${Object.keys(CRIT).map(k => { const c = (b.crit || {})[k] || ["unk", "Non indiqué"]; return `<div class="c ${c[0]}"><span class="dot"></span><span class="k">${(D.libelles || {})[k] || CRIT[k]}</span><span class="v">${esc(c[1])}</span></div>`; }).join("")}
     </div>
     ${(b.verifier || []).length ? `<div class="questions"><strong>À demander à l'agence</strong><ul>${b.verifier.map(v => `<li>${esc(v)}</li>`).join("")}</ul></div>` : ""}
     <div class="liens">${liens}</div>

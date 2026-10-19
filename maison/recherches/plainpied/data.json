@@ -1,0 +1,24 @@
+{
+ "titre": "Deux chambres au rez-de-chaussée",
+ "criteres": [
+  "Au moins deux chambres au rez-de-chaussée (critère principal) : maison de plain-pied, ou à étage avec deux chambres en bas",
+  "Tout type de maison, sauf le neuf",
+  "350 000 € maximum, travaux compris",
+  "Autour de Vendes, Caen et Bayeux, à 30 minutes de Vendes au plus",
+  "3 chambres au minimum (4 ou plus, c'est bien aussi), plus un bureau",
+  "Terrain de 950 m² au moins",
+  "Garage, dépendance, sous-sol ou cave d'au moins 30 m²",
+  "WC séparés"
+ ],
+ "libelles": {
+  "pierre": "Type de maison",
+  "rdc": "Deux chambres en bas",
+  "dep": "Garage, sous-sol"
+ },
+ "maj": "2026-10-19",
+ "lot_initial": "2026-10-19",
+ "biens": [],
+ "sources": [],
+ "note_passage": "Recherche créée le 19 octobre : le premier passage a lieu cet après-midi.",
+ "vus": []
+}

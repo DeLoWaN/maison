@@ -1,3 +1,10 @@
 [
-  { "id": "longere", "nom": "Longère Vendes–Caen–Bayeux" }
+ {
+  "id": "longere",
+  "nom": "Longère Vendes–Caen–Bayeux"
+ },
+ {
+  "id": "plainpied",
+  "nom": "Deux chambres au rez-de-chaussée"
+ }
 ]
