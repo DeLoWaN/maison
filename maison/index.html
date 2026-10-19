@@ -69,6 +69,13 @@ details.bloc > div { padding: 0 16px 16px; display: grid; gap: 12px; }
 .onglets button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
 .onglets button[aria-pressed="true"] .s { color: var(--surface); opacity: .9; }
 .onglets button[aria-pressed="true"] .n::before { content: "✓ "; }
+.num { display: inline-block; font-family: var(--f-display); font-weight: 700; font-size: 1.35rem; line-height: 1; padding: 8px 12px; border-radius: 10px; background: var(--fg); color: var(--bg); margin-bottom: 8px; }
+.card.repere { outline: 4px solid var(--new); outline-offset: 4px; }
+.trouver { margin: 14px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.trouver label { font-weight: 700; font-size: 1.05rem; }
+.trouver input { font: inherit; font-size: 1.2rem; width: 5.5em; min-height: 48px; padding: 6px 10px; border-radius: 10px; border: 2px solid var(--line); background: var(--surface); color: var(--fg); }
+.trouver button { font: inherit; font-weight: 700; font-size: 1.05rem; min-height: 48px; padding: 6px 16px; border-radius: 10px; border: 2px solid var(--accent); background: var(--accent); color: var(--surface); cursor: pointer; }
+.trouver output { flex-basis: 100%; color: var(--ko); font-weight: 600; }
 .ou { margin-top: 16px; }
 .ou strong { display: block; margin-bottom: 8px; }
 .carte { height: 230px; border-radius: 12px; border: 1px solid var(--line); background: var(--unk-bg); overflow: hidden; z-index: 0; }
@@ -147,6 +154,12 @@ th { font-size: .8rem; letter-spacing: .05em; text-transform: uppercase; color: 
       <p class="q">Quelle recherche voulez-vous voir ?</p>
       <div class="onglets" id="onglets"></div>
     </nav>
+    <form class="trouver" id="trouver" autocomplete="off">
+      <label for="trouver-n">Retrouver la maison n°</label>
+      <input id="trouver-n" inputmode="numeric" pattern="[0-9]*" maxlength="5" aria-describedby="trouver-msg">
+      <button type="submit">Afficher</button>
+      <output id="trouver-msg" aria-live="polite"></output>
+    </form>
     <h1 id="titre">Recherche de maison</h1>
     <p class="maj" id="maj">Chargement…</p>
     <p class="intro">Chaque jour de semaine, les sites d'annonces sont passés en revue. Les maisons qui correspondent à la recherche apparaissent ici. Sous chaque maison, trois boutons permettent de noter où vous en êtes : tout le monde voit le même choix.</p>
@@ -244,6 +257,7 @@ function carte(b) {
   <article class="card${b.etat === "retiree" ? " retiree" : ""}" id="${esc(b.id)}">
     ${photo}
     <div class="tete">
+      ${b.num ? `<div class="num" title="Numéro de la maison, pour en parler facilement">N° ${esc(b.num)}</div>` : ""}
       ${badges ? `<div class="badges">${badges}</div>` : ""}
       <h3>${esc(b.titre)}</h3>
       <div class="lieu">${esc(b.lieu)}</div>
@@ -331,6 +345,29 @@ function preparerCartes() {
   document.querySelectorAll(".carte[data-carte]").forEach(el => obsCartes ? obsCartes.observe(el) : dessinerCarte(el));
 }
 document.addEventListener("toggle", ev => { if (ev.target.matches && ev.target.matches("details")) preparerCartes(); }, true);
+
+
+// ---- Retrouver une maison par son numéro (numéros uniques sur tout le site) ----
+document.getElementById("trouver").addEventListener("submit", async ev => {
+  ev.preventDefault();
+  const msg = document.getElementById("trouver-msg");
+  const n = (document.getElementById("trouver-n").value || "").replace(/\D/g, "");
+  msg.textContent = "";
+  if (!n) return;
+  let cible = null;
+  try { cible = (await fetch("numeros.php", { cache: "no-store" }).then(r => r.json()))[n]; } catch (e) {}
+  if (!cible) { msg.textContent = `Aucune maison ne porte le numéro ${n}.`; return; }
+  if (cible.r !== R) {
+    document.querySelectorAll("#onglets button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.r === cible.r)));
+    await charger(cible.r);
+  }
+  const el = document.getElementById(cible.id);
+  if (!el) { msg.textContent = `La maison n° ${n} n'est plus dans la liste.`; return; }
+  const det = el.closest("details"); if (det) det.open = true;
+  document.querySelectorAll(".card.repere").forEach(c => c.classList.remove("repere"));
+  el.classList.add("repere");
+  el.scrollIntoView({ behavior: "smooth", block: "start" });
+});
 
 function groupeDe(b) {
   if (b.etat === "retiree") return "retiree";

@@ -22,6 +22,11 @@ if ($ok) {
 }
 if (!$ok) { http_response_code(400); echo '{"erreur":"format invalide"}'; exit; }
 
+// Numéro de maison : attribué une fois pour toutes par le serveur, unique sur tout le site
+// (toutes recherches confondues), jamais réutilisé. La veille n'a pas à s'en occuper.
+require __DIR__ . '/numeros-lib.php';
+$d['biens'] = numeroter($r, $d['biens']);
+
 $dir = dirname(dirname(__DIR__)) . '/maison-data/' . $r;
 $hist = $dir . '/historique';
 if (!is_dir($hist)) @mkdir($hist, 0750, true);
