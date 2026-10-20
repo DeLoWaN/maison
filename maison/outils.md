@@ -62,7 +62,9 @@ Le script renvoie, pour chaque annonce de la page, un objet `{url, prix, m2, tex
 | FNAIM | `"/annonce-immobiliere/\\d+/"` |
 | iad France | `"/annonce/[^/]+/r\\d+"` |
 
-Les trois premiers motifs ont été testés le 20 octobre 2026. Si le script renvoie `n: 0` alors que la page affiche des annonces, ou des prix tous vides, le site a changé : lis la page comme avant (texte de la page) et signale-le dans la note de la source.
+SeLoger et Etreproprio ont leur propre script dans consignes.md (pagination par boutons, « Voir plus ») : utilise-le pour ces deux sites.
+Bien'ici : la page reste blanche tant que le panneau du navigateur ne l'affiche pas. Après chaque navigation, fais une capture d'écran réduite (scale 0.1), attends 7 secondes, puis lance le script.
+Les motifs d'Ouest-France Immo, de Bien'ici et d'Etreproprio ont été testés le 20 octobre 2026. Si le script renvoie `n: 0` alors que la page affiche des annonces, ou des prix tous vides, le site a changé : lis la page comme avant (texte de la page) et signale-le dans la note de la source.
 
 Ensuite, envoie la liste au serveur, qui dit ce qui est nouveau :
 

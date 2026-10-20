@@ -4,14 +4,15 @@ Ce fichier complète la consigne de la tâche planifiée. Lis-le à chaque passa
 
 ## Travailler dans l'onglet du site
 
-Pour la recherche « plainpied » (la recherche « longere » garde son fichier data.json local tant que sa consigne le demande) : la liste se tient dans l'onglet https://damien-gustave.fr/maison/?r=<recherche>, sans fichier data.json local. Cet onglet ne sert qu'au site : les annonces s'ouvrent dans un autre onglet.
+Pour les deux recherches, il n'y a plus de fichier data.json local ni de renvoi de la liste complète.
+- Lecture : liste allégée (`data.php?r=<recherche>&leger=1`), gardée pour juger.
+- Tri des annonces lues : `nouveautes.php`.
+- Biens à revérifier : `suivi.php`.
+- Enregistrement : opérations envoyées à `patch.php`, au fil du passage.
 
-- Au début du passage : `window.D = JSON.parse(await (await fetch('data.php?r=<recherche>&x=' + Date.now())).text()); sessionStorage.setItem('D', JSON.stringify(D))`.
-- Après chaque modification (bien ajouté, lien, vus, sources…), sauvegarde : `sessionStorage.setItem('D', JSON.stringify(D))`. Si l'onglet a été rechargé, reprends avec `window.D = JSON.parse(sessionStorage.getItem('D'))`.
-- Galeries en attente (bien nouveau dont la galerie est relevée avant l'envoi) : garde-les dans `sessionStorage` sous la clé `G` et envoie-les à `photos.php` juste après l'envoi de la liste.
-- Envoie une première fois dès que l'étape 3 et la première source sont faites, puis à la fin : un passage interrompu ne perd ainsi presque rien.
-- Avant chaque envoi, sur une copie de D : supprime le champ `photos` de chaque bien (le serveur le garde), retire de vus les entrées de plus de 90 jours, vérifie qu'aucun id n'est en double et qu'aucune adresse n'est à la fois dans vus et dans les liens d'un bien. Envoie ensuite la copie avec `fetch('maj.php?r=<recherche>', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(copie)})`.
-- Après l'envoi, relis data.php : il donne les `num` des biens nouveaux. Reprends-le comme nouveau D.
+Tout est décrit dans outils.md. L'onglet du site ne sert qu'au site : les annonces s'ouvrent dans un autre onglet. Envoie une première fois dès la première source terminée, puis au fil du passage : un passage interrompu ne perd ainsi presque rien.
+
+Galeries en attente (bien nouveau dont la galerie est relevée avant son ajout) : envoie-les à `photos.php` juste après l'opération ajout.
 
 ## Lire les sites d'annonces
 
@@ -19,6 +20,8 @@ Pour la recherche « plainpied » (la recherche « longere » garde son fichier 
 - Une page de Bien'ici reste blanche tant que le panneau du navigateur ne l'affiche pas. Après chaque `navigate`, fais une capture d'écran réduite (`computer` screenshot, scale 0.1), attends 7 secondes, puis lis la page. Le titre de l'onglet (« Achat maison 5 pièces 117 m², … - 300 000 € ») suffit pour vérifier un prix.
 - La recherche a changé ses communes toute seule une fois (Castine-en-Plaine et Le Castelet retirées, Saint-Martin-de-Fontenay ajoutée) : filtre toujours toi-même sur la zone.
 - Si le champ « Surface du terrain » n'apparaît pas dans « Afficher tous les critères », ne le force pas : fais la seconde lecture (sans le critère plain-pied) triée par « Les plus récentes », jusqu'à la date dernier_ok.
+
+Pour SeLoger et Etreproprio, utilise les scripts ci-dessous plutôt que le script de liste générique d'outils.md. Envoie ensuite les adresses obtenues à `nouveautes.php` comme pour les autres sites.
 
 ### SeLoger
 - Le site n'a pas de filtre plain-pied. La recherche se fait en texte libre depuis la page d'accueil (« Nouvelle recherche ») : « maison à acheter à <commune> <code postal>, … jusqu'à 350000 euros ». Mets 5 communes au plus par recherche, chacune avec son code postal (sans lui, « Vendes » donne Montaigu-Vendée). Le titre de la page dit combien de communes ont été retenues (« Bayeux (+5) ») : relance avec celles qui manquent.
@@ -85,11 +88,11 @@ Chaque bien a un champ `surface` : la surface habitable en m², nombre entier (e
 
 ## Galerie de photos de chaque maison
 
-La page affiche toutes les photos d'une annonce, avec des flèches pour passer de l'une à l'autre. Le champ `photos` d'un bien est rempli par le serveur. Ne l'écris jamais toi-même dans data.json : le serveur garde la galerie quand le champ manque.
+La page affiche toutes les photos d'une annonce, avec des flèches pour passer de l'une à l'autre. Le champ `photos` d'un bien est rempli par le serveur. Ne l'envoie jamais toi-même dans une opération : il s'enregistre uniquement avec photos.php.
 
-Quand le faire : à l'étape 3, pour chaque bien actif dont `photos` est absent ou contient moins de 2 adresses, et pour chaque bien ajouté ce jour.
+Quand le faire : à l'étape 3, pour chaque bien de la liste `galerie` de suivi.php, et pour chaque bien ajouté ce jour.
 
-N'injecte aucun script extérieur dans une page d'annonce et ne fais pas changer de page à la fiche : le contrôle de sécurité le refuse (« Code from External », « Browser JS Exfil »). L'ancienne méthode (galerie.js, recevoir.html) est supprimée. La méthode ci-dessous lit la fiche puis envoie le résultat depuis l'onglet du site, comme pour data.json.
+N'injecte aucun script extérieur dans une page d'annonce et ne fais pas changer de page à la fiche : le contrôle de sécurité le refuse (« Code from External », « Browser JS Exfil »). L'ancienne méthode (galerie.js, recevoir.html) est supprimée. La méthode ci-dessous lit la fiche puis envoie le résultat depuis l'onglet du site.
 
 1. Ouvre la fiche du bien dans ton onglet d'annonces. Prends de préférence le lien Bien'ici, sinon Ouest-France Immo, puis Etreproprio, FNAIM ou iad. Attends que la page soit affichée (environ 4 secondes pour Bien'ici).
 2. Avec javascript_tool sur l'onglet de la fiche, lance exactement ce script de lecture. Il ne charge rien et ne change pas de page :
