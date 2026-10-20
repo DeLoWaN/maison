@@ -7,301 +7,392 @@
 <title>Recherche de maison</title>
 <script src="https://accounts.google.com/gsi/client" async></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bitter:wght@500;700&family=Source+Sans+3:wght@400;600;700&display=swap">
+<!-- Atkinson Hyperlegible : dessinée pour les lecteurs malvoyants. Barlow Condensed : chiffres des plaques de numéro. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&display=swap">
 <style>
-/* Une colonne de lecture, gros caractères ; maisons groupées par conseil, la plus récente en haut ; trois boutons de statut partagés par famille */
+/* Dossier familial de maisons à vendre, lu surtout par des retraités.
+   Repère principal : la plaque de numéro émaillée, dont la couleur dit où en est la famille
+   (même plaque sur la fiche et sur la carte). Le reste reste calme et très lisible. */
 :root {
-  --bg: #f2f3f0; --surface: #ffffff; --fg: #1b211e; --muted: #535d58; --line: #d4d9d5;
-  --accent: #2c5a40; --accent-soft: #e0ebe3;
-  --ok: #276f41; --ok-bg: #e2f0e6; --warn: #8a5d0c; --warn-bg: #f6ecd5;
-  --ko: #9c3426; --ko-bg: #f6e1dc; --unk: #535d58; --unk-bg: #eaece9;
-  --new: #1f4f8a; --new-bg: #e1eaf6;
-  --f-display: "Bitter", Georgia, "Times New Roman", serif;
-  --f-body: "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --lin: #eff2ef; --papier: #ffffff; --encre: #1f2a32; --gris: #55626b; --trait: #cfd6d2; --trait-fort: #9aa7a0;
+  --ardoise: #26323c; --ardoise-2: #34434f; --sur-ardoise: #f3f6f4; --sur-ardoise-2: #b9c6cf;
+  --s-visiter: #1d4f9c; --s-visitee: #2e6b3f; --s-non: #9a3b2b; --s-attente: #4a5864;
+  --ok: #2e6b3f; --ok-bg: #e3efe5; --warn: #855a0b; --warn-bg: #f5ead1;
+  --ko: #9a3b2b; --ko-bg: #f5e2dc; --unk: #55626b; --unk-bg: #e8ecea;
+  --nouv: #1d4f9c; --nouv-bg: #e1e9f5;
+  --lien: #1d4f9c; --focus: #1d4f9c;
+  --f-texte: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-plaque: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #131715; --surface: #1b201e; --fg: #e8ece9; --muted: #a2aca6; --line: #2f3633;
-    --accent: #8fc7a3; --accent-soft: #22332a;
-    --ok: #82d29b; --ok-bg: #1d3325; --warn: #e6bb62; --warn-bg: #392d15;
-    --ko: #f19484; --ko-bg: #3c201c; --unk: #a9b2ad; --unk-bg: #262c29;
-    --new: #9cc1f0; --new-bg: #1d2a3d;
+    --lin: #161c20; --papier: #1f272c; --encre: #e9eeeb; --gris: #a7b3ad; --trait: #33403f; --trait-fort: #55635f;
+    --ardoise: #0f1519; --ardoise-2: #1c252b; --sur-ardoise: #eef3f0; --sur-ardoise-2: #9fb0ba;
+    --s-visiter: #3d73c9; --s-visitee: #3f8a54; --s-non: #b9533f; --s-attente: #5f6f7b;
+    --ok: #86cf98; --ok-bg: #1d3424; --warn: #e3b85e; --warn-bg: #3a2e15;
+    --ko: #f09a86; --ko-bg: #3d221d; --unk: #a7b3ad; --unk-bg: #263033;
+    --nouv: #9dbff0; --nouv-bg: #1c2a40;
+    --lien: #9dbff0; --focus: #9dbff0;
     color-scheme: dark;
   }
 }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
-body {
-  margin: 0; background: var(--bg); color: var(--fg);
-  font-family: var(--f-body); font-size: 18px; line-height: 1.55;
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-block: 24px 56px;
-}
-.wrap { max-width: 860px; margin: 0 auto; display: grid; gap: 28px; }
-h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; }
-h1 { font-size: 1.9rem; line-height: 1.15; }
-h2 { font-size: 1.35rem; line-height: 1.25; }
-h3 { font-size: 1.15rem; line-height: 1.3; }
+body { margin: 0; background: var(--lin); color: var(--encre); font-family: var(--f-texte); font-size: 19px; line-height: 1.55; }
+h1, h2, h3 { margin: 0; text-wrap: balance; }
 p { margin: 0; }
-a { color: var(--accent); }
-a:focus-visible, summary:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
-header { display: grid; gap: 10px; }
-.maj { font-weight: 600; color: var(--muted); }
-.intro { max-width: 60ch; }
-.resume { display: flex; flex-wrap: wrap; gap: 8px; }
-.resume span { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; font-weight: 600; }
-.resume span.nouv { background: var(--new-bg); color: var(--new); border-color: transparent; }
-details.bloc { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
-details.bloc > summary { cursor: pointer; padding: 14px 16px; font-weight: 700; list-style-position: inside; }
-details.bloc > div { padding: 0 16px 16px; display: grid; gap: 12px; }
-.choix { margin: 0 0 22px; }
-.choix[hidden] { display: none; }
-.choix .q { margin: 0 0 10px; font-weight: 700; font-size: 1.1rem; }
-.onglets { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
-.onglets button { font: inherit; text-align: left; cursor: pointer; min-height: 76px; padding: 14px 18px; border-radius: 14px; border: 3px solid var(--line); background: var(--surface); color: var(--fg); display: grid; gap: 2px; }
-.onglets button .n { font-family: var(--f-display); font-size: 1.3rem; font-weight: 700; line-height: 1.2; }
-.onglets button .s { font-size: 1rem; color: var(--muted); }
-.onglets button:hover { border-color: var(--accent); }
-.onglets button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
-.onglets button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
-.onglets button[aria-pressed="true"] .s { color: var(--surface); opacity: .9; }
-.onglets button[aria-pressed="true"] .n::before { content: "✓ "; }
-.num { display: inline-block; width: max-content; justify-self: start; align-self: start; font-family: var(--f-display); font-weight: 700; font-size: 1.35rem; line-height: 1; padding: 8px 12px; border-radius: 10px; background: var(--fg); color: var(--bg); margin-bottom: 8px; }
-.card.repere { outline: 4px solid var(--new); outline-offset: 4px; }
-.trouver { margin: 14px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
-.trouver label { font-weight: 700; font-size: 1.05rem; }
-.trouver input { font: inherit; font-size: 1.2rem; width: 5.5em; min-height: 48px; padding: 6px 10px; border-radius: 10px; border: 2px solid var(--line); background: var(--surface); color: var(--fg); }
-.trouver button { font: inherit; font-weight: 700; font-size: 1.05rem; min-height: 48px; padding: 6px 16px; border-radius: 10px; border: 2px solid var(--accent); background: var(--accent); color: var(--surface); cursor: pointer; }
-.trouver output { flex-basis: 100%; color: var(--ko); font-weight: 600; }
-.ou { margin-top: 4px; }
-.ou > summary { cursor: pointer; display: inline-flex; align-items: center; min-height: 48px; padding: 8px 16px; border-radius: 10px; border: 2px solid var(--accent); color: var(--accent); font-weight: 700; list-style: none; }
-.ou > summary::-webkit-details-marker { display: none; }
-.ou > summary::before { content: "▸"; margin-right: 8px; }
-.ou[open] > summary { margin-bottom: 10px; }
-.ou[open] > summary::before { content: "▾"; }
-.ou .carte { height: 320px; }
-.outils-carte { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 8px; }
-.outils-carte button { font: inherit; font-weight: 700; min-height: 44px; padding: 6px 14px; border-radius: 10px; border: 2px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; }
-.leaflet-control-layers { font-size: 15px; }
-.chez-pin { position: relative; width: 34px; height: 44px; }
-.chez { position: absolute; left: 32px; top: 4px; white-space: nowrap; padding: 3px 8px; border-radius: 6px; border: 2px solid #fff; background: #2c5a40; color: #fff; font: 700 13px/1.2 var(--f-body); box-shadow: 0 1px 4px rgba(0,0,0,.4); }
-.leaflet-control-layers label { padding: 2px 0; }
-.carte { height: 230px; border-radius: 12px; border: 1px solid var(--line); background: var(--unk-bg); overflow: hidden; z-index: 0; }
-.carte .vide { display: grid; place-items: center; height: 100%; color: var(--muted); }
-.ou p { margin: 8px 0 0; color: var(--muted); font-size: 1rem; }
-.ou a { display: inline-block; margin-top: 6px; font-weight: 700; color: var(--accent); }
-.leaflet-container { font: inherit; }
-.criteres { margin: 0; padding-left: 22px; display: grid; gap: 4px; }
-.legende { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .95rem; color: var(--muted); }
-.legende span { display: inline-flex; align-items: center; gap: 8px; }
-.legende i { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
-section.groupe { display: grid; gap: 14px; }
-.groupe > p, .bloc > div > p.aide { color: var(--muted); max-width: 62ch; }
-.list { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(390px, 100%), 1fr)); align-items: start; }
-#appli:not([hidden]) { display: grid; gap: 28px; }
+a { color: var(--lien); text-underline-offset: 3px; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
 [hidden] { display: none !important; }
-/* Ordinateur : en-tête et carte d'ensemble côte à côte, maisons en plusieurs colonnes */
-@media (min-width: 1100px) {
-  .wrap { max-width: 1680px; }
-  #appli:not([hidden]) { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); column-gap: 32px; align-items: start; }
-  #appli > header { grid-column: 1; grid-row: 1; }
-  #appli > #d-criteres { grid-column: 1; grid-row: 2; }
-  #appli > .vue { grid-column: 2; grid-row: 1 / span 2; }
-  #appli > .vue .carte { height: 560px; }
-  #appli > #contenu, #appli > #d-sources, #appli > .session { grid-column: 1 / -1; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.gouttiere { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.large { max-width: 1680px; margin: 0 auto; }
+
+/* ---------- Plaque de numéro émaillée ---------- */
+.plaque {
+  --c: var(--s-attente);
+  display: inline-grid; place-items: center; min-width: 2.3em; height: 1.55em; padding: 0 .32em;
+  font: 700 2.1rem/1 var(--f-plaque); letter-spacing: .01em; font-variant-numeric: tabular-nums;
+  color: #fff; background: var(--c); border-radius: 7px;
+  box-shadow: inset 0 0 0 3px var(--c), inset 0 0 0 5px #fff, 0 2px 0 rgba(0, 0, 0, .18);
 }
-.vide { color: var(--muted); font-style: italic; }
-.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px; display: grid; gap: 14px; overflow: hidden; }
-.card.retiree { opacity: .8; }
-.photo { display: block; width: calc(100% + 36px); max-width: none; margin: -18px -18px 0; aspect-ratio: 4 / 3; max-height: 320px; object-fit: cover; background: var(--unk-bg); }
-.vide-photo { display: grid; place-items: center; color: var(--muted); font-size: .95rem; aspect-ratio: auto; height: 72px; }
+.plaque.s-a_visiter { --c: var(--s-visiter); }
+.plaque.s-visitee { --c: var(--s-visitee); }
+.plaque.s-pas_interesses { --c: var(--s-non); }
+.plaque.mini { font-size: 1rem; min-width: 2.2em; height: 1.7em; border-radius: 5px; box-shadow: inset 0 0 0 2px var(--c), inset 0 0 0 3.5px #fff, 0 1px 2px rgba(0, 0, 0, .4); }
+.plaque.mini.village { box-shadow: inset 0 0 0 2px var(--c), inset 0 0 0 3.5px #fff, 0 1px 2px rgba(0, 0, 0, .4); background: var(--papier); color: var(--c); outline: 2px dashed var(--c); outline-offset: 1px; }
+
+/* ---------- Bandeau ---------- */
+.bandeau { background: var(--ardoise); color: var(--sur-ardoise); }
+.bandeau .large { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 28px; padding-block: 14px; }
+.bandeau .nom { font: 700 1.5rem/1.1 var(--f-plaque); letter-spacing: .01em; margin-right: auto; }
+.onglets { display: flex; flex-wrap: wrap; gap: 8px; }
+.onglets button {
+  font: inherit; text-align: left; cursor: pointer; border-radius: 10px; padding: 8px 16px 9px; min-height: 52px;
+  border: 2px solid var(--ardoise-2); background: var(--ardoise-2); color: var(--sur-ardoise); display: grid; line-height: 1.25;
+}
+.onglets button .n { font-weight: 700; }
+.onglets button .s { font-size: .82rem; color: var(--sur-ardoise-2); max-width: 30ch; }
+.onglets button:hover { border-color: var(--sur-ardoise-2); }
+.onglets button[aria-pressed="true"] { background: var(--sur-ardoise); border-color: var(--sur-ardoise); color: var(--ardoise); }
+.onglets button[aria-pressed="true"] .s { color: var(--ardoise-2); }
+.bandeau :focus-visible { outline-color: #fff; }
+.trouver { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.trouver label { font-weight: 700; }
+.trouver .champ { display: inline-flex; align-items: center; gap: 6px; }
+.trouver .champ span { font: 700 1.5rem/1 var(--f-plaque); }
+.trouver input {
+  font: 700 1.6rem/1 var(--f-plaque); width: 3.6em; height: 48px; padding: 0 .3em; text-align: center; border-radius: 7px;
+  border: 0; background: var(--s-attente); color: #fff; box-shadow: inset 0 0 0 3px var(--s-attente), inset 0 0 0 5px #fff;
+}
+.trouver input::placeholder { color: rgba(255, 255, 255, .55); }
+.trouver button { font: inherit; font-weight: 700; height: 48px; padding: 0 18px; border-radius: 10px; border: 2px solid var(--sur-ardoise); background: transparent; color: var(--sur-ardoise); cursor: pointer; }
+.trouver button:hover { background: var(--sur-ardoise); color: var(--ardoise); }
+.trouver output { flex-basis: 100%; color: #ffd2c8; font-weight: 700; }
+.trouver output:empty { display: none; }
+@media (max-width: 700px) {
+  .bandeau .nom { display: none; }
+  .bandeau .large { gap: 10px; padding-block: 12px; }
+  #choix { width: 100%; }
+  .onglets { display: grid; grid-template-columns: 1fr 1fr; }
+  .onglets button { min-height: 48px; }
+  .onglets button .s { display: none; }
+  .trouver label { font-size: .95rem; }
+}
+
+/* ---------- Ouverture : résumé à gauche, carte à droite ---------- */
+main { display: grid; gap: 40px; padding-block: 28px 56px; }
+.ouverture { display: grid; gap: 24px; align-items: start; }
+.lecture { display: grid; gap: 18px; align-content: start; }
+.lecture h1 { font: 700 2.6rem/1.02 var(--f-plaque); letter-spacing: -.005em; }
+.maj { color: var(--gris); font-weight: 700; }
+.resume { font-size: 1.15rem; max-width: 36ch; }
+.resume b { font-variant-numeric: tabular-nums; }
+.resume .nouv { display: block; margin-bottom: 6px; color: var(--nouv); font-weight: 700; }
+.intro { color: var(--gris); max-width: 58ch; }
+.filtre { display: grid; gap: 8px; padding: 14px 16px 16px; border-radius: 12px; background: var(--papier); border: 2px solid var(--trait); }
+.filtre .q { font-weight: 700; }
+.filtre .btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.filtre button { font: inherit; font-weight: 700; min-height: 46px; padding: 6px 16px; border-radius: 999px; border: 2px solid var(--trait-fort); background: var(--papier); color: var(--encre); cursor: pointer; }
+.filtre button b { font-variant-numeric: tabular-nums; }
+.filtre button[aria-pressed="true"] { background: var(--ardoise); border-color: var(--ardoise); color: var(--sur-ardoise); }
+.filtre .aide { color: var(--gris); font-size: .95rem; }
+.vue { display: grid; gap: 10px; }
+.carte { border-radius: 12px; border: 1px solid var(--trait); background: var(--unk-bg); overflow: hidden; z-index: 0; }
+.vue .carte { height: 400px; }
+.carte .vide { display: grid; place-items: center; height: 100%; color: var(--gris); }
+.legende { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: .95rem; color: var(--gris); }
+.legende span { display: inline-flex; align-items: center; gap: 8px; }
+.legende .plaque.mini { font-size: .8rem; min-width: 1.9em; }
+.vue .aide { color: var(--gris); font-size: .95rem; }
+@media (min-width: 1100px) {
+  .ouverture { grid-template-columns: minmax(0, 5fr) minmax(0, 8fr); column-gap: 40px; }
+  .vue .carte { height: 560px; }
+  .lecture h1 { font-size: 3.1rem; }
+}
+
+/* ---------- Blocs repliables ---------- */
+details.bloc { background: var(--papier); border: 1px solid var(--trait); border-radius: 12px; }
+details.bloc > summary { cursor: pointer; padding: 14px 18px; font-weight: 700; display: flex; align-items: baseline; gap: 10px; list-style: none; }
+details.bloc > summary::-webkit-details-marker { display: none; }
+details.bloc > summary::before { content: "▸"; color: var(--gris); }
+details.bloc[open] > summary::before { content: "▾"; }
+details.bloc > div { padding: 0 18px 18px; display: grid; gap: 14px; }
+.criteres { margin: 0; padding-left: 22px; display: grid; gap: 4px; max-width: 70ch; }
+
+/* ---------- Groupes de maisons ---------- */
+.groupe { display: grid; gap: 16px; }
+.groupe > header { display: grid; gap: 4px; padding-top: 18px; border-top: 3px solid var(--ardoise); }
+.groupe h2 { font: 700 2rem/1.05 var(--f-plaque); display: flex; align-items: baseline; gap: 12px; }
+.groupe h2 .nb { font-size: 1.15rem; font-weight: 600; color: var(--gris); font-family: var(--f-texte); }
+.groupe > header p, details.groupe-replie .aide { color: var(--gris); max-width: 62ch; }
+details.groupe-replie > summary { font: 700 1.5rem/1.1 var(--f-plaque); padding: 16px 18px; }
+details.groupe-replie > summary .nb { font: 600 1.05rem/1 var(--f-texte); color: var(--gris); }
+.list { display: grid; gap: 22px 18px; grid-template-columns: repeat(auto-fill, minmax(min(380px, 100%), 1fr)); align-items: start; }
+.vide { color: var(--gris); font-style: italic; }
+.vide-filtre { padding: 18px; border-radius: 12px; border: 2px dashed var(--trait-fort); color: var(--gris); }
+
+/* ---------- Fiche d'une maison ---------- */
+.card { background: var(--papier); border: 1px solid var(--trait); border-radius: 14px; overflow: hidden; display: grid; scroll-margin-top: 16px; }
+.card.repere { outline: 4px solid var(--nouv); outline-offset: 3px; }
+.card.retiree { opacity: .82; }
+.illu { position: relative; }
+.photo { display: block; width: 100%; aspect-ratio: 4 / 3; max-height: 330px; object-fit: cover; background: var(--unk-bg); }
+.vide-photo { display: grid; place-items: center; color: var(--gris); height: 96px; aspect-ratio: auto; }
 .card.retiree .photo { filter: grayscale(1); }
-.galerie { position: relative; margin: -18px -18px 0; outline-offset: -4px; }
-.galerie .photo { margin: 0; width: 100%; }
-.gal-btn { position: absolute; top: 50%; transform: translateY(-50%); width: 52px; height: 52px; border-radius: 50%; border: 2px solid #fff; background: rgba(0,0,0,.55); color: #fff; font: 700 2.2rem/1 var(--f-body); padding: 0 0 4px; cursor: pointer; display: grid; place-items: center; z-index: 2; }
-.gal-btn:hover { background: rgba(0,0,0,.75); }
+.illu .plaque { position: absolute; left: 16px; bottom: 0; transform: translateY(45%); z-index: 3; }
+.galerie { position: relative; }
+.gal-btn { position: absolute; top: 50%; transform: translateY(-50%); width: 52px; height: 52px; border-radius: 50%; border: 2px solid #fff; background: rgba(20, 28, 34, .6); color: #fff; font: 700 2.2rem/1 var(--f-texte); padding: 0 0 4px; cursor: pointer; display: grid; place-items: center; z-index: 2; }
+.gal-btn:hover { background: rgba(20, 28, 34, .85); }
 .gal-prec { left: 10px; } .gal-suiv { right: 10px; }
-.gal-n { position: absolute; z-index: 2; right: 10px; bottom: 10px; padding: 3px 10px; border-radius: 999px; background: rgba(0,0,0,.6); color: #fff; font-weight: 700; font-size: .95rem; }
-.galerie.ko::after { content: "Photo indisponible"; position: absolute; inset: 0; display: grid; place-items: center; background: var(--unk-bg); color: var(--muted); }
-.tete { display: grid; gap: 4px; }
+.gal-n { position: absolute; z-index: 2; right: 10px; bottom: 10px; padding: 2px 10px; border-radius: 999px; background: rgba(20, 28, 34, .7); color: #fff; font-weight: 700; font-size: .92rem; font-variant-numeric: tabular-nums; }
+.galerie.ko::after { content: "Photo indisponible"; position: absolute; inset: 0; display: grid; place-items: center; background: var(--unk-bg); color: var(--gris); }
+.corps { padding: 40px 18px 18px; display: grid; gap: 16px; }
+.card:not(:has(.illu .plaque)) .corps { padding-top: 18px; }
+.tete { display: grid; gap: 6px; }
 .badges { display: flex; flex-wrap: wrap; gap: 6px; }
-.badge { font-size: .85rem; font-weight: 700; padding: 2px 10px; border-radius: 999px; }
-.badge.nouv { background: var(--new-bg); color: var(--new); }
+.badge { font-size: .88rem; font-weight: 700; padding: 2px 10px; border-radius: 6px; }
+.badge.nouv { background: var(--nouv-bg); color: var(--nouv); }
 .badge.baisse { background: var(--ok-bg); color: var(--ok); }
 .badge.retr { background: var(--ko-bg); color: var(--ko); }
-.lieu { color: var(--muted); }
-.prix { font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.surface { font-size: 1.15rem; font-weight: 600; font-variant-numeric: tabular-nums; }
-.ancien { color: var(--muted); text-decoration: line-through; font-weight: 400; font-size: 1rem; margin-left: 8px; }
-.statuts { display: grid; gap: 6px; }
-.statuts .q { font-weight: 700; font-size: .95rem; }
-.statuts .btns { display: flex; flex-wrap: wrap; gap: 8px; }
-.statuts button {
-  font: inherit; font-size: 1rem; font-weight: 600; min-height: 44px; padding: 8px 14px; border-radius: 999px; cursor: pointer;
-  border: 2px solid var(--line); background: var(--surface); color: var(--fg);
-}
-.statuts button[aria-pressed="true"][data-s="a_visiter"] { background: var(--new); border-color: var(--new); color: var(--surface); }
-.statuts button[aria-pressed="true"][data-s="visitee"] { background: var(--ok); border-color: var(--ok); color: var(--surface); }
-.statuts button[aria-pressed="true"][data-s="pas_interesses"] { background: var(--ko); border-color: var(--ko); color: var(--surface); }
+.badge.adr-forte { background: var(--ok-bg); color: var(--ok); }
+.badge.adr-probable { background: var(--warn-bg); color: var(--warn); }
+.tete h3 { font-size: 1.2rem; line-height: 1.3; }
+.lieu { color: var(--gris); }
+.chiffres { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 18px; }
+.prix { font-size: 1.55rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ancien { color: var(--gris); text-decoration: line-through; font-weight: 400; font-size: 1rem; margin-left: 8px; }
+.surface { font-weight: 700; font-variant-numeric: tabular-nums; }
+.surface small { font-weight: 400; color: var(--gris); font-size: .95rem; margin-left: 4px; }
+
+/* Statut : les trois boutons ont la couleur de la plaque qu'ils donnent */
+.statuts { display: grid; gap: 8px; }
+.statuts .q { font-weight: 700; }
+.statuts .btns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.statuts button { font: inherit; font-size: 1rem; font-weight: 700; min-height: 50px; padding: 6px 8px; border-radius: 10px; cursor: pointer; border: 2px solid var(--trait-fort); background: var(--papier); color: var(--encre); line-height: 1.2; }
+.statuts button[data-s="a_visiter"] { --c: var(--s-visiter); }
+.statuts button[data-s="visitee"] { --c: var(--s-visitee); }
+.statuts button[data-s="pas_interesses"] { --c: var(--s-non); }
+.statuts button:hover { border-color: var(--c); }
+.statuts button[aria-pressed="true"] { background: var(--c); border-color: var(--c); color: #fff; }
 .statuts button:disabled { opacity: .6; cursor: progress; }
-.avis-da { display: grid; gap: 6px; padding: 10px 12px; border-radius: 10px; border: 1px dashed var(--line); }
-.avis-da .q { font-weight: 700; font-size: .95rem; }
+.etat { font-size: .92rem; color: var(--gris); min-height: 1.2em; }
+@media (max-width: 380px) { .statuts .btns { grid-template-columns: 1fr; } }
+
+/* Avis de Damien et Aurélia */
+.avis-da { display: grid; gap: 8px; padding: 12px 14px; border-radius: 10px; background: var(--lin); }
+.avis-da .q { font-weight: 700; }
 .avis-da .btns { display: flex; flex-wrap: wrap; gap: 8px; }
-.avis-da button { font: inherit; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 6px 14px; border-radius: 999px; border: 2px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; }
+.avis-da button { font: inherit; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 6px 14px; border-radius: 999px; border: 2px solid var(--trait-fort); background: var(--papier); color: var(--encre); cursor: pointer; }
 .avis-da button:disabled { opacity: .6; cursor: progress; }
 .avis-da .pouce { display: inline-flex; }
 .avis-da .pouce.pour { color: var(--ok); }
 .avis-da .pouce.contre { color: var(--ko); transform: rotate(180deg); }
 .avis-da .pouce.neutre { color: var(--unk); transform: rotate(-90deg); }
-.avis-da button[aria-pressed="true"][data-a="neutre"] { background: var(--unk); border-color: var(--unk); color: var(--surface); }
-.avis-da.neutre { background: var(--unk-bg); border-style: solid; border-color: transparent; }
-.avis-da .comm { display: grid; gap: 4px; margin-top: 4px; font-weight: 600; font-size: .95rem; }
-.avis-da textarea { font: inherit; font-weight: 400; width: 100%; min-height: 80px; padding: 8px 10px; border-radius: 8px; border: 2px solid var(--line); background: var(--surface); color: var(--fg); resize: vertical; }
+.avis-da button[aria-pressed="true"][data-a="pour"] { background: var(--ok); border-color: var(--ok); color: var(--papier); }
+.avis-da button[aria-pressed="true"][data-a="contre"] { background: var(--ko); border-color: var(--ko); color: var(--papier); }
+.avis-da button[aria-pressed="true"][data-a="neutre"] { background: var(--unk); border-color: var(--unk); color: var(--papier); }
+.avis-da button[aria-pressed="true"] .pouce { color: var(--papier); }
+.avis-da .lu { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; }
+.avis-da.pour { background: var(--ok-bg); } .avis-da.contre { background: var(--ko-bg); } .avis-da.neutre { background: var(--unk-bg); }
+.avis-da .comm { display: grid; gap: 4px; margin-top: 2px; font-weight: 700; font-size: .95rem; }
+.avis-da textarea { font: inherit; font-weight: 400; width: 100%; min-height: 84px; padding: 8px 10px; border-radius: 8px; border: 2px solid var(--trait-fort); background: var(--papier); color: var(--encre); resize: vertical; }
 .avis-da .comm-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
-.avis-da .comm-ok { min-height: 40px; border-radius: 10px; border-color: var(--accent); color: var(--accent); }
-.avis-da .comm-etat { font-size: .9rem; color: var(--muted); }
+.avis-da .comm-ok { min-height: 42px; border-radius: 10px; }
+.avis-da .comm-etat { font-size: .92rem; color: var(--gris); }
 .avis-da .comm-lu { margin: 2px 0 0; font-style: italic; }
-.avis-da .comm-lu small { font-style: normal; color: var(--muted); }
-.avis-da button[aria-pressed="true"][data-a="pour"] { background: var(--ok); border-color: var(--ok); color: var(--surface); }
-.avis-da button[aria-pressed="true"][data-a="contre"] { background: var(--ko); border-color: var(--ko); color: var(--surface); }
-.avis-da button[aria-pressed="true"] .pouce { color: var(--surface); }
-.avis-da .etat { font-size: .9rem; color: var(--muted); min-height: 1.2em; }
-.avis-da .lu { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; }
-.avis-da.pour { background: var(--ok-bg); border-style: solid; border-color: transparent; }
-.avis-da.contre { background: var(--ko-bg); border-style: solid; border-color: transparent; }
-.statuts .etat { font-size: .9rem; color: var(--muted); min-height: 1.2em; }
-.crit { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr)); gap: 8px; }
-.c { display: grid; grid-template-columns: auto 1fr; gap: 0 10px; padding: 8px 10px; border-radius: 8px; font-size: 1rem; line-height: 1.4; }
-.c .dot { width: 12px; height: 12px; border-radius: 50%; margin-top: 5px; grid-row: 1 / span 2; }
-.c .k { font-size: .82rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--muted); }
-.c .v { min-width: 0; }
-.c.ok { background: var(--ok-bg); } .c.ok .dot { background: var(--ok); }
-.c.warn { background: var(--warn-bg); } .c.warn .dot { background: var(--warn); }
-.c.ko { background: var(--ko-bg); } .c.ko .dot { background: var(--ko); }
-.c.unk { background: var(--unk-bg); } .c.unk .dot { background: transparent; border: 2px solid var(--unk); }
-.questions { display: grid; gap: 4px; }
-.connexion { max-width: 560px; margin: 8vh auto 0; display: grid; gap: 16px; }
-.connexion h1 { margin: 0; }
-.connexion p { margin: 0; font-size: 1.1rem; line-height: 1.5; }
-.connexion .msg { color: var(--ko); font-weight: 600; }
-.session { margin: 28px 0 8px; color: var(--muted); font-size: 1rem; }
-.session button { font: inherit; background: none; border: 0; color: var(--accent); font-weight: 700; text-decoration: underline; cursor: pointer; padding: 0; }
-.adresse { margin-top: 16px; padding: 12px 14px 12px 16px; border-radius: 12px; border-left: 8px solid var(--unk); background: var(--unk-bg); display: grid; gap: 6px; }
+.avis-da .comm-lu small { font-style: normal; color: var(--gris); }
+
+/* Critères : un symbole par état, la couleur ne porte pas seule l'information */
+.crit { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(175px, 100%), 1fr)); gap: 2px 16px; }
+.c { display: grid; grid-template-columns: 1.6em 1fr; gap: 0 8px; padding: 7px 0; border-bottom: 1px solid var(--trait); font-size: 1rem; line-height: 1.38; }
+.c .sym { grid-row: 1 / span 2; width: 1.45em; height: 1.45em; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: .92rem; color: var(--papier); margin-top: 1px; }
+.c .k { font-weight: 700; }
+.c .v { color: var(--gris); min-width: 0; }
+.c.ok .sym { background: var(--ok); } .c.warn .sym { background: var(--warn); } .c.ko .sym { background: var(--ko); }
+.c.unk .sym { background: transparent; color: var(--unk); box-shadow: inset 0 0 0 2px var(--unk); }
+.c.ko .k { color: var(--ko); }
+
+/* Adresse retrouvée */
+.adresse { padding: 12px 14px 12px 16px; border-radius: 10px; border-left: 8px solid var(--unk); background: var(--unk-bg); display: grid; gap: 6px; }
 .adresse.forte { border-left-color: var(--ok); background: var(--ok-bg); }
 .adresse.probable { border-left-color: var(--warn); background: var(--warn-bg); }
 .adresse strong { display: block; }
 .adresse .txt { font-size: 1.2rem; font-weight: 700; }
-.adresse .conf { justify-self: start; display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 1.05rem; padding: 4px 12px; border-radius: 999px; color: var(--surface); background: var(--unk); }
+.adresse .conf { justify-self: start; display: inline-flex; align-items: center; gap: 8px; font-weight: 700; padding: 3px 12px; border-radius: 999px; color: var(--papier); background: var(--unk); }
 .adresse.forte .conf { background: var(--ok); }
 .adresse.probable .conf { background: var(--warn); }
 .adresse .jauge { letter-spacing: 2px; }
-.adresse p { margin: 0; font-size: 1rem; }
-.adresse details { color: var(--muted); font-size: .95rem; }
-.badge.adr-forte { background: var(--ok-bg); color: var(--ok); }
-.badge.adr-probable { background: var(--warn-bg); color: var(--warn); }
-.vue { display: grid; gap: 10px; }
-.vue .carte { height: 440px; }
-@media (max-width: 600px) { .vue .carte { height: 380px; } }
-.vue .legende i { width: 16px; height: 16px; border: 2px solid transparent; }
-.pt { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; border: 3px solid; font: 700 13px/1 var(--f-body); box-shadow: 0 1px 3px rgba(0,0,0,.35); }
-.pt.village { border-style: dashed; }
+.adresse p { font-size: 1rem; }
+.adresse details { color: var(--gris); font-size: .95rem; }
+.adresse summary { cursor: pointer; }
+
+/* Carte de la fiche */
+.ou > summary { cursor: pointer; display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 8px 16px; border-radius: 10px; border: 2px solid var(--trait-fort); font-weight: 700; list-style: none; }
+.ou > summary::-webkit-details-marker { display: none; }
+.ou > summary::before { content: "▸"; }
+.ou[open] > summary { margin-bottom: 10px; }
+.ou[open] > summary::before { content: "▾"; }
+.ou .carte { height: 320px; }
+.ou p { margin: 8px 0 0; color: var(--gris); font-size: 1rem; }
+.outils-carte { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 8px; }
+.outils-carte button { font: inherit; font-weight: 700; min-height: 44px; padding: 6px 14px; border-radius: 10px; border: 2px solid var(--trait-fort); background: var(--papier); color: var(--encre); cursor: pointer; }
+.outils-carte a { font-weight: 700; }
+.leaflet-container { font: inherit; }
+.leaflet-control-layers { font-size: 15px; }
+.leaflet-control-layers label { padding: 2px 0; }
 .leaflet-div-icon.pt-wrap { background: none; border: 0; }
-.vue .popup b { display: block; font-size: 1.05rem; }
-.vue .popup button { font: inherit; font-weight: 700; margin-top: 6px; padding: 6px 12px; border-radius: 8px; border: 0; background: var(--accent); color: var(--surface); cursor: pointer; }
-.questions strong { font-size: .95rem; }
+.chez-pin { position: relative; width: 34px; height: 44px; }
+.chez { position: absolute; left: 32px; top: 4px; white-space: nowrap; padding: 3px 8px; border-radius: 6px; border: 2px solid #fff; background: #26323c; color: #fff; font: 700 13px/1.2 var(--f-texte); box-shadow: 0 1px 4px rgba(0, 0, 0, .4); }
+.popup { display: grid; gap: 4px; font-size: 1rem; }
+.popup .plaque { justify-self: start; }
+.popup b { font-size: 1.05rem; line-height: 1.3; }
+.popup button { font: inherit; font-weight: 700; justify-self: start; margin-top: 4px; padding: 6px 12px; border-radius: 8px; border: 0; background: var(--ardoise); color: var(--sur-ardoise); cursor: pointer; }
+
+.questions { display: grid; gap: 4px; }
 .questions ul { margin: 0; padding-left: 22px; display: grid; gap: 2px; }
 .liens { display: grid; gap: 10px; }
-.lien a { display: inline-block; font-weight: 700; text-decoration: none; padding: 10px 16px; border-radius: 8px; background: var(--accent); color: var(--bg); }
+.lien a { display: inline-flex; align-items: center; min-height: 48px; font-weight: 700; text-decoration: none; padding: 8px 16px; border-radius: 10px; background: var(--ardoise); color: var(--sur-ardoise); }
 .lien a:hover { text-decoration: underline; }
-.lien small { display: block; color: var(--muted); font-size: .9rem; margin-top: 4px; }
+.lien small { display: block; color: var(--gris); font-size: .9rem; margin-top: 4px; }
 .lien small.nv { color: var(--warn); }
-.dates { font-size: .92rem; color: var(--muted); }
+.dates { font-size: .92rem; color: var(--gris); }
+
+/* ---------- Pied ---------- */
 .tablewrap { overflow-x: auto; }
 table { border-collapse: collapse; width: 100%; font-size: .95rem; min-width: 520px; }
-th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
-th { font-size: .8rem; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
-.pill { font-size: .82rem; font-weight: 700; padding: 2px 8px; border-radius: 4px; white-space: nowrap; }
+th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--trait); vertical-align: top; }
+th { font-size: .9rem; color: var(--gris); }
+.pill { font-size: .85rem; font-weight: 700; padding: 2px 8px; border-radius: 4px; white-space: nowrap; }
 .pill.ok { background: var(--ok-bg); color: var(--ok); }
 .pill.partiel { background: var(--warn-bg); color: var(--warn); }
 .pill.echec { background: var(--ko-bg); color: var(--ko); }
 .pill.nt { background: var(--unk-bg); color: var(--unk); }
-.erreur { background: var(--ko-bg); color: var(--ko); padding: 14px 16px; border-radius: 10px; font-weight: 600; }
+.session { color: var(--gris); font-size: 1rem; }
+.session button { font: inherit; background: none; border: 0; color: var(--lien); font-weight: 700; text-decoration: underline; cursor: pointer; padding: 0; }
+.erreur { background: var(--ko-bg); color: var(--ko); padding: 14px 16px; border-radius: 10px; font-weight: 700; }
+
+/* ---------- Connexion ---------- */
+.connexion { min-height: 100vh; display: grid; align-content: center; justify-items: start; gap: 18px; max-width: 34rem; margin: 0 auto; padding-block: 40px; }
+.connexion .plaque { font-size: 3rem; }
+.connexion h1 { font: 700 2.6rem/1.05 var(--f-plaque); }
+.connexion p { font-size: 1.1rem; }
+.connexion .msg { color: var(--ko); font-weight: 700; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .card.repere { animation: repere 1.2s ease-out 1; }
+  @keyframes repere { from { outline-color: transparent; outline-offset: 14px; } to { outline-color: var(--nouv); outline-offset: 3px; } }
+}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <section class="connexion" id="connexion" hidden>
-    <h1>Recherche de maison</h1>
-    <p>Cette page est réservée à la famille. Connectez-vous avec votre compte Google : il suffit de le faire une fois sur cet appareil.</p>
-    <div id="gbtn"></div>
-    <p class="msg" id="cnx-msg" aria-live="polite"></p>
-  </section>
-  <div id="appli" hidden>
-  <header>
-    <nav class="choix" id="choix" aria-label="Choisir la recherche" hidden>
-      <p class="q">Quelle recherche voulez-vous voir ?</p>
-      <div class="onglets" id="onglets"></div>
-    </nav>
-    <form class="trouver" id="trouver" autocomplete="off">
-      <label for="trouver-n">Retrouver la maison n°</label>
-      <input id="trouver-n" inputmode="numeric" pattern="[0-9]*" maxlength="5" aria-describedby="trouver-msg">
-      <button type="submit">Afficher</button>
-      <output id="trouver-msg" aria-live="polite"></output>
-    </form>
-    <h1 id="titre">Recherche de maison</h1>
-    <p class="maj" id="maj">Chargement…</p>
-    <p class="intro">Chaque jour de semaine, les sites d'annonces sont passés en revue. Les maisons qui correspondent à la recherche apparaissent ici. Sous chaque maison, trois boutons permettent de noter où vous en êtes : tout le monde voit le même choix.</p>
-    <div class="resume" id="resume"></div>
-  </header>
+<section class="connexion gouttiere" id="connexion" hidden>
+  <span class="plaque" aria-hidden="true">14</span>
+  <h1>Recherche de maison</h1>
+  <p>Cette page est réservée à la famille. Connectez-vous avec votre compte Google : une seule fois suffit sur cet appareil.</p>
+  <div id="gbtn"></div>
+  <p class="msg" id="cnx-msg" aria-live="polite"></p>
+</section>
 
-  <section class="vue" aria-labelledby="vue-titre">
-    <h2 id="vue-titre">Toutes les maisons sur la carte</h2>
-    <div class="legende" id="vue-legende">
-      <span><i style="background:var(--new)"></i>À visiter</span>
-      <span><i style="background:var(--ok)"></i>Visitée</span>
-      <span><i style="background:var(--ko)"></i>Pas intéressés</span>
-      <span><i style="background:var(--fg)"></i>Pas encore décidé</span>
-      <span><i style="background:var(--surface);border:2px dashed var(--fg)"></i>Rond pointillé : seulement le village, adresse pas retrouvée</span>
-      <span><i style="background:#2c5a40"></i>Épingle verte : chez Damien et Aurélia</span>
+<div id="appli" hidden>
+  <div class="bandeau gouttiere">
+    <div class="large">
+      <span class="nom">Recherche de maison</span>
+      <nav id="choix" aria-label="Choisir la recherche" hidden><div class="onglets" id="onglets"></div></nav>
+      <form class="trouver" id="trouver" autocomplete="off">
+        <label for="trouver-n">Retrouver la maison</label>
+        <span class="champ"><span aria-hidden="true">n°</span><input id="trouver-n" inputmode="numeric" pattern="[0-9]*" maxlength="5" placeholder="34" aria-describedby="trouver-msg"></span>
+        <button type="submit">Afficher</button>
+        <output id="trouver-msg" aria-live="polite"></output>
+      </form>
     </div>
-    <div class="carte" id="vue-carte"></div>
-    <p class="aide">Le numéro dans chaque rond est celui de la maison. Touchez un rond pour voir la maison et aller à sa fiche.</p>
-  </section>
-
-  <details class="bloc" id="d-criteres">
-    <summary>Ce qu'on cherche</summary>
-    <div>
-      <ul class="criteres" id="criteres"></ul>
-      <div class="legende">
-        <span><i style="background:var(--ok)"></i>conforme</span>
-        <span><i style="background:var(--warn)"></i>limite ou travaux à prévoir</span>
-        <span><i style="background:var(--ko)"></i>ne va pas</span>
-        <span><i style="border:2px solid var(--unk)"></i>pas indiqué dans l'annonce</span>
-      </div>
-      <p>Les annonces donnent rarement tous les détails : un rond vide veut dire « pas indiqué », pas « absent ». Prix et disponibilité sont à confirmer avec l'agence avant toute visite.</p>
-    </div>
-  </details>
-
-  <div id="contenu"></div>
-
-  <details class="bloc" id="d-sources">
-    <summary>Comment la recherche est faite</summary>
-    <div>
-      <p id="src-resume"></p>
-      <div class="tablewrap"><table><thead><tr><th>Site</th><th>Dernier passage</th><th>Détail</th></tr></thead><tbody id="src-body"></tbody></table></div>
-      <p id="note-passage"></p>
-    </div>
-  </details>
-  <p class="session" id="session"></p>
   </div>
+
+  <main class="large gouttiere">
+    <div class="ouverture">
+      <div class="lecture">
+        <h1 id="titre">Recherche de maison</h1>
+        <p class="maj" id="maj">Chargement…</p>
+        <p class="resume" id="resume"></p>
+        <div class="filtre" id="filtre" role="group" aria-labelledby="filtre-q" hidden>
+          <span class="q" id="filtre-q">Avis de Damien et Aurélia</span>
+          <div class="btns" id="filtre-btns"></div>
+          <span class="aide" id="filtre-aide"></span>
+        </div>
+        <p class="intro">Chaque jour de semaine, les sites d'annonces sont passés en revue. Les maisons qui correspondent apparaissent ici, de la plus prometteuse à la moins prometteuse. Sous chaque maison, trois boutons notent où vous en êtes : toute la famille voit le même choix, et la plaque de la maison prend sa couleur.</p>
+        <details class="bloc" id="d-criteres">
+          <summary>Ce qu'on cherche</summary>
+          <div>
+            <ul class="criteres" id="criteres"></ul>
+            <ul class="crit" aria-label="Signification des symboles">
+              <li class="c ok"><span class="sym" aria-hidden="true">✓</span><span class="k">Conforme</span><span class="v">D'après l'annonce</span></li>
+              <li class="c warn"><span class="sym" aria-hidden="true">!</span><span class="k">Limite</span><span class="v">Ou travaux à prévoir</span></li>
+              <li class="c ko"><span class="sym" aria-hidden="true">✗</span><span class="k">Ne va pas</span><span class="v">Point qui pose problème</span></li>
+              <li class="c unk"><span class="sym" aria-hidden="true">?</span><span class="k">Pas indiqué</span><span class="v">À demander à l'agence</span></li>
+            </ul>
+            <p>Les annonces donnent rarement tous les détails : « pas indiqué » ne veut pas dire « absent ». Prix et disponibilité sont à confirmer avec l'agence avant toute visite.</p>
+          </div>
+        </details>
+      </div>
+
+      <section class="vue" aria-labelledby="vue-titre">
+        <h2 id="vue-titre" class="sr">Les maisons sur la carte</h2>
+        <div class="carte" id="vue-carte"></div>
+        <div class="legende">
+          <span><span class="plaque mini s-a_visiter">12</span>À visiter</span>
+          <span><span class="plaque mini s-visitee">12</span>Visitée</span>
+          <span><span class="plaque mini s-pas_interesses">12</span>Pas intéressés</span>
+          <span><span class="plaque mini">12</span>Pas encore décidé</span>
+          <span><span class="plaque mini village">12</span>Seulement le village, adresse pas retrouvée</span>
+          <span><svg width="20" height="26" viewBox="0 0 34 44" aria-hidden="true"><path d="M17 2C8.7 2 2 8.6 2 16.8 2 28 17 42 17 42s15-14 15-25.2C32 8.6 25.3 2 17 2z" fill="#26323c" stroke="#fff" stroke-width="3"/><path d="M17 9.5 9.5 16h2v7h4v-4.5h3V23h4v-7h2z" fill="#fff"/></svg>Chez Damien et Aurélia</span>
+        </div>
+        <p class="aide">Touchez une plaque pour voir la maison et aller à sa fiche.</p>
+      </section>
+    </div>
+
+    <div id="contenu"></div>
+
+    <details class="bloc" id="d-sources">
+      <summary>Comment la recherche est faite</summary>
+      <div>
+        <p id="src-resume"></p>
+        <div class="tablewrap"><table><thead><tr><th>Site</th><th>Dernier passage</th><th>Détail</th></tr></thead><tbody id="src-body"></tbody></table></div>
+        <p id="note-passage"></p>
+      </div>
+    </details>
+    <p class="session" id="session"></p>
+  </main>
 </div>
 
 <script>
 const CRIT = { zone: "Lieu", pierre: "Caractère", rdc: "Chambre en bas", ch: "Chambres", terrain: "Terrain", dep: "Atelier, garage", wc: "WC séparés", budget: "Budget" };
+const SYM = { ok: ["✓", "conforme"], warn: ["!", "limite"], ko: ["✗", "ne va pas"], unk: ["?", "pas indiqué"] };
 const STATUTS = [["a_visiter", "À visiter"], ["visitee", "Visitée"], ["pas_interesses", "Pas intéressés"]];
 const GROUPES = [
   { k: "top", titre: "À appeler en priorité", texte: "Tout correspond, ou presque, d'après l'annonce.", ouvert: true },
@@ -311,8 +402,6 @@ const GROUPES = [
   { k: "retiree", titre: "Plus en vente", texte: "Annonces retirées depuis qu'elles ont été repérées.", ouvert: false }
 ];
 const ST = { ok: "Lu en entier", partiel: "Lu en partie", echec: "Échec", nt: "Pas encore lu" };
-// Si le serveur n'a pas pu récupérer la photo (site qui refuse l'hébergeur), le navigateur
-// du visiteur la charge directement depuis le site d'annonces ; sinon, « Pas de photo ».
 // ---- Galerie de photos : flèches gauche / droite, glisser du doigt sur téléphone ----
 // Les photos s'affichent depuis le site de l'annonce ; la première peut retomber sur la copie du serveur.
 const GAL = {};
@@ -365,7 +454,7 @@ function secoursPhoto(img) {
   d.className = "photo vide-photo"; d.textContent = "Pas de photo";
   img.replaceWith(d);
 }
-const esc = s =>String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const euros = n => n == null ? "Prix non indiqué" : n.toLocaleString("fr-FR") + " €";
 const jour = iso => iso ? new Date(iso.slice(0, 10) + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long" }) : "";
 const jourLong = iso => new Date(iso + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -377,8 +466,17 @@ function estNouveau(b) {
   return derniereVisite ? b.repere_le > derniereVisite : true;
 }
 
+// Plaque de numéro : sa couleur suit le choix de la famille (même plaque sur la fiche et sur la carte).
+const statutDe = b => (S[b.id] || {}).statut || "";
+const libelleStatut = s => (STATUTS.find(x => x[0] === s) || [, "pas encore décidé"])[1].toLowerCase();
+function plaque(b, mini, village) {
+  if (!b.num) return "";
+  const s = statutDe(b);
+  return `<span class="plaque${mini ? " mini" : ""}${village ? " village" : ""}${s ? " s-" + s : ""}" title="Maison n° ${esc(b.num)}, ${esc(libelleStatut(s))}">${esc(b.num)}</span>`;
+}
+
 function boutons(b) {
-  const cur = (S[b.id] || {}).statut || "";
+  const cur = statutDe(b);
   const quand = S[b.id] ? `Noté le ${jour(S[b.id].le)}` : "";
   return `<div class="statuts" data-id="${esc(b.id)}">
     <span class="q">Où en êtes-vous ?</span>
@@ -387,7 +485,7 @@ function boutons(b) {
   </div>`;
 }
 
-// Avis de Damien et Aurélia : deux pouces, à part des boutons des parents (eux le voient sans pouvoir le changer).
+// Avis de Damien et Aurélia : trois pouces, à part des boutons des parents (eux le voient sans pouvoir le changer).
 const POUCE = `<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M2 21h3V9H2v12zm20-11c0-1.1-.9-2-2-2h-6.3l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L13.17 1 6.59 7.59C6.22 7.95 6 8.45 6 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>`;
 const AVIS = [["pour", "On aime"], ["neutre", "Sans avis"], ["contre", "Pas pour nous"]];
 const libelleAvis = a => (AVIS.find(x => x[0] === a) || [, ""])[1];
@@ -400,7 +498,7 @@ function avisHtml(b) {
     return `<div class="avis-da${a ? " " + a : ""}"><span class="q">Avis de Damien et Aurélia</span><span class="lu">${a ? `<span class="pouce ${a}">${POUCE}</span>` : ""}${etat}</span>${comm}</div>`;
   }
   return `<div class="avis-da" data-id="${esc(b.id)}">
-    <span class="q">Avis de Damien et Aurélia</span>
+    <span class="q">Votre avis, Damien et Aurélia</span>
     <div class="btns">${AVIS.map(([k, l]) => `<button type="button" data-a="${k}" aria-pressed="${a === k}"><span class="pouce ${k}">${POUCE}</span>${l}</button>`).join("")}</div>
     <span class="etat" aria-live="polite">${a ? esc(libelleAvis(a)) + qui(e.par, e.le) : ""}</span>
     <label class="comm"><span>Votre commentaire</span>
@@ -417,7 +515,10 @@ async function envoyerAvis(box, corps, zone, attente) {
     const r = await fetch("api.php?avis=1&r=" + encodeURIComponent(R), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(Object.assign({ id }, corps)) });
     if (!r.ok) throw new Error(r.status);
     A = await r.json();
+    // On remplace seulement le bloc d'avis : la fiche reste à l'écran même si elle ne répond plus au filtre,
+    // pour pouvoir encore écrire un commentaire. Elle quittera la liste au prochain affichage.
     box.outerHTML = avisHtml(D.biens.find(b => b.id === id));
+    filtreHtml();
   } catch (err) {
     box.querySelectorAll("button").forEach(x => x.disabled = false);
     box.querySelector(zone).textContent = "Pas enregistré : vérifiez la connexion et réessayez.";
@@ -436,6 +537,35 @@ document.addEventListener("input", ev => {
   if (!ev.target.matches(".avis-da textarea")) return;
   const z = ev.target.closest(".avis-da").querySelector(".comm-etat");
   if (z) z.textContent = "Pas encore enregistré";
+});
+
+// ---- Filtre de Damien et Aurélia : toutes les maisons, celles sans avis, celles déjà notées ----
+// « Sans avis » (le pouce couché) compte comme un avis donné ; un commentaire seul, non.
+const FILTRES = [["toutes", "Toutes"], ["sans", "Sans notre avis"], ["avec", "Déjà notées"]];
+let FILTRE = "toutes";
+try { FILTRE = localStorage.getItem("filtre-avis") || "toutes"; } catch (e) {}
+const aUnAvis = b => !!(A[b.id] && A[b.id].avis);
+function passeFiltre(b) {
+  if (!AVISEUR || FILTRE === "toutes") return true;
+  if (b.etat !== "active") return false;
+  return FILTRE === "sans" ? !aUnAvis(b) : aUnAvis(b);
+}
+function filtreHtml() {
+  const box = document.getElementById("filtre");
+  if (!AVISEUR || !D) { box.hidden = true; return; }
+  box.hidden = false;
+  const actifs = D.biens.filter(b => b.etat === "active");
+  const nAvec = actifs.filter(aUnAvis).length, nb = { toutes: actifs.length, sans: actifs.length - nAvec, avec: nAvec };
+  document.getElementById("filtre-btns").innerHTML = FILTRES.map(([k, l]) => `<button type="button" data-f="${k}" aria-pressed="${FILTRE === k}">${l} <b>${nb[k]}</b></button>`).join("");
+  document.getElementById("filtre-aide").textContent = FILTRE === "sans"
+    ? "Seules les maisons en vente sans votre avis sont affichées. Une fois votre avis donné, la fiche reste visible jusqu'au prochain affichage."
+    : FILTRE === "avec" ? "Seules les maisons en vente déjà notées sont affichées." : "Vos parents voient toujours toutes les maisons.";
+}
+document.addEventListener("click", ev => {
+  const b = ev.target.closest("#filtre-btns button"); if (!b) return;
+  FILTRE = b.dataset.f;
+  try { localStorage.setItem("filtre-avis", FILTRE); } catch (e) {}
+  rendre();
 });
 
 // Adresse retrouvée par recoupement de données publiques : la confiance doit se voir d'un coup d'œil.
@@ -472,7 +602,7 @@ function carte(b) {
   ].join("");
   const liens = (b.liens || []).map(l => `
     <div class="lien">
-      <a href="${esc(l.url)}" target="_blank" rel="noopener">Voir l'annonce · ${esc(l.site)}</a>
+      <a href="${esc(l.url)}" target="_blank" rel="noopener">Voir l'annonce sur ${esc(l.site)}</a>
       ${b.etat === "retiree" ? "" : l.ok
         ? `<small>Annonce vérifiée en ligne le ${jour(b.verifie_le || D.maj)}</small>`
         : `<small class="nv">Le site ne répondait pas lors de la vérification : le lien peut ne plus marcher</small>`}
@@ -482,27 +612,31 @@ function carte(b) {
   const photo = gal.length > 1 ? galerieHtml(b, gal) : (b.photo || b.photo_url)
     ? `<img class="photo" src="photo.php?r=${encodeURIComponent(R)}&id=${encodeURIComponent(b.id)}" data-secours="${esc(/^https:\/\//.test(b.photo_url || "") ? b.photo_url : "")}" onerror="secoursPhoto(this)" alt="Photo de l'annonce : ${esc(b.titre)}" loading="lazy">`
     : `<div class="photo vide-photo">Pas de photo</div>`;
+  const parM2 = b.prix && b.surface ? `<small>soit ${Math.round(b.prix / b.surface).toLocaleString("fr-FR")} € le m²</small>` : "";
   return `
-  <article class="card${b.etat === "retiree" ? " retiree" : ""}" id="${esc(b.id)}">
-    ${photo}
-    <div class="tete">
-      ${b.num ? `<div class="num" title="Numéro de la maison, pour en parler facilement">N° ${esc(b.num)}</div>` : ""}
-      ${badges ? `<div class="badges">${badges}</div>` : ""}
-      <h3>${esc(b.titre)}</h3>
-      <div class="lieu">${esc(b.lieu)}</div>
-      <div class="prix">${euros(b.prix)}${baisse ? `<span class="ancien">${premier.toLocaleString("fr-FR")} €</span>` : ""}</div>
-      ${b.surface ? `<div class="surface">${esc(b.surface)} m² habitables${b.prix ? ` · ${Math.round(b.prix / b.surface).toLocaleString("fr-FR")} € le m²` : ""}</div>` : ""}
+  <article class="card${b.etat === "retiree" ? " retiree" : ""}" id="${esc(b.id)}" aria-label="Maison n° ${esc(b.num || "")}">
+    <div class="illu">${photo}${plaque(b)}</div>
+    <div class="corps">
+      <div class="tete">
+        ${badges ? `<div class="badges">${badges}</div>` : ""}
+        <h3>${esc(b.titre)}</h3>
+        <div class="lieu">${esc(b.lieu)}</div>
+        <div class="chiffres">
+          <span class="prix">${euros(b.prix)}${baisse ? `<span class="ancien">${premier.toLocaleString("fr-FR")} €</span>` : ""}</span>
+          ${b.surface ? `<span class="surface">${esc(b.surface)} m² habitables${parM2}</span>` : ""}
+        </div>
+      </div>
+      ${b.etat === "active" ? boutons(b) : ""}
+      ${b.etat === "active" ? avisHtml(b) : ""}
+      <ul class="crit">
+        ${Object.keys(CRIT).map(k => { const c = (b.crit || {})[k] || ["unk", "Non indiqué"]; const s = SYM[c[0]] || SYM.unk; return `<li class="c ${c[0]}"><span class="sym" aria-hidden="true">${s[0]}</span><span class="k">${esc((D.libelles || {})[k] || CRIT[k])}<span class="sr"> : ${s[1]}</span></span><span class="v">${esc(c[1])}</span></li>`; }).join("")}
+      </ul>
+      ${blocAdresse(b)}
+      <details class="ou"><summary>Voir où elle se trouve</summary><div class="carte" data-carte="${esc(b.id)}"></div><p data-carte-note="${esc(b.id)}"></p></details>
+      ${(b.verifier || []).length ? `<div class="questions"><strong>À demander à l'agence</strong><ul>${b.verifier.map(v => `<li>${esc(v)}</li>`).join("")}</ul></div>` : ""}
+      <div class="liens">${liens}</div>
+      <div class="dates">Repérée le ${jour(b.repere_le)}</div>
     </div>
-    ${b.etat === "active" ? boutons(b) : ""}
-    ${b.etat === "active" ? avisHtml(b) : ""}
-    <div class="crit">
-      ${Object.keys(CRIT).map(k => { const c = (b.crit || {})[k] || ["unk", "Non indiqué"]; return `<div class="c ${c[0]}"><span class="dot"></span><span class="k">${(D.libelles || {})[k] || CRIT[k]}</span><span class="v">${esc(c[1])}</span></div>`; }).join("")}
-    </div>
-    ${blocAdresse(b)}
-    <details class="ou"><summary>Voir où elle se trouve</summary><div class="carte" data-carte="${esc(b.id)}"></div><p data-carte-note="${esc(b.id)}"></p></details>
-    ${(b.verifier || []).length ? `<div class="questions"><strong>À demander à l'agence</strong><ul>${b.verifier.map(v => `<li>${esc(v)}</li>`).join("")}</ul></div>` : ""}
-    <div class="liens">${liens}</div>
-    <div class="dates">Repérée le ${jour(b.repere_le)}</div>
   </article>`;
 }
 
@@ -555,9 +689,9 @@ const PHOTO = "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1
 // Épingles de taille fixe (en pixels) : elles restent visibles quel que soit le zoom.
 const epingle = (coul, txt) => L.divIcon({ className: "pt-wrap", iconSize: [34, 44], iconAnchor: [17, 42],
   html: `<svg width="34" height="44" viewBox="0 0 34 44" aria-hidden="true"><path d="M17 2C8.7 2 2 8.6 2 16.8 2 28 17 42 17 42s15-14 15-25.2C32 8.6 25.3 2 17 2z" fill="${coul}" stroke="#fff" stroke-width="3"/><text x="17" y="21" text-anchor="middle" font-size="13" font-weight="700" fill="#fff" font-family="system-ui,sans-serif">${txt}</text></svg>` });
-// Repère « chez Damien et Aurélia » (centre de Vendes) : une étiquette avec une petite maison, différente des épingles.
+// Repère « chez Damien et Aurélia » : épingle ardoise avec une petite maison et l'étiquette.
 const CHEZ = () => L.divIcon({ className: "pt-wrap", iconSize: [34, 44], iconAnchor: [17, 42],
-  html: `<div class="chez-pin"><svg width="34" height="44" viewBox="0 0 34 44" aria-hidden="true"><path d="M17 2C8.7 2 2 8.6 2 16.8 2 28 17 42 17 42s15-14 15-25.2C32 8.6 25.3 2 17 2z" fill="#2c5a40" stroke="#fff" stroke-width="3"/><path d="M17 9.5 9.5 16h2v7h4v-4.5h3V23h4v-7h2z" fill="#fff"/></svg><span class="chez">Damien et Aurélia</span></div>` });
+  html: `<div class="chez-pin"><svg width="34" height="44" viewBox="0 0 34 44" aria-hidden="true"><path d="M17 2C8.7 2 2 8.6 2 16.8 2 28 17 42 17 42s15-14 15-25.2C32 8.6 25.3 2 17 2z" fill="#26323c" stroke="#fff" stroke-width="3"/><path d="M17 9.5 9.5 16h2v7h4v-4.5h3V23h4v-7h2z" fill="#fff"/></svg><span class="chez">Damien et Aurélia</span></div>` });
 // Position de chez Damien et Aurélia : enregistrée côté serveur (lieux.php, réservé à la famille) ;
 // à défaut, le centre de Vendes.
 let PLIEUX = null;
@@ -570,6 +704,7 @@ function fondsCarte(carte) {
   const photo = L.tileLayer(PHOTO, { maxZoom: 19, attribution: "© IGN" });
   L.control.layers({ "Plan": plan, "Photo aérienne": photo }, null, { collapsed: false, position: "topright" }).addTo(carte);
 }
+const couleurVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 function dessinerCarte(el) {
   if (el.dataset.fait) return; el.dataset.fait = "1";
   const b = (D.biens || []).find(x => x.id === el.dataset.carte);
@@ -583,10 +718,11 @@ function dessinerCarte(el) {
     const exact = !!(p.adresse || p.precis);
     const carte = L.map(el, { dragging: !L.Browser.mobile, scrollWheelZoom: false, tap: false });
     fondsCarte(carte);
+    const rouge = couleurVar("--s-non") || "#9a3b2b";
     if (exact) {
-      L.marker(ici, { icon: epingle("#9c3426", ""), title: "La maison à vendre" }).addTo(carte);
+      L.marker(ici, { icon: epingle(rouge, ""), title: "La maison à vendre" }).addTo(carte);
     } else {
-      L.circle(ici, { radius: 1100, color: "#9c3426", weight: 3, dashArray: "8 6", fillColor: "#9c3426", fillOpacity: .12 }).addTo(carte);
+      L.circle(ici, { radius: 1100, color: rouge, weight: 3, dashArray: "8 6", fillColor: rouge, fillOpacity: .12 }).addTo(carte);
     }
     if (vv && norm(p.nom) !== "vendes") L.marker(vv, { icon: CHEZ(), title: "Chez Damien et Aurélia", zIndexOffset: -100 }).addTo(carte);
     const prochePlan = () => carte.setView(ici, exact ? 17 : 13);
@@ -597,7 +733,7 @@ function dessinerCarte(el) {
       ? (b.adresse.confiance === "forte" ? "L'épingle rouge, c'est la maison à vendre (adresse retrouvée)." : "L'épingle rouge, c'est la maison à vendre (adresse probable, à confirmer).")
       : p.precis ? "L'épingle rouge, c'est la maison à vendre (adresse donnée par l'annonce)."
       : `La zone rouge, c'est le village de la maison à vendre (${p.nom}) : l'adresse exacte n'est pas connue.`;
-    note.textContent = quoi + (vv ? ` L'épingle verte (petite maison blanche), c'est chez Damien et Aurélia : ${km >= 1 ? "environ " + km + " km" : "moins d'un kilomètre"} à vol d'oiseau.` : "");
+    note.textContent = quoi + (vv ? ` L'épingle grise avec une petite maison, c'est chez Damien et Aurélia : ${km >= 1 ? "environ " + km + " km" : "moins d'un kilomètre"} à vol d'oiseau.` : "");
     const outils = document.createElement("div"); outils.className = "outils-carte";
     const bouton = (txt, f) => { const x = document.createElement("button"); x.type = "button"; x.textContent = txt; x.onclick = f; outils.append(x); };
     if (exact) bouton("Voir la maison de près", prochePlan);
@@ -615,26 +751,21 @@ const obsCartes = "IntersectionObserver" in window
 function preparerCartes() {
   document.querySelectorAll(".carte[data-carte]").forEach(el => obsCartes ? obsCartes.observe(el) : dessinerCarte(el));
 }
-// ---- Carte d'ensemble : toutes les maisons en vente de la recherche affichée, couleur selon le statut ----
+// ---- Carte d'ensemble : une plaque par maison en vente, de la couleur du choix de la famille ----
 let VUE = null, VUE_R = null, VUE_N = 0;
-function couleurStatut(b) {
-  const cs = getComputedStyle(document.documentElement), v = n => cs.getPropertyValue(n).trim();
-  const s = (S[b.id] || {}).statut;
-  return s === "a_visiter" ? v("--new") : s === "visitee" ? v("--ok") : s === "pas_interesses" ? v("--ko") : v("--fg");
-}
 function allerA(id) {
   const el = document.getElementById(id);
   if (!el) return;
   const det = el.closest("details"); if (det && !det.open) { det.open = true; preparerCartes(); }
   document.querySelectorAll(".card.repere").forEach(c => c.classList.remove("repere"));
   el.classList.add("repere");
-  el.scrollIntoView({ behavior: "smooth", block: "start" });
+  el.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
 }
 async function dessinerVue() {
   const el = document.getElementById("vue-carte");
   if (typeof L === "undefined") { el.innerHTML = `<div class="vide">Carte indisponible</div>`; return; }
   const tour = ++VUE_N;
-  const biens = (D.biens || []).filter(b => b.etat === "active");
+  const biens = (D.biens || []).filter(b => b.etat === "active" && passeFiltre(b));
   let g;
   try { g = await geoCalvados(); } catch (e) { el.innerHTML = `<div class="vide">Carte indisponible pour le moment</div>`; return; }
   const pos = await Promise.all(biens.map(b => situerPrecis(b, g).catch(() => null)));
@@ -645,7 +776,6 @@ async function dessinerVue() {
     VUE.couche = L.layerGroup().addTo(VUE);
   }
   VUE.couche.clearLayers();
-  const fond = getComputedStyle(document.documentElement).getPropertyValue("--surface").trim();
   const vus = {}, pts = [];
   biens.forEach((b, i) => {
     const p = pos[i]; if (!p) return;
@@ -655,11 +785,10 @@ async function dessinerVue() {
     const n = vus[k] = (vus[k] || 0) + 1;
     if (n > 1) { const a = n * 2.4, r = 0.0016 * Math.sqrt(n); ll = [ll[0] + r * Math.sin(a), ll[1] + r * 1.5 * Math.cos(a)]; }
     pts.push(ll);
-    const c = couleurStatut(b), exact = !!(p.adresse || p.precis);
-    const icon = L.divIcon({ className: "pt-wrap", iconSize: [30, 30], iconAnchor: [15, 15],
-      html: `<div class="pt${exact ? "" : " village"}" style="border-color:${c};background:${exact ? c : fond};color:${exact ? fond : c}">${esc(b.num || "•")}</div>` });
-    L.marker(ll, { icon, title: `N° ${b.num || ""} · ${b.titre}`, keyboard: true }).addTo(VUE.couche)
-      .bindPopup(`<div class="popup"><b>N° ${esc(b.num || "")} · ${esc(b.titre)}</b>${esc(b.lieu || "")} · ${euros(b.prix)}${b.surface ? ` · ${esc(b.surface)} m²` : ""}<br>${adresseConnue(b) ? esc(b.adresse.texte) + (b.adresse.confiance === "forte" ? "" : " (probable)") : "Adresse pas retrouvée : position du village"}<br><button type="button" data-aller="${esc(b.id)}">Voir la fiche</button></div>`);
+    const exact = !!(p.adresse || p.precis);
+    const icon = L.divIcon({ className: "pt-wrap", iconSize: [40, 28], iconAnchor: [20, 14], html: plaque(b, true, !exact) || `<span class="plaque mini">•</span>` });
+    L.marker(ll, { icon, title: `Maison n° ${b.num || ""} : ${b.titre}`, keyboard: true }).addTo(VUE.couche)
+      .bindPopup(`<div class="popup">${plaque(b, true)}<b>${esc(b.titre)}</b><span>${esc(b.lieu || "")}</span><span>${euros(b.prix)}${b.surface ? `, ${esc(b.surface)} m²` : ""}</span><span>${adresseConnue(b) ? esc(b.adresse.texte) + (b.adresse.confiance === "forte" ? "" : " (probable)") : "Adresse pas retrouvée : position du village"}</span><button type="button" data-aller="${esc(b.id)}">Voir la fiche</button></div>`);
   });
   const v = await lieuChez(g);
   if (v) L.marker([v.ll[1], v.ll[0]], { icon: CHEZ(), title: "Chez Damien et Aurélia", zIndexOffset: -100 }).addTo(VUE.couche);
@@ -692,19 +821,28 @@ document.getElementById("trouver").addEventListener("submit", async ev => {
     document.querySelectorAll("#onglets button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.r === cible.r)));
     await charger(cible.r);
   }
-  const el = document.getElementById(cible.id);
+  let el = document.getElementById(cible.id);
+  if (!el && FILTRE !== "toutes") { FILTRE = "toutes"; try { localStorage.setItem("filtre-avis", FILTRE); } catch (e) {} rendre(); el = document.getElementById(cible.id); }
   if (!el) { msg.textContent = `La maison n° ${n} n'est plus dans la liste.`; return; }
-  const det = el.closest("details"); if (det) det.open = true;
-  document.querySelectorAll(".card.repere").forEach(c => c.classList.remove("repere"));
-  el.classList.add("repere");
-  el.scrollIntoView({ behavior: "smooth", block: "start" });
+  allerA(cible.id);
 });
 
 function groupeDe(b) {
   if (b.etat === "retiree") return "retiree";
   if (b.etat !== "active") return null;
-  if ((S[b.id] || {}).statut === "pas_interesses") return "pas_interesses";
+  if (statutDe(b) === "pas_interesses") return "pas_interesses";
   return b.verdict;
+}
+
+function phraseResume(parGroupe) {
+  const nNouv = D.biens.filter(estNouveau).length;
+  const nVis = D.biens.filter(b => b.etat === "active" && statutDe(b) === "a_visiter").length;
+  const t = parGroupe("top").length, p = parGroupe("presque").length;
+  const pl = (n, un, plusieurs) => `<b>${n}</b> ${n > 1 ? plusieurs : un}`;
+  const morceaux = [pl(t, "maison à appeler en priorité", "maisons à appeler en priorité"), pl(p, "à étudier de plus près", "à étudier de plus près")];
+  if (nVis) morceaux.push(pl(nVis, "à visiter", "à visiter"));
+  const fin = morceaux.length > 1 ? morceaux.slice(0, -1).join(", ") + " et " + morceaux[morceaux.length - 1] : morceaux[0];
+  return (nNouv ? `<span class="nouv">${nNouv > 1 ? nNouv + " nouvelles maisons" : "Une nouvelle maison"} depuis votre dernière visite.</span>` : "") + fin.charAt(0).toUpperCase() + fin.slice(1) + ".";
 }
 
 function rendre() {
@@ -715,22 +853,22 @@ function rendre() {
   const ouverts = new Set([...document.querySelectorAll("details.bloc[open]")].map(d => d.id));
   const tri = (a, b) => (b.repere_le || "").localeCompare(a.repere_le || "") || (a.prix ?? 1e9) - (b.prix ?? 1e9);
   const parGroupe = k => D.biens.filter(b => groupeDe(b) === k).sort(k === "retiree" ? (a, b) => (b.retiree_le || "").localeCompare(a.retiree_le || "") : tri);
-  const nNouv = D.biens.filter(estNouveau).length;
-  const nVis = D.biens.filter(b => b.etat === "active" && (S[b.id] || {}).statut === "a_visiter").length;
-  document.getElementById("resume").innerHTML = [
-    nNouv ? `<span class="nouv"><b>${nNouv}</b> nouvelle${nNouv > 1 ? "s" : ""} depuis votre dernière visite</span>` : "",
-    `<span><b>${parGroupe("top").length}</b> à appeler</span>`,
-    `<span><b>${parGroupe("presque").length}</b> à étudier</span>`,
-    nVis ? `<span><b>${nVis}</b> à visiter</span>` : ""
-  ].join("");
-  document.getElementById("contenu").innerHTML = GROUPES.map(g => {
-    const liste = parGroupe(g.k);
-    if (!liste.length && !g.ouvert) return "";
+  document.getElementById("resume").innerHTML = phraseResume(parGroupe);
+  filtreHtml();
+  const filtrees = k => parGroupe(k).filter(passeFiltre);
+  const filtreActif = AVISEUR && FILTRE !== "toutes";
+  const html = GROUPES.map(g => {
+    const liste = filtrees(g.k);
+    if (!liste.length && (!g.ouvert || filtreActif)) return "";
+    const nb = `<span class="nb">${liste.length} maison${liste.length > 1 ? "s" : ""}</span>`;
     const corps = liste.length ? liste.map(carte).join("") : `<p class="vide">Aucune maison pour l'instant.</p>`;
     return g.ouvert
-      ? `<section class="groupe" aria-labelledby="g-${g.k}"><h2 id="g-${g.k}">${g.titre} · ${liste.length}</h2><p>${g.texte}</p><div class="list">${corps}</div></section>`
-      : `<details class="bloc" id="g-${g.k}"${ouverts.has("g-" + g.k) ? " open" : ""}><summary>${g.titre} · ${liste.length}</summary><div><p class="aide">${g.texte}</p><div class="list">${corps}</div></div></details>`;
-  }).join(`<div style="height:4px"></div>`);
+      ? `<section class="groupe" aria-labelledby="g-${g.k}"><header><h2 id="g-${g.k}">${g.titre} ${nb}</h2><p>${g.texte}</p></header><div class="list">${corps}</div></section>`
+      : `<details class="bloc groupe-replie" id="g-${g.k}"${ouverts.has("g-" + g.k) ? " open" : ""}><summary>${g.titre} ${nb}</summary><div><p class="aide">${g.texte}</p><div class="list">${corps}</div></div></details>`;
+  }).join("");
+  document.getElementById("contenu").innerHTML = html || (filtreActif
+    ? `<p class="vide-filtre">${FILTRE === "sans" ? "Vous avez donné votre avis sur toutes les maisons en vente." : "Vous n'avez encore noté aucune maison."} <a href="#" data-f-tout>Afficher toutes les maisons</a></p>`
+    : `<p class="vide">Aucune maison pour l'instant.</p>`);
   const Sx = D.sources || [];
   const n = k => Sx.filter(s => s.statut === k).length;
   document.getElementById("src-resume").textContent = `Dernier passage le ${jour(D.maj)} : ${n("ok")} sites lus en entier, ${n("partiel")} en partie, ${n("echec")} en échec, ${n("nt")} pas encore lus.`;
@@ -739,6 +877,12 @@ function rendre() {
   preparerCartes();
   dessinerVue();
 }
+document.addEventListener("click", ev => {
+  if (!ev.target.closest("[data-f-tout]")) return;
+  ev.preventDefault();
+  FILTRE = "toutes"; try { localStorage.setItem("filtre-avis", FILTRE); } catch (e) {}
+  rendre();
+});
 
 document.addEventListener("click", async ev => {
   const btn = ev.target.closest(".statuts button");
@@ -781,7 +925,7 @@ function demarrer(email) {
   document.getElementById("connexion").hidden = true;
   document.getElementById("appli").hidden = false;
   const ses = document.getElementById("session");
-  ses.innerHTML = `Connecté avec ${esc(email)} · <button type="button" id="sortir">Se déconnecter</button>`;
+  ses.innerHTML = `Connecté avec ${esc(email)}. <button type="button" id="sortir">Se déconnecter</button>`;
   document.getElementById("sortir").addEventListener("click", async () => {
     await fetch("login.php?sortir", { method: "POST" }).catch(() => {});
     try { google.accounts.id.disableAutoSelect(); } catch (e) {}
