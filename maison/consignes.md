@@ -115,5 +115,6 @@ Pour les biens déjà marqués « non trouvée » : à l'étape 3, prends au plu
 - adresse.confiance vaut "non_trouvee" ;
 - adresse.essais est inférieur à 3 ;
 - aucun lien du bien ne se termine par « (agence) ».
+- adresse.preuves ne contient pas « annonce d'origine introuvable ».
 
 Pour chacun, cherche l'annonce d'origine comme indiqué. Si tu la trouves, ajoute-la aux liens du bien. C'est un nouveau lien : traite alors le bien à l'étape 6 bis du même passage. Si tu ne la trouves pas, ajoute à adresse.preuves « annonce d'origine introuvable », pour ne pas refaire cette recherche.
