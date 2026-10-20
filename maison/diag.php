@@ -30,7 +30,7 @@ if (isset($_GET['nettoyer'])) {
             if ($reduites >= 40) break;
             if (!is_file($f) || filesize($f) < 150000) continue;
             $o = file_get_contents($f); $im = @imagecreatefromstring($o); if (!$im) continue;
-            $l = imagesx($im); $h = imagesy($im); $nl = min(800, $l); $nh = (int) round($h * $nl / $l);
+            $l = imagesx($im); $h = imagesy($im); if ($l <= 800) { imagedestroy($im); continue; } $nl = 800; $nh = (int) round($h * $nl / $l);
             $d = imagecreatetruecolor($nl, $nh); imagecopyresampled($d, $im, 0, 0, 0, 0, $nl, $nh, $l, $h);
             ob_start(); imagejpeg($d, null, 78); $n = ob_get_clean(); imagedestroy($im); imagedestroy($d);
             if ($n && strlen($n) < strlen($o) && @file_put_contents($f, $n) === strlen($n)) { $reduites++; $gain += strlen($o) - strlen($n); }
