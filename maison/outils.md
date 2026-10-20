@@ -76,7 +76,7 @@ await (await fetch('nouveautes.php?r=RECHERCHE', { method: 'POST', headers: { 'C
 Tu peux aussi envoyer `annonces: r.annonces.map(a => ({url: a.url, prix: a.prix}))` si tu as gardé le résultat dans l'onglet du site. Recopie les adresses telles quelles, sans les retaper.
 
 Réponse :
-- `nouvelles` : jamais vues. Ouvre seulement celles qui peuvent correspondre d'après `prix`, `m2` et `texte` de la carte ; pour les autres, ajoute une opération `vu` (section 5) avec le motif.
+- `nouvelles` : jamais vues (chaque élément donne `url` et `prix`). Ouvre seulement celles qui peuvent correspondre d'après `prix`, `m2` et `texte` de la carte ; pour les autres, ajoute une opération `vu` (section 5) avec le motif.
 - `a_rouvrir` : écartées pour leur prix, et leur prix a baissé. Rouvre-les.
 - `suivies` : déjà suivies. Le serveur note qu'elles sont toujours en ligne. Si `prix_different` vaut true, ouvre la fiche pour confirmer le nouveau prix.
 - `ecartees` : nombre d'annonces déjà examinées et écartées. Il n'y a rien à faire.
@@ -86,13 +86,77 @@ Envoie les opérations `vu` des annonces non ouvertes avant de passer à la page
 
 ### Quand arrêter de tourner les pages
 
-Les listes triées par date (Ouest-France Immo avec `tri=date_desc` dans l'adresse, Bien'ici et SeLoger avec le tri « Les plus récentes ») mettent les annonces nouvelles en premier. Dès qu'une page ne donne ni `nouvelles` ni `a_rouvrir`, arrête cette recherche et passe à la suivante : les pages d'après ont déjà été lues aux passages précédents. Les annonces mises en avant en tête de liste (« Premium », « À la une ») ne comptent pas.
+Les listes triées par date (Ouest-France Immo, qui le fait tout seul avec la section 2 bis, Bien'ici et SeLoger avec le tri « Les plus récentes ») mettent les annonces nouvelles en premier. Dès qu'une page ne donne ni `nouvelles` ni `a_rouvrir`, arrête cette recherche et passe à la suivante : les pages d'après ont déjà été lues aux passages précédents. Les annonces mises en avant en tête de liste (« Premium », « À la une ») ne comptent pas.
 
 Lis toutes les pages seulement :
 - si le dernier_ok de la source est vide ou date de plus de 7 jours ;
 - pour une liste qui n'est pas triée par date (FNAIM, triée par prix ; Etreproprio).
 
 Le 20 octobre, le premier passage outillé a lu les 76 pages d'Ouest-France Immo (1 588 annonces) : c'était un rattrapage, puisque les passages précédents n'en avaient lu que la page 1. Toutes ces annonces sont maintenant connues du serveur.
+
+## 2 bis. Ouest-France Immo : relevé en un seul appel
+
+Pour Ouest-France Immo, n'utilise pas le script de la section 2 page par page. Ce site envoie ses pages toutes faites : un seul script lit les pages de résultats l'une après l'autre (2 à 4 secondes entre deux pages), sans les afficher, et rend une liste courte. Testé le 20 octobre 2026 : 2 pages lues en 4 secondes, 1 900 caractères à recopier au lieu d'environ 15 000.
+
+1. Sur l'onglet du site : `await (await fetch('nouveautes.php?r=RECHERCHE&seuil=of&x=' + Date.now())).json()` donne `of_seuil`, le plus grand numéro d'annonce Ouest-France déjà connu. Si le dernier_ok de la source est vide ou date de plus de 7 jours, prends 0 à la place (tout relire).
+2. Ouvre dans l'onglet Ouest-France l'adresse de recherche de ta tâche (page 1, tri par date décroissante), attends 3 secondes, puis lance ce script en remplaçant SEUIL par le nombre de l'étape 1 :
+
+```js
+(async (seuil, depuis, maxPages) => {
+  const base = new URL(location.href); base.searchParams.delete("page");
+  const motif = /^\/immobilier\/vente\/([^/]+\/[a-z0-9-]+-14-\d+)\/(\d+)\.htm$/;
+  const prixDe = t => {
+    for (const m of t.matchAll(/(\d{1,3}(?:[ \u00a0\u202f.]\d{3})+|\d{5,7})\s*€(?!\s*\/)/g)) {
+      let g = m[1].split(/[ \u00a0\u202f.]/);
+      while (g.length > 2 && +g.join("") > 3e6) g = g.slice(1);
+      const v = +g.join(""); if (v >= 20000 && v < 3e6) return v;
+    }
+    return null;
+  };
+  const cartes = window.__cartesOF || (window.__cartesOF = {});
+  const lignes = []; let page = depuis, lues = 0, fin = null;
+  while (lues < maxPages) {
+    const u = new URL(base); if (page > 1) u.searchParams.set("page", page);
+    const r = await fetch(u, { credentials: "include" });
+    if (!r.ok) { fin = "http " + r.status + " page " + page; break; }
+    lues++;
+    const doc = new DOMParser().parseFromString(await r.text(), "text/html");
+    const vus = new Set(); let recents = 0;
+    for (const a of doc.querySelectorAll("a[href]")) {
+      const h = a.getAttribute("href").split("?")[0], m = h.match(motif);
+      if (!m || vus.has(m[2])) continue; vus.add(m[2]);
+      let c = a;
+      while (c.parentElement && c.parentElement !== doc.body) {
+        const p = c.parentElement;
+        if (p.textContent.length > 5000 || [...p.querySelectorAll("a[href]")].some(x => { const y = x.getAttribute("href").split("?")[0]; return y !== h && motif.test(y); })) break;
+        c = p;
+      }
+      const t = c.textContent.replace(/\s+/g, " ").trim(), prix = prixDe(t);
+      cartes[m[2]] = { url: "https://www.ouestfrance-immo.com" + h, prix, texte: t.slice(0, 300) };
+      lignes.push(m[1] + "/" + m[2] + ":" + (prix || ""));
+      if (+m[2] > seuil) recents++;
+    }
+    if (!vus.size) { fin = "page " + page + " vide"; break; }
+    if (seuil > 0 && recents === 0) { fin = "page " + page + " : rien de plus récent que le seuil"; break; }
+    if (!doc.querySelector('a[href*="page=' + (page + 1) + '"]')) { fin = "dernière page (" + page + ")"; break; }
+    page++;
+    await new Promise(z => setTimeout(z, 2500 + Math.random() * 2000));
+  }
+  return { pages_lues: lues, fin, suite: fin ? null : page, n: lignes.length, of: lignes.join(" ") };
+})(SEUIL, 1, 8)
+```
+
+   Le script s'arrête de lui-même à la première page où aucune annonce n'est plus récente que le seuil, à la dernière page, ou après 8 pages. Dans ce dernier cas, `suite` donne la page suivante : relance le script en remplaçant le `1` final par cette valeur (`…})(SEUIL, suite, 8)`), et envoie chaque résultat au serveur avant de relancer.
+3. Sur l'onglet du site, envoie la chaîne `of` telle quelle, sans la retaper ni la découper :
+
+```js
+await (await fetch('nouveautes.php?r=RECHERCHE', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ of: "…colle ici la chaîne of…" }) })).json()
+```
+
+   Le serveur écarte lui-même, sans opération vu de ta part, les nouvelles annonces hors zone (commune lue dans l'adresse) et celles au-dessus de 385 000 € : il les compte dans `ecartees_auto`. `nouvelles` ne contient donc que des annonces de la zone, dans le budget d'ouverture.
+4. Pour lire la carte des `nouvelles` sans rien recharger, sur l'onglet Ouest-France : `["20864921", "20864929"].map(i => i + " " + window.__cartesOF[i].texte)` (le numéro est la fin de l'adresse, avant .htm). Juge sur ce texte : ouvre la fiche (section 3) si la maison peut correspondre ; sinon, opération vu avec le motif (« Programme neuf : maison de constructeur » pour les offres « Devenez propriétaire avec un constructeur », « normes RE 2020 », « terrain + maison »).
+
+Ne recharge pas l'onglet Ouest-France entre les étapes 2 et 4 : `window.__cartesOF` serait perdu (il suffirait alors de relancer le script).
 
 ## 3. Lire une fiche d'annonce
 
