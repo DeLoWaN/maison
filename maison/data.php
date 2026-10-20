@@ -17,4 +17,11 @@ $origine = __DIR__ . '/recherches/' . $r . '/data.json';
 $brut = file_get_contents(is_file($vivant) ? $vivant : $origine);
 $d = json_decode($brut, true);
 if (!is_array($d) || !isset($d['biens']) || !is_array($d['biens'])) { echo $brut; exit; }
+// Lecture allégée pour la veille (data.php?r=…&leger=1) : sans les galeries de photos ni le registre des
+// annonces écartées (nouveautes.php fait ce tri) ; à peu près deux fois moins de texte à lire.
+if (isset($_GET['leger'])) {
+    foreach ($d['biens'] as $i => $b) { $n = isset($b['photos']) && is_array($b['photos']) ? count($b['photos']) : 0; unset($d['biens'][$i]['photos']); $d['biens'][$i]['nb_photos'] = $n; }
+    $d['vus_nb'] = isset($d['vus']) && is_array($d['vus']) ? count($d['vus']) : 0;
+    unset($d['vus']);
+}
 echo json_encode($d, JSON_UNESCAPED_UNICODE);
