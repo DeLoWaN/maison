@@ -19,10 +19,24 @@ if (isset($_GET['nettoyer'])) {
     $retires = 0; $octets = 0;
     foreach (glob($base . '/*', GLOB_ONLYDIR) as $r) {
         foreach (glob($r . '/*.tmp') as $f) { $octets += filesize($f); if (@unlink($f)) $retires++; }
-        $copies = glob($r . '/historique/*.json');
+        $copies = glob($r . '/historique/*.json*');
         if ($copies && count($copies) > 15) { sort($copies); foreach (array_slice($copies, 0, count($copies) - 15) as $c) { $octets += filesize($c); if (@unlink($c)) $retires++; } }
     }
     foreach (glob($base . '/*.tmp') as $f) { $octets += filesize($f); if (@unlink($f)) $retires++; }
+    // Photos déjà en cache : réduites à 800 px (JPEG), 40 au plus par appel (relancer jusqu'à « photos_reduites » = 0).
+    $reduites = 0; $gain = 0;
+    if (function_exists('imagecreatefromstring')) {
+        foreach (glob($base . '/*/photos/*') as $f) {
+            if ($reduites >= 40) break;
+            if (!is_file($f) || filesize($f) < 150000) continue;
+            $o = file_get_contents($f); $im = @imagecreatefromstring($o); if (!$im) continue;
+            $l = imagesx($im); $h = imagesy($im); $nl = min(800, $l); $nh = (int) round($h * $nl / $l);
+            $d = imagecreatetruecolor($nl, $nh); imagecopyresampled($d, $im, 0, 0, 0, 0, $nl, $nh, $l, $h);
+            ob_start(); imagejpeg($d, null, 78); $n = ob_get_clean(); imagedestroy($im); imagedestroy($d);
+            if ($n && strlen($n) < strlen($o) && @file_put_contents($f, $n) === strlen($n)) { $reduites++; $gain += strlen($o) - strlen($n); }
+        }
+    }
+    $out['photos_reduites'] = $reduites; $out['photos_octets_gagnes'] = $gain;
     $out['nettoyage'] = array('fichiers_retires' => $retires, 'octets_liberes' => $octets);
 }
 $total = 0; $nbTotal = 0;
@@ -43,6 +57,7 @@ $bloc = str_repeat('x', 262144);
 $ecrit = @file_put_contents($essai, $bloc);
 $out['essai_ecriture_256ko'] = $ecrit === 262144 ? 'ok' : ('échec (' . var_export($ecrit, true) . ')');
 @unlink($essai);
+$out['gd'] = function_exists('imagecreatefromstring'); $out['gzencode'] = function_exists('gzencode');
 $out['php'] = array('version' => PHP_VERSION, 'memory_limit' => ini_get('memory_limit'), 'max_execution_time' => ini_get('max_execution_time'), 'post_max_size' => ini_get('post_max_size'));
 $e = error_get_last(); if ($e) $out['derniere_erreur_php'] = $e['message'];
 echo json_encode($out, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);

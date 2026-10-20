@@ -23,6 +23,25 @@ function format_image($octets) {
     return null;
 }
 
+function photo_reduire($octets) {
+    if (!function_exists('imagecreatefromstring')) return null;
+    $im = @imagecreatefromstring($octets);
+    if (!$im) return null;
+    $l = imagesx($im); $h = imagesy($im);
+    if ($l <= 800 && strlen($octets) < 150000) { imagedestroy($im); return null; }
+    $nl = min(800, $l); $nh = (int) round($h * $nl / $l);
+    $dest = imagecreatetruecolor($nl, $nh);
+    imagecopyresampled($dest, $im, 0, 0, 0, 0, $nl, $nh, $l, $h);
+    ob_start(); imagejpeg($dest, null, 78); $out = ob_get_clean();
+    imagedestroy($im); imagedestroy($dest);
+    return ($out && strlen($out) < strlen($octets)) ? $out : null;
+}
+
+function photo_taille_cache($dir) {
+    $t = 0; foreach ((array) glob($dir . '/*') as $f) if (is_file($f)) $t += filesize($f);
+    return $t;
+}
+
 function servir($chemin) {
     $type = format_image((string) @file_get_contents($chemin, false, null, 0, 16));
     header('Content-Type: ' . ($type ? $type : 'image/jpeg'));
@@ -119,6 +138,11 @@ if ($diag) {
 
 if ($img === false || strlen($img) < 500 || !$format) { http_response_code(404); exit; }
 if (!is_dir($cacheDir)) @mkdir($cacheDir, 0750, true);
+// Hébergement limité à 100 Mo : la photo gardée est réduite à 800 px de large (JPEG), soit 50 à 100 ko au lieu de 300 ko à 1 Mo.
+// Si le cache dépasse 25 Mo, la photo est servie sans être gardée.
+$petite = photo_reduire($img);
+if ($petite !== null) { $img = $petite; $format = 'image/jpeg'; }
+if (photo_taille_cache($cacheDir) > 25 * 1048576) { header('Content-Type: ' . $format); header('Cache-Control: public, max-age=86400'); echo $img; exit; }
 // Une seule photo en cache par bien : les versions d'une ancienne photo_url sont retirées.
 foreach ((array) glob($cacheDir . '/' . $id . '-*') as $vieux) if ($vieux !== $cache && preg_match('/^' . preg_quote($id, '/') . '-[0-9a-f]{10}$/', basename($vieux))) @unlink($vieux);
 if (@file_put_contents($cache, $img) !== strlen($img)) { @unlink($cache); header('Content-Type: ' . ($format ? $format : 'image/jpeg')); echo $img; exit; }
