@@ -148,6 +148,13 @@ details.bloc > div { padding: 0 18px 18px; display: grid; gap: 14px; }
 details.groupe-replie > summary { font: 700 1.5rem/1.1 var(--f-plaque); padding: 16px 18px; }
 details.groupe-replie > summary .nb { font: 600 1.05rem/1 var(--f-texte); color: var(--gris); }
 .list { display: grid; gap: 22px 18px; grid-template-columns: repeat(auto-fill, minmax(min(380px, 100%), 1fr)); align-items: start; }
+/* Fiches alignées : chaque fiche prend 10 rangées de la liste (photo, en-tête, statut, avis, critères, adresse,
+   carte, questions, liens, date) ; un même bloc commence à la même hauteur sur toute la ligne. */
+@supports (grid-template-rows: subgrid) {
+  .list { align-items: stretch; }
+  .card { grid-row: span 10; grid-template-rows: subgrid; row-gap: 0; }
+  .card > .corps { grid-row: 2 / span 9; grid-template-rows: subgrid; }
+}
 .vide { color: var(--gris); font-style: italic; }
 .vide-filtre { padding: 18px; border-radius: 12px; border: 2px dashed var(--trait-fort); color: var(--gris); }
 /* Mode tri, réservé à Damien et Aurélia : la page normale n'est jamais modifiée */
@@ -174,7 +181,7 @@ details.groupe-replie > summary .nb { font: 600 1.05rem/1 var(--f-texte); color:
 .gal-prec { left: 10px; } .gal-suiv { right: 10px; }
 .gal-n { position: absolute; z-index: 2; right: 10px; bottom: 10px; padding: 2px 10px; border-radius: 999px; background: rgba(20, 28, 34, .7); color: #fff; font-weight: 700; font-size: .92rem; font-variant-numeric: tabular-nums; }
 .galerie.ko::after { content: "Photo indisponible"; position: absolute; inset: 0; display: grid; place-items: center; background: var(--unk-bg); color: var(--gris); }
-.corps { padding: 40px 18px 18px; display: grid; gap: 16px; }
+.corps { padding: 40px 18px 18px; display: grid; gap: 16px; align-content: start; }
 .card:not(:has(.illu .plaque)) .corps { padding-top: 18px; }
 .tete { display: grid; gap: 6px; }
 .badges { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -232,7 +239,7 @@ details.groupe-replie > summary .nb { font: 600 1.05rem/1 var(--f-texte); color:
 
 /* Critères : un symbole par état, la couleur ne porte pas seule l'information */
 .crit { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr; gap: 2px 16px; }
-.corps { container-type: inline-size; }
+.crit-zone { container-type: inline-size; } /* pas sur .corps : un conteneur de requête ne peut pas être une sous-grille */
 @container (min-width: 340px) { .crit { grid-template-columns: 1fr 1fr; } }
 .c { display: grid; grid-template-columns: 1.6em 1fr; gap: 0 8px; padding: 7px 0; border-bottom: 1px solid var(--trait); font-size: 1rem; line-height: 1.38; }
 .c .sym { grid-row: 1 / span 2; width: 1.45em; height: 1.45em; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: .92rem; color: var(--papier); margin-top: 1px; }
@@ -626,14 +633,14 @@ function carte(b) {
           ${b.surface ? `<span class="surface">${esc(b.surface)} m² habitables${parM2}</span>` : ""}
         </div>
       </div>
-      ${b.etat === "active" ? boutons(b) : ""}
-      ${b.etat === "active" ? avisHtml(b) : ""}
-      <ul class="crit">
+      <div class="slot">${b.etat === "active" ? boutons(b) : ""}</div>
+      <div class="slot">${b.etat === "active" ? avisHtml(b) : ""}</div>
+      <div class="crit-zone"><ul class="crit">
         ${Object.keys(CRIT).map(k => { const c = (b.crit || {})[k] || ["unk", "Non indiqué"]; const s = SYM[c[0]] || SYM.unk; return `<li class="c ${c[0]}"><span class="sym" aria-hidden="true">${s[0]}</span><span class="k">${esc((D.libelles || {})[k] || CRIT[k])}<span class="sr"> : ${s[1]}</span></span><span class="v">${esc(c[1])}</span></li>`; }).join("")}
-      </ul>
-      ${blocAdresse(b)}
+      </ul></div>
+      <div class="slot">${blocAdresse(b)}</div>
       <details class="ou"><summary>Voir où elle se trouve</summary><div class="carte" data-carte="${esc(b.id)}"></div><p data-carte-note="${esc(b.id)}"></p></details>
-      ${(b.verifier || []).length ? `<div class="questions"><strong>À demander à l'agence</strong><ul>${b.verifier.map(v => `<li>${esc(v)}</li>`).join("")}</ul></div>` : ""}
+      <div class="slot">${(b.verifier || []).length ? `<div class="questions"><strong>À demander à l'agence</strong><ul>${b.verifier.map(v => `<li>${esc(v)}</li>`).join("")}</ul></div>` : ""}</div>
       <div class="liens">${liens}</div>
       <div class="dates">Repérée le ${jour(b.repere_le)}</div>
     </div>
