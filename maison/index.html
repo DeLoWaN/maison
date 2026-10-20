@@ -214,12 +214,14 @@ details.groupe-replie > summary .nb { font: 600 1.05rem/1 var(--f-texte); color:
 @media (max-width: 380px) { .statuts .btns { grid-template-columns: 1fr; } }
 
 /* Avis de Damien et Aurélia */
-.avis-da { display: grid; gap: 8px; padding: 12px 14px; border-radius: 10px; background: var(--lin); }
+.avis-da { display: grid; gap: 8px; padding: 12px 10px; border-radius: 10px; background: var(--lin); }
 .avis-da .q { font-weight: 700; }
-.avis-da .btns { display: flex; flex-wrap: wrap; gap: 8px; }
-.avis-da button { font: inherit; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 6px 14px; border-radius: 999px; border: 2px solid var(--trait-fort); background: var(--papier); color: var(--encre); cursor: pointer; }
+.avis-da .btns { display: flex; flex-wrap: wrap; gap: 5px; }
+.avis-da button { font: inherit; font-size: .8rem; font-weight: 700; white-space: nowrap; display: inline-flex; align-items: center; gap: 3px; min-height: 40px; padding: 4px 7px; border-radius: 999px; border: 2px solid var(--trait-fort); background: var(--papier); color: var(--encre); cursor: pointer; }
 .avis-da button:disabled { opacity: .6; cursor: progress; }
 .avis-da .pouce { display: inline-flex; }
+.avis-da .btns .pouce svg { width: 16px; height: 16px; }
+.avis-da .comm-ok { font-size: .9rem; }
 .avis-da .pouce.pour { color: var(--ok); }
 .avis-da .pouce.contre { color: var(--ko); transform: rotate(180deg); }
 .avis-da .pouce.neutre { color: var(--unk); transform: rotate(-90deg); }
