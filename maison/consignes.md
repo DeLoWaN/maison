@@ -106,3 +106,14 @@ Quand le faire : à l'étape 4, à la place de toute liste Leboncoin.
    - Si aucun courriel n'est arrivé depuis plus de 3 jours ouvrés, statut « partiel » avec la note « aucune alerte reçue depuis le … : vérifier les alertes Leboncoin ou le libellé perso-lbc ». Signale-le dans le message de fin.
 
 Gmail en lecture seule : n'envoie, ne supprime, n'archive et ne marque comme lu aucun courriel, et ne change aucun libellé.
+
+## Adresses : DPE illisible sur l'agrégateur
+
+La méthode d'adresse (methode-adresse.md, étape 1 bis) demande de remonter à l'annonce d'origine, sur le site de l'agence, quand le DPE est illisible ou ne correspond à aucun DPE de la base.
+
+Pour les biens déjà marqués « non trouvée » : à l'étape 3, prends au plus 4 biens actifs par passage qui remplissent toutes ces conditions :
+- adresse.confiance vaut "non_trouvee" ;
+- adresse.essais est inférieur à 3 ;
+- aucun lien du bien ne se termine par « (agence) ».
+
+Pour chacun, cherche l'annonce d'origine comme indiqué. Si tu la trouves, ajoute-la aux liens du bien. C'est un nouveau lien : traite alors le bien à l'étape 6 bis du même passage. Si tu ne la trouves pas, ajoute à adresse.preuves « annonce d'origine introuvable », pour ne pas refaire cette recherche.
