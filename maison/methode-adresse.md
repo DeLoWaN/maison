@@ -37,7 +37,7 @@ Chaque site publie des détails différents. Lis chaque lien, en commençant par
   - Attention : la fourchette « entre X € et Y € » peut venir d'un bloc commun à plusieurs annonces (même fourchette vue sur deux maisons différentes de Sommervieu). Ne t'en sers que si elle est dans le texte de l'annonce elle-même.
   - Certaines annonces n'affichent aucun DPE.
 - **iad France** : chiffres du DPE souvent présents.
-- **SeLoger, Etreproprio** : seulement les lettres DPE/GES, l'année de construction et le terrain.
+- **SeLoger, Etreproprio** : seulement les lettres DPE/GES, l'année de construction et le terrain. Pour les chiffres, va sur l'annonce d'origine (étape 1 bis).
 - **FNAIM** : fourchette de dépense. Le site renvoie souvent une erreur 503 ; réessayer plus tard.
 
 Extraction, sur le texte de la page :
@@ -52,6 +52,29 @@ Extraction, sur le texte de la page :
 - surface habitable, terrain (préciser s'il est exact ou arrondi : « 1 000 m² », « environ », « 1 ha » sont arrondis), année de construction, plain-pied ou non ;
 - commune et code postal ;
 - lieux cités dans la description (hameau, lieu-dit, « à 5 km de… »).
+
+## Étape 1 bis : DPE illisible ou introuvable → l'annonce d'origine, sur le site de l'agence
+Les agrégateurs (Etreproprio, SeLoger, Zimo, Les Clefs de chez moi, parfois Ouest-France Immo) recopient mal le DPE de l'annonce d'origine : lettres seules, vignette vide, chiffres faux. Le site de l'agence ou du réseau publie presque toujours le DPE complet : kWh, kg CO₂, fourchette de dépense, parfois la date.
+Quand le faire :
+- l'annonce n'a pas de DPE chiffré lisible ;
+- ou ses chiffres ne correspondent à aucun DPE de la base (étape 2 sans résultat), car l'agrégateur les a peut-être mal recopiés.
+
+1. Sur la fiche de l'agrégateur, relève qui propose le bien (« Ce bien est proposé par Safti », « Contactez votre conseiller SAFTI », « Agence … ») et la référence si elle figure (« Réf. », numéro de mandat).
+2. Va sur le site de cette agence ou de ce réseau, depuis sa page d'accueil. Si l'adresse du site n'est pas sur la fiche, cherche-la avec WebSearch « <nom de l'agence> <commune> ». Ouvre la liste des maisons à vendre de la commune, ou du département, et repère l'annonce par la commune, la surface, le nombre de pièces, le terrain et le prix (le prix honoraires inclus est le même partout).
+3. Lis le DPE sur cette fiche, avec les mêmes expressions qu'à l'étape 1. Reprends ensuite à l'étape 2.
+4. Ajoute cette fiche aux liens du bien : `{site: "<Agence> (agence)", url, ok: true}`. C'est un nouveau lien : un bien « non_trouvee » avec moins de 3 essais peut donc être retraité au passage suivant.
+
+Règles :
+- Lecture seule : ne remplis aucun formulaire de contact et ne te connecte à aucun compte.
+- Le nom du conseiller sert seulement à reconnaître le réseau : ne le note nulle part.
+- Si l'agence n'a pas de site, ou si l'annonce n'y figure plus, passe à l'étape 3 (cadastre).
+
+Exemple du 20 octobre 2026 (n° 49, Tilly-sur-Seulles) :
+- Etreproprio n'affichait que les lettres DPE et GES, sans chiffres.
+- La fiche Safti (safti.fr, liste par commune « /annonces/achat/maison/tilly-sur-seulles-14250 ») donnait 345 kWh, 97 kg CO₂ et une dépense de 5 620 à 7 660 €.
+- Un seul DPE du 14250 correspondait : mêmes valeurs, dépense de 6 640 € (le milieu exact de la fourchette), 132,9 m². Confiance forte.
+
+Agences déjà vues sur les biens sans adresse : Safti, iad France, Rue du Particulier, Maisons Anciennes, Just in Home, De Fombelle Immobilier, Normandie Privilège, AXO, Immo Bocage.
 
 ## Étape 2 : chercher dans la base DPE
 Essaie dans cet ordre, et arrête-toi dès qu'un résultat unique apparaît sur lequel au moins deux valeurs concordent.
@@ -96,6 +119,6 @@ Place la carte sur l'adresse, au zoom 18 à 19, et vérifie :
 ## Étape 5 : conclure
 - **Forte** : au moins deux indices indépendants concordent, sans contradiction. Exemples : consommation, émissions et dépense uniques dans la commune ; ou parcelle exacte plus DPE cohérent à l'adresse.
 - **Probable** : un seul indice solide, ou une contradiction non expliquée (commune annoncée différente, valeurs DPE décalées).
-- **Non trouvée** : rien de concluant. Annonce sans DPE chiffré et terrain arrondi : c'est le cas le plus fréquent d'échec.
+- **Non trouvée** : rien de concluant. Annonce sans DPE chiffré et terrain arrondi : c'est le cas le plus fréquent d'échec. Ne conclus « non trouvée » pour un DPE illisible qu'après avoir cherché l'annonce d'origine (étape 1 bis), et note dans preuves si elle a été trouvée.
 
 Note pour chaque maison : l'adresse, la confiance, une ligne de preuves (valeurs qui concordent), le lien de la vue DPE filtrée.
