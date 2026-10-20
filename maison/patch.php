@@ -164,6 +164,20 @@ $res = donnees_modifier($r, function (&$d) use ($ops, &$resultats, &$nouveaux, $
                     if (isset($ix[$k])) $d['vus'][$ix[$k]['i']] = $e; else { $d['vus'][] = $e; $ix[$k] = array('type' => 'vu', 'i' => count($d['vus']) - 1); }
                 }
             }
+        } elseif ($op === 'supprimer') {
+            // Réservé aux corrections demandées par Damien (bien ajouté par erreur) : jamais pendant une veille.
+            // Le bien disparaît de la liste ; ses annonces passent dans les écartées avec le motif, pour ne pas revenir.
+            $id = isset($o['id']) ? (string) $o['id'] : '';
+            $i = p_indice_bien($d, $id);
+            $motif = isset($o['motif']) ? trim((string) $o['motif']) : '';
+            if ($i < 0) $err = 'bien inconnu : ' . $id;
+            elseif ($motif === '') $err = 'motif manquant';
+            else {
+                $b = $d['biens'][$i];
+                array_splice($d['biens'], $i, 1);
+                if (isset($b['liens']) && is_array($b['liens'])) foreach ($b['liens'] as $l) if (isset($l['url'])) $d['vus'][] = array('url' => $l['url'], 'motif' => $motif, 'prix' => isset($b['prix']) ? $b['prix'] : null, 'le' => $auj);
+                $ix = donnees_index($d);
+            }
         } elseif ($op === 'oublier_vu') {
             p_retirer_vus($d, $ix, array(isset($o['url']) ? (string) $o['url'] : ''));
         } elseif ($op === 'source') {
