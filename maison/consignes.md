@@ -2,6 +2,80 @@
 
 Ce fichier complète la consigne de la tâche planifiée. Lis-le à chaque passage, depuis l'onglet du site : `await (await fetch('consignes.md?x=' + Date.now())).text()`. En cas de contradiction, la consigne de la tâche l'emporte.
 
+## Travailler dans l'onglet du site
+
+Pour la recherche « plainpied » (la recherche « longere » garde son fichier data.json local tant que sa consigne le demande) : la liste se tient dans l'onglet https://damien-gustave.fr/maison/?r=<recherche>, sans fichier data.json local. Cet onglet ne sert qu'au site : les annonces s'ouvrent dans un autre onglet.
+
+- Au début du passage : `window.D = JSON.parse(await (await fetch('data.php?r=<recherche>&x=' + Date.now())).text()); sessionStorage.setItem('D', JSON.stringify(D))`.
+- Après chaque modification (bien ajouté, lien, vus, sources…), sauvegarde : `sessionStorage.setItem('D', JSON.stringify(D))`. Si l'onglet a été rechargé, reprends avec `window.D = JSON.parse(sessionStorage.getItem('D'))`.
+- Galeries en attente (bien nouveau dont la galerie est relevée avant l'envoi) : garde-les dans `sessionStorage` sous la clé `G` et envoie-les à `photos.php` juste après l'envoi de la liste.
+- Envoie une première fois dès que l'étape 3 et la première source sont faites, puis à la fin : un passage interrompu ne perd ainsi presque rien.
+- Avant chaque envoi, sur une copie de D : supprime le champ `photos` de chaque bien (le serveur le garde), retire de vus les entrées de plus de 90 jours, vérifie qu'aucun id n'est en double et qu'aucune adresse n'est à la fois dans vus et dans les liens d'un bien. Envoie ensuite la copie avec `fetch('maj.php?r=<recherche>', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(copie)})`.
+- Après l'envoi, relis data.php : il donne les `num` des biens nouveaux. Reprends-le comme nouveau D.
+
+## Lire les sites d'annonces
+
+### Bien'ici
+- Une page de Bien'ici reste blanche tant que le panneau du navigateur ne l'affiche pas. Après chaque `navigate`, fais une capture d'écran réduite (`computer` screenshot, scale 0.1), attends 7 secondes, puis lis la page. Le titre de l'onglet (« Achat maison 5 pièces 117 m², … - 300 000 € ») suffit pour vérifier un prix.
+- La recherche a changé ses communes toute seule une fois (Castine-en-Plaine et Le Castelet retirées, Saint-Martin-de-Fontenay ajoutée) : filtre toujours toi-même sur la zone.
+- Si le champ « Surface du terrain » n'apparaît pas dans « Afficher tous les critères », ne le force pas : fais la seconde lecture (sans le critère plain-pied) triée par « Les plus récentes », jusqu'à la date dernier_ok.
+
+### SeLoger
+- Le site n'a pas de filtre plain-pied. La recherche se fait en texte libre depuis la page d'accueil (« Nouvelle recherche ») : « maison à acheter à <commune> <code postal>, … jusqu'à 350000 euros ». Mets 5 communes au plus par recherche, chacune avec son code postal (sans lui, « Vendes » donne Montaigu-Vendée). Le titre de la page dit combien de communes ont été retenues (« Bayeux (+5) ») : relance avec celles qui manquent.
+- Lis chaque page de résultats avec ce script, une page par appel (au-delà, l'appel dépasse le délai) : `window.__go(1)`, puis `window.__go(2)`, etc. Il clique sur le numéro de page, fait défiler la liste et garde les cartes dans `window.__all`.
+
+```js
+window.__all = window.__all || [];
+window.__go = async (pg) => {
+  const b = [...document.querySelectorAll('nav li button')].find(e => e.textContent.trim() === String(pg));
+  if (b && pg > 1) { b.click(); await new Promise(r => setTimeout(r, 4000)); }
+  window.scrollTo(0, 0); for (let y = 0; y < 12; y++) { window.scrollBy(0, 1200); await new Promise(r => setTimeout(r, 200)); }
+  const s = [...document.querySelectorAll('[data-testid="serp-core-classified-card-testid"]')].map(c => {
+    const a = c.querySelector('a'); const t = c.innerText.replace(/\s+/g, ' ');
+    const p = +((t.match(/([\d  ]{5,}) €/) || [])[1] || '0').replace(/\D/g, '');
+    const ter = +((t.match(/([\d  ]+) m² de terrain/) || [])[1] || '0').replace(/\D/g, '');
+    return { pg, u: a ? a.href.split('?')[0] : '', p, ter, t: t.slice(0, 140) };
+  });
+  s.forEach(x => window.__all.push(x));
+  return { pg, n: s.length, pages: [...document.querySelectorAll('nav li button')].map(e => e.textContent.trim()).filter(x => /^\d+$/.test(x)).join(',') };
+};
+```
+
+  Puis garde les cartes utiles : `window.__all.filter(x => /calvados-14|-14\//.test(x.u) && !/seloger-construire|selogerneuf/.test(x.u) && x.p <= 385000 && (x.ter === 0 || x.ter >= 900))`, sans doublon d'adresse.
+- Sur une fiche, attends 3 secondes ; la description commence après « Calculer un temps de trajet ». La photo est le og:image (mms.seloger.com). SeLoger ne donne pas de galerie.
+
+### Etreproprio
+- Les pages de commune (`immobilier-vente-<commune>-v14XXX/maison`) se trouvent sur https://www.etreproprio.com/maison-a-vendre/14. Lis chacune avec ce script : il clique « Voir plus » jusqu'au bout et garde le lien complet de chaque fiche (ne reconstruis jamais un lien à partir du seul numéro : la page répond « introuvable »).
+
+```js
+for (let k = 0; k < 10; k++) { const b = [...document.querySelectorAll('a,button')].find(e => /^\s*Voir plus/i.test(e.textContent) && e.offsetParent); if (!b) break; b.click(); await new Promise(r => setTimeout(r, 2000)); }
+const vu = new Set(), out = [];
+document.querySelectorAll('a[href*="/immobilier-"][href*="vente-maison"]').forEach(a => {
+  const m = a.href.match(/immobilier-(\d+)-/); if (!m || vu.has(m[1])) return; vu.add(m[1]);
+  let c = a; for (let i = 0; i < 8 && c.parentElement && !/€/.test(c.innerText); i++) c = c.parentElement;
+  const t = c.innerText.replace(/\s+/g, ' ');
+  const p = +((t.match(/([\d ]{5,}) €/) || [])[1] || '0').replace(/\D/g, '');
+  if (p > 385000 || /neuve? à construire|VEFA/i.test(t)) return;
+  out.push(a.href + ' | ' + p + ' | ' + (/plain|RDC|rez-de-chauss/i.test(t) ? 'PP ' : '') + t.slice(0, 110));
+});
+({ titre: document.title, annonces: vu.size, out })
+```
+
+- Sur une fiche, `document.body.innerText` à partir de « Surface » donne la surface, le terrain exact et la description. Etreproprio n'affiche que les lettres du DPE.
+- Les prix d'Etreproprio sont parfois périmés (329 000 € affichés pour 299 000 € chez l'agence, 326 500 € pour 305 500 €). Pour un bien nouveau trouvé sur Etreproprio, vérifie toujours le prix sur le site de l'agence (« Proposé par … ») et retiens celui-là. Signale l'écart dans verifier.
+
+### Safti
+- Le site de Safti donne le DPE chiffré, la fourchette de dépense et l'état de la vente. La liste d'une commune est https://www.safti.fr/annonces/achat/maison/<commune>-<code postal> (ex. `mouen-14790`) ; elle inclut les communes voisines. Repère la fiche par la surface, le terrain et le prix.
+- Une annonce Safti absente de cette liste alors qu'elle est encore sur un agrégateur est peut-être vendue : signale-le dans verifier.
+
+## Vérifier qu'une annonce est toujours en vente
+
+Sur Ouest-France Immo, ne cherche pas le mot « vendu » dans la page : il apparaît dans les avis clients de l'agence. Une annonce retirée affiche en haut de page « Ce bien n'est plus disponible sur ouestfrance-immo.com ». Regarde seulement les 600 premiers caractères du texte, et le prix de la ligne « Prix : ».
+
+## Doublons à prix différents
+
+Une même maison peut être proposée à des prix différents selon l'agence ou le site. Traite-la comme un seul bien quand la commune, la surface (à 3 % près), le terrain (à 2 % près) et la description concordent : ajoute le lien au bien existant, garde son prix, et écris l'écart dans verifier (« Une autre agence la propose à … : quel est le bon prix ? »). Si un seul de ces points diffère, crée un bien séparé.
+
 ## Surface habitable
 
 Chaque bien a un champ `surface` : la surface habitable en m², nombre entier (ex. `"surface": 148`). La page l'affiche sous le prix.
@@ -67,6 +141,14 @@ out
 4. Un bien à la fois : relis une fiche, envoie sa galerie, puis passe au bien suivant.
 
 Ce relevé lit seulement la page affichée : il ne fait aucun appel à l'API du site d'annonces.
+
+## Photo principale venant d'Ouest-France Immo
+
+Depuis le 20 octobre 2026, Ouest-France Immo répond 404 (et non plus 403) quand le site télécharge ses photos. La page affiche quand même la photo depuis le navigateur du visiteur. Au contrôle des photos (étape 7) :
+- http 403 ou 404 sur ouestfrance-immo.com : acceptable si le bien n'a aucun autre site ;
+- si le bien a un autre lien, prends le og:image de cet autre site (Immonot, SeLoger, Safti, Bien'ici, Etreproprio, Laforêt, Optimhome…) et refais le contrôle.
+
+Ne signale pas ces biens comme « restés sans photo ».
 
 ## Leboncoin par les alertes e-mail
 
