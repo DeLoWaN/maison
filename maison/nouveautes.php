@@ -59,6 +59,6 @@ if ($vuesEnListe) {
         $auj = donnees_aujourdhui();
         foreach ($d['biens'] as $i => $b) if (isset($vuesEnListe[$b['id']])) $d['biens'][$i]['vu_en_liste_le'] = $auj;
         return true;
-    });
+    }, false);
 }
 echo json_encode($sortie, JSON_UNESCAPED_UNICODE);

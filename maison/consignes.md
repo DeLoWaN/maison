@@ -90,7 +90,7 @@ Chaque bien a un champ `surface` : la surface habitable en m², nombre entier (e
 
 La page affiche toutes les photos d'une annonce, avec des flèches pour passer de l'une à l'autre. Le champ `photos` d'un bien est rempli par le serveur. Ne l'envoie jamais toi-même dans une opération : il s'enregistre uniquement avec photos.php.
 
-Quand le faire : à l'étape 3, pour chaque bien de la liste `galerie` de suivi.php, et pour chaque bien ajouté ce jour.
+Quand le faire : à l'étape 3, pour chaque bien de la liste `galerie` de suivi.php, et pour chaque bien ajouté ce jour avec le verdict top ou presque. Pas de galerie pour un bien « hors ».
 
 N'injecte aucun script extérieur dans une page d'annonce et ne fais pas changer de page à la fiche : le contrôle de sécurité le refuse (« Code from External », « Browser JS Exfil »). L'ancienne méthode (galerie.js, recevoir.html) est supprimée. La méthode ci-dessous lit la fiche puis envoie le résultat depuis l'onglet du site.
 

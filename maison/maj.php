@@ -61,16 +61,11 @@ foreach ($d['biens'] as $i => $b) {
     }
 }
 
+require_once __DIR__ . '/donnees-lib.php';
 $dir = dirname(dirname(__DIR__)) . '/maison-data/' . $r;
-$hist = $dir . '/historique';
-if (!is_dir($hist)) @mkdir($hist, 0750, true);
+if (!is_dir($dir)) @mkdir($dir, 0750, true);
 $file = $dir . '/data.json';
-date_default_timezone_set('Europe/Paris');
-if (is_file($file)) @copy($file, $hist . '/' . date('Ymd-His') . '.json');
-$copies = glob($hist . '/*.json');
-if ($copies && count($copies) > 60) { sort($copies); foreach (array_slice($copies, 0, count($copies) - 60) as $f) @unlink($f); }
-$tmp = $file . '.tmp';
-if (file_put_contents($tmp, json_encode($d, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)) === false || !rename($tmp, $file)) {
-    http_response_code(500); echo '{"erreur":"écriture impossible"}'; exit;
-}
+if (is_file($file)) donnees_copie_datee($file);
+$ok = donnees_ecrire_json($file, $d);
+if ($ok !== true) { http_response_code(500); echo json_encode(array('erreur' => $ok), JSON_UNESCAPED_UNICODE); exit; }
 echo json_encode(array('ok' => true, 'maj' => $d['maj'], 'biens' => count($d['biens'])));

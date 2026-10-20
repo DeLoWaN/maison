@@ -119,5 +119,7 @@ if ($diag) {
 
 if ($img === false || strlen($img) < 500 || !$format) { http_response_code(404); exit; }
 if (!is_dir($cacheDir)) @mkdir($cacheDir, 0750, true);
-file_put_contents($cache, $img);
+// Une seule photo en cache par bien : les versions d'une ancienne photo_url sont retirées.
+foreach ((array) glob($cacheDir . '/' . $id . '-*') as $vieux) if ($vieux !== $cache && preg_match('/^' . preg_quote($id, '/') . '-[0-9a-f]{10}$/', basename($vieux))) @unlink($vieux);
+if (@file_put_contents($cache, $img) !== strlen($img)) { @unlink($cache); header('Content-Type: ' . ($format ? $format : 'image/jpeg')); echo $img; exit; }
 servir($cache);

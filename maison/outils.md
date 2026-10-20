@@ -82,6 +82,18 @@ Réponse :
 - `ecartees` : nombre d'annonces déjà examinées et écartées. Il n'y a rien à faire.
 - `autre_recherche` : maisons suivies par l'autre recherche, pour information.
 
+Envoie les opérations `vu` des annonces non ouvertes avant de passer à la page suivante (section 5) : c'est ce qui permet au passage suivant de s'arrêter tôt.
+
+### Quand arrêter de tourner les pages
+
+Les listes triées par date (Ouest-France Immo avec `tri=date_desc` dans l'adresse, Bien'ici et SeLoger avec le tri « Les plus récentes ») mettent les annonces nouvelles en premier. Dès qu'une page ne donne ni `nouvelles` ni `a_rouvrir`, arrête cette recherche et passe à la suivante : les pages d'après ont déjà été lues aux passages précédents. Les annonces mises en avant en tête de liste (« Premium », « À la une ») ne comptent pas.
+
+Lis toutes les pages seulement :
+- si le dernier_ok de la source est vide ou date de plus de 7 jours ;
+- pour une liste qui n'est pas triée par date (FNAIM, triée par prix ; Etreproprio).
+
+Le 20 octobre, le premier passage outillé a lu les 76 pages d'Ouest-France Immo (1 588 annonces) : c'était un rattrapage, puisque les passages précédents n'en avaient lu que la page 1. Toutes ces annonces sont maintenant connues du serveur.
+
 ## 3. Lire une fiche d'annonce
 
 Sur la fiche affichée (attends qu'elle soit chargée : environ 4 secondes pour Bien'ici) :
@@ -157,7 +169,13 @@ Opérations possibles :
 - **Fin du passage** (une fois, à la fin) : `{"op":"fin", "note_passage":"…"}`
   - maj passe à la date du jour, et les annonces écartées de plus de 90 jours sont retirées.
 
-Envoie par paquets de 40 opérations au plus. Lis `resultats` : chaque opération refusée porte une `erreur` en clair (id déjà utilisé, champ invalide…). Corrige seulement celle-là et renvoie-la. Le serveur garde une copie datée de chaque version.
+Envoie par paquets de 40 opérations au plus, au fil du passage (ne garde pas tout pour la fin).
+
+Termine toujours par un envoi à part, qui ne contient que les opérations `source` (une par site, y compris ceux en échec) et l'opération `fin`, et vérifie que la réponse dit `"ok": true`.
+
+Si patch.php répond une erreur (code 500, « écriture impossible »), rien n'a été enregistré. Réessaie une seule fois, une minute plus tard. Si l'erreur revient, arrête le passage : continuer ne servirait à rien, puisque rien ne serait gardé. Termine alors par le message d'échec, avec le texte de l'erreur (« envoi au site échoué : … »).
+
+ Lis `resultats` : chaque opération refusée porte une `erreur` en clair (id déjà utilisé, champ invalide…). Corrige seulement celle-là et renvoie-la. Le serveur garde une copie datée de chaque version.
 
 ## 6. Contrôle des photos (après les envois)
 

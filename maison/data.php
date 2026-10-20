@@ -24,4 +24,6 @@ if (isset($_GET['leger'])) {
     $d['vus_nb'] = isset($d['vus']) && is_array($d['vus']) ? count($d['vus']) : 0;
     unset($d['vus']);
 }
+// Le registre des annonces écartées (plusieurs milliers de lignes) ne sert pas à la page : seulement avec &vus=1.
+if (!isset($_GET['vus']) && isset($d['vus'])) { $d['vus_nb'] = is_array($d['vus']) ? count($d['vus']) : 0; unset($d['vus']); }
 echo json_encode($d, JSON_UNESCAPED_UNICODE);

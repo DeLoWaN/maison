@@ -34,8 +34,8 @@ if (is_array($d) && isset($d['biens']) && is_array($d['biens'])) {
     }
 }
 if (!$trouve) { flock($verrou, LOCK_UN); http_response_code(404); echo '{"erreur":"bien inconnu"}'; exit; }
-$tmp = $file . '.tmp';
-$ok = file_put_contents($tmp, json_encode($d, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)) !== false && rename($tmp, $file);
+require_once __DIR__ . '/donnees-lib.php';
+$ok = donnees_ecrire_json($file, $d);
 flock($verrou, LOCK_UN);
-if (!$ok) { http_response_code(500); echo '{"erreur":"écriture impossible"}'; exit; }
+if ($ok !== true) { http_response_code(500); echo json_encode(array('erreur' => $ok), JSON_UNESCAPED_UNICODE); exit; }
 echo json_encode(array('ok' => true, 'r' => $r, 'id' => $id, 'photos' => count($photos)));

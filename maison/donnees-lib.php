@@ -22,8 +22,10 @@ function donnees_lire($r) {
 }
 
 // Modification sous verrou (même verrou que photos.php) : $fn reçoit la liste et la renvoie modifiée.
-// Une copie datée de la version précédente est gardée (60 dernières), comme maj.php.
-function donnees_modifier($r, $fn) {
+// Copie datée de la version précédente (compressée, 30 dernières), au plus une toutes les 10 minutes :
+// le 20 octobre, une copie complète à chaque envoi (près de 200 copies de 700 ko) a rempli l'hébergement.
+// $copie = false : pas de copie (simple marquage, comme vu_en_liste_le dans nouveautes.php).
+function donnees_modifier($r, $fn, $copie = true) {
     $f = donnees_fichier($r);
     $dir = dirname($f);
     if (!is_dir($dir)) @mkdir($dir, 0750, true);
@@ -32,18 +34,42 @@ function donnees_modifier($r, $fn) {
     $d = donnees_lire($r);
     $res = call_user_func_array($fn, array(&$d));
     if ($res !== false) {
-        $hist = $dir . '/historique';
-        if (!is_dir($hist)) @mkdir($hist, 0750, true);
-        if (is_file($f)) @copy($f, $hist . '/' . date('Ymd-His') . '.json');
-        $copies = glob($hist . '/*.json');
-        if ($copies && count($copies) > 60) { sort($copies); foreach (array_slice($copies, 0, count($copies) - 60) as $c) @unlink($c); }
-        $tmp = $f . '.tmp';
-        $ok = file_put_contents($tmp, json_encode($d, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)) !== false && rename($tmp, $f);
-        if (!$ok) $res = array('erreur' => 'écriture impossible');
+        if ($copie && is_file($f)) donnees_copie_datee($f);
+        $ok = donnees_ecrire_json($f, $d);
+        if ($ok !== true) $res = array('erreur' => $ok);
     }
     flock($verrou, LOCK_UN);
     fclose($verrou);
     return $res;
+}
+
+function donnees_copie_datee($f) {
+    $hist = dirname($f) . '/historique';
+    if (!is_dir($hist)) @mkdir($hist, 0750, true);
+    $copies = glob($hist . '/*.json*');
+    if (!$copies) $copies = array();
+    sort($copies);
+    $derniere = $copies ? end($copies) : null;
+    if ($derniere && time() - filemtime($derniere) < 600) return;
+    $gz = function_exists('gzencode');
+    $cible = $hist . '/' . date('Ymd-His') . ($gz ? '.json.gz' : '.json');
+    if ($gz) @file_put_contents($cible, gzencode((string) @file_get_contents($f), 6)); else @copy($f, $cible);
+    $copies[] = $cible;
+    if (count($copies) > 30) foreach (array_slice($copies, 0, count($copies) - 30) as $c) @unlink($c);
+}
+
+// Écriture atomique (fichier .tmp puis renommage). Renvoie true ou un message d'erreur en clair.
+function donnees_ecrire_json($f, $d) {
+    $json = json_encode($d, JSON_UNESCAPED_UNICODE);
+    if ($json === false || $json === '') return 'écriture impossible : données non encodables';
+    $tmp = $f . '.tmp';
+    $n = @file_put_contents($tmp, $json);
+    if ($n !== strlen($json) || !@rename($tmp, $f)) {
+        @unlink($tmp);
+        $libre = @disk_free_space(dirname($f));
+        return 'écriture impossible : espace de l\'hébergement plein probablement (voir diag.php)' . ($libre !== false ? ' ; libre ' . round($libre / 1048576) . ' Mo' : '');
+    }
+    return true;
 }
 
 // Adresse d'annonce comparable d'un passage à l'autre : sans « www. », sans ce qui suit ? ou #,

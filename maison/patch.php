@@ -48,16 +48,21 @@ function p_adresse_ok($a) {
     return true;
 }
 function p_indice_bien($d, $id) { foreach ($d['biens'] as $i => $b) if (isset($b['id']) && $b['id'] === $id) return $i; return -1; }
-function p_retirer_vus($d, $urls) {
-    $cles = array(); foreach ($urls as $u) $cles[donnees_cle_url($u)] = 1;
-    $garde = array(); foreach ($d['vus'] as $v) if (!isset($v['url']) || !isset($cles[donnees_cle_url($v['url'])])) $garde[] = $v;
-    return $garde;
+// Retire des écartées les annonces données ; l'index (construit une seule fois par envoi) est tenu à jour.
+function p_retirer_vus(&$d, &$ix, $urls) {
+    $suppr = array();
+    foreach ($urls as $u) { $k = donnees_cle_url($u); if (isset($ix[$k]) && $ix[$k]['type'] === 'vu') $suppr[$ix[$k]['i']] = 1; }
+    if (!$suppr) return;
+    $garde = array(); foreach ($d['vus'] as $i => $v) if (!isset($suppr[$i])) $garde[] = $v;
+    $d['vus'] = $garde;
+    $ix = donnees_index($d);
 }
 
 $resultats = array();
 $nouveaux = array();
 $res = donnees_modifier($r, function (&$d) use ($ops, &$resultats, &$nouveaux, $VERDICTS, $ETATS, $STATUTS, $CHAMPS, $CRIT_ETATS, $r) {
     $auj = donnees_aujourdhui();
+    $ix = donnees_index($d);
     foreach ($ops as $n => $o) {
         $op = is_array($o) && isset($o['op']) ? $o['op'] : '';
         $err = null;
@@ -71,7 +76,6 @@ $res = donnees_modifier($r, function (&$d) use ($ops, &$resultats, &$nouveaux, $
             elseif (($x = p_crit_ok(isset($b['crit']) ? $b['crit'] : null, $CRIT_ETATS)) !== true) $err = $x;
             elseif (isset($b['adresse']) && ($x = p_adresse_ok($b['adresse'])) !== true) $err = $x;
             else {
-                $ix = donnees_index($d);
                 foreach ($b['liens'] as $l) { $k = donnees_cle_url($l['url']); if (isset($ix[$k]) && $ix[$k]['type'] === 'bien') { $err = 'lien déjà suivi par ' . $d['biens'][$ix[$k]['i']]['id']; break; } }
             }
             if (!$err) {
@@ -89,7 +93,9 @@ $res = donnees_modifier($r, function (&$d) use ($ops, &$resultats, &$nouveaux, $
                 if (isset($b['adresse'])) $nb['adresse'] = $b['adresse'];
                 if (isset($b['geo']) && is_array($b['geo'])) $nb['geo'] = $b['geo'];
                 $d['biens'][] = $nb;
-                $d['vus'] = p_retirer_vus($d, array_map(function ($l) { return $l['url']; }, $b['liens']));
+                $iBien = count($d['biens']) - 1;
+                foreach ($nb['liens'] as $l) { $k = donnees_cle_url($l['url']); if (!isset($ix[$k]) || $ix[$k]['type'] !== 'vu') $ix[$k] = array('type' => 'bien', 'i' => $iBien); }
+                p_retirer_vus($d, $ix, array_map(function ($l) { return $l['url']; }, $b['liens']));
                 $nouveaux[] = $b['id'];
             }
         } elseif ($op === 'maj') {
@@ -143,22 +149,23 @@ $res = donnees_modifier($r, function (&$d) use ($ops, &$resultats, &$nouveaux, $
                 }
                 if (!$fait) $liens[] = array('site' => isset($o['site']) ? (string) $o['site'] : '', 'url' => $url, 'ok' => isset($o['ok']) ? (bool) $o['ok'] : true);
                 $d['biens'][$i]['liens'] = $liens;
-                $d['vus'] = p_retirer_vus($d, array($url));
+                p_retirer_vus($d, $ix, array($url));
+                $ix[$k] = array('type' => 'bien', 'i' => $i);
             }
         } elseif ($op === 'vu') {
             $url = isset($o['url']) ? (string) $o['url'] : '';
             if (!preg_match('#^https?://[^\s"<>]+$#', $url)) $err = 'url invalide';
             elseif (!isset($o['motif']) || trim((string) $o['motif']) === '') $err = 'motif manquant';
             else {
-                $ix = donnees_index($d); $k = donnees_cle_url($url);
+                $k = donnees_cle_url($url);
                 if (isset($ix[$k]) && $ix[$k]['type'] === 'bien') $err = 'annonce suivie par ' . $d['biens'][$ix[$k]['i']]['id'] . ' : pas dans vus';
                 else {
                     $e = array('url' => $url, 'motif' => (string) $o['motif'], 'prix' => isset($o['prix']) ? donnees_entier($o['prix']) : null, 'le' => $auj);
-                    if (isset($ix[$k])) $d['vus'][$ix[$k]['i']] = $e; else $d['vus'][] = $e;
+                    if (isset($ix[$k])) $d['vus'][$ix[$k]['i']] = $e; else { $d['vus'][] = $e; $ix[$k] = array('type' => 'vu', 'i' => count($d['vus']) - 1); }
                 }
             }
         } elseif ($op === 'oublier_vu') {
-            $d['vus'] = p_retirer_vus($d, array(isset($o['url']) ? (string) $o['url'] : ''));
+            p_retirer_vus($d, $ix, array(isset($o['url']) ? (string) $o['url'] : ''));
         } elseif ($op === 'source') {
             $nom = isset($o['nom']) ? trim((string) $o['nom']) : '';
             if ($nom === '') $err = 'nom manquant';
@@ -179,6 +186,7 @@ $res = donnees_modifier($r, function (&$d) use ($ops, &$resultats, &$nouveaux, $
             $limite = date('Y-m-d', strtotime('-90 days'));
             $garde = array(); foreach ($d['vus'] as $v) if (!isset($v['le']) || $v['le'] >= $limite) $garde[] = $v;
             $d['vus'] = $garde;
+            $ix = donnees_index($d);
         } else {
             $err = 'op inconnue : ' . $op;
         }
@@ -187,7 +195,7 @@ $res = donnees_modifier($r, function (&$d) use ($ops, &$resultats, &$nouveaux, $
     if ($nouveaux) $d['biens'] = numeroter($r, $d['biens']);
     return true;
 });
-if (is_array($res) && isset($res['erreur'])) { http_response_code(500); echo json_encode($res); exit; }
+if (is_array($res) && isset($res['erreur'])) { http_response_code(500); echo json_encode(array('erreur' => $res['erreur'], 'enregistre' => false, 'conseil' => 'Rien n\'a été enregistré. Ne renvoie pas en boucle : signale « envoi au site échoué » avec ce message dans le message de fin.'), JSON_UNESCAPED_UNICODE); exit; }
 $d = donnees_lire($r);
 $nums = array();
 foreach ($d['biens'] as $b) if (in_array($b['id'], $nouveaux, true)) $nums[$b['id']] = isset($b['num']) ? $b['num'] : null;
