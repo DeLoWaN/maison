@@ -556,7 +556,7 @@ function filtreHtml() {
   box.hidden = false;
   const actifs = D.biens.filter(b => b.etat === "active");
   const nAvec = actifs.filter(aUnAvis).length, nb = { toutes: actifs.length, sans: actifs.length - nAvec, avec: nAvec };
-  document.getElementById("filtre-btns").innerHTML = FILTRES.map(([k, l]) => `<button type="button" data-f="${k}" aria-pressed="${FILTRE === k}">${l} <b>${nb[k]}</b></button>`).join("");
+  document.getElementById("filtre-btns").innerHTML = FILTRES.map(([k, l]) => `<button type="button" data-f="${k}" aria-pressed="${FILTRE === k}">${l}${k === "toutes" ? "" : ` <b>${nb[k]}</b>`}</button>`).join("");
   document.getElementById("filtre-aide").textContent = FILTRE === "sans"
     ? "Seules les maisons en vente sans votre avis sont affichées. Une fois votre avis donné, la fiche reste visible jusqu'au prochain affichage."
     : FILTRE === "avec" ? "Seules les maisons en vente déjà notées sont affichées." : "Vos parents voient toujours toutes les maisons.";
