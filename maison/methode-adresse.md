@@ -74,7 +74,15 @@ Exemple du 20 octobre 2026 (n° 49, Tilly-sur-Seulles) :
 - La fiche Safti (safti.fr, liste par commune « /annonces/achat/maison/tilly-sur-seulles-14250 ») donnait 345 kWh, 97 kg CO₂ et une dépense de 5 620 à 7 660 €.
 - Un seul DPE du 14250 correspondait : mêmes valeurs, dépense de 6 640 € (le milieu exact de la fourchette), 132,9 m². Confiance forte.
 
-Agences déjà vues sur les biens sans adresse : Safti, iad France, Rue du Particulier, Maisons Anciennes, Just in Home, De Fombelle Immobilier, Normandie Privilège, AXO, Immo Bocage.
+Vérifications du 20 octobre 2026 sur des annonces Ouest-France Immo :
+- **Trouver l'agence sur Ouest-France Immo** : son nom est dans le bloc de contact, juste avant « SIREN » (ex. « ORPI MDG CAEN … SIREN: … »). Ne te fie pas à une phrase comme « Nouvelle exclusivité chez UNI Immobilier ! » ailleurs dans la page : elle vient des annonces voisines. La « Référence agence » de la description permet de vérifier que c'est la bonne annonce.
+- **Recherche du site de l'agence** : WebSearch « <réseau> <ville de l'agence> », puis la liste des biens de l'agence (Orpi : page « acheter » de l'agence, Laforêt : fiche « …/acheter/<commune>/… », UNI : liste « Maison » de uni-immobilier.fr).
+- **Ouest-France recopie bien les chiffres du DPE** (182/27, 250/8, 228/69 : identiques sur le site de l'agence). Ce que le site de l'agence apporte surtout, c'est la fourchette de dépense (la plus discriminante), la vraie commune et l'état de la vente.
+- **La fourchette « Estimation des coûts annuels » de la fenêtre « Voir le DPE » d'Ouest-France est un calcul du site** (« prix moyens des énergies indexés… ») : ne l'utilise pas. Seule compte la fourchette écrite par l'agence.
+- **Vraie commune** : l'agence peut donner une autre commune que l'agrégateur. La n° 26/80, annoncée « Tourville-sur-Odon » sur Ouest-France, est à Trois-Monts (Montillières-sur-Orne) d'après Orpi : hors zone. Vérifie toujours la zone avec la commune donnée par l'agence, et signale l'écart dans le message de fin.
+- **Vendu** : le site de l'agence peut marquer le bien « Vendu » alors que l'agrégateur l'affiche encore (UNI, Tourville-sur-Odon, 2 305 m², même DPE que la n° 60). Signale-le dans le message de fin ; ne retire pas le bien tant que ses liens sont en ligne.
+
+Agences déjà vues sur les biens sans adresse : Orpi, UNI Immobilier, Laforêt, Safti, iad France, Rue du Particulier, Maisons Anciennes, Just in Home, De Fombelle Immobilier, Normandie Privilège, AXO, Immo Bocage.
 
 ## Étape 2 : chercher dans la base DPE
 Essaie dans cet ordre, et arrête-toi dès qu'un résultat unique apparaît sur lequel au moins deux valeurs concordent.
