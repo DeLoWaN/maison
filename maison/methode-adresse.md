@@ -64,6 +64,12 @@ Quand le faire :
 3. Lis le DPE sur cette fiche, avec les mêmes expressions qu'à l'étape 1. Reprends ensuite à l'étape 2.
 4. Ajoute cette fiche aux liens du bien : `{site: "<Agence> (agence)", url, ok: true}`. C'est un nouveau lien : un bien « non_trouvee » avec moins de 3 essais peut donc être retraité au passage suivant.
 
+**Bien vendu par un notaire** (« Immobilier.notaires® et l'office notarial … vous proposent », « Annonce de l'étude … Notaires à … », référence de la forme « 14020-230 ») : l'annonce d'origine est sur immobilier.notaires.fr.
+- Ouvre-la dans le navigateur intégré, jamais avec WebFetch : en lecture directe, la page revient vide. C'est pour ça que la source était notée « échec, page vide » ; dans le navigateur, le site marche.
+- Liste par prix (le prix est le même que sur l'agrégateur) : `https://www.immobilier.notaires.fr/fr/annonces-immobilieres-liste?typeTransaction=VENTE&departement=14&prixMin=<prix - 1000>&prixMax=<prix + 1000>`. Repère la commune dans les adresses des fiches (`/annonce-immo/vente/maison/<commune>-14/<numéro>`), ouvre la fiche et vérifie la « Référence ».
+- Sous « Les diagnostics énergétiques », clique « Plus de détails » : les kWh/m²/an et kg CO2/m²/an n'apparaissent qu'après ce clic. La fourchette « Dépenses théoriques annuelles d'énergie » est affichée juste dessous.
+- Exemple du 21 octobre 2026 (n° 98, Anctoville) : SeLoger n'affichait que C/C. La fiche notaire donnait 161 kWh, 26 kg CO2, dépense de 2 410 à 3 300 €. Un seul DPE du 14240 concordait, avec une dépense de 2 853,80 € (milieu exact de la fourchette) : confiance forte. Le passage précédent avait vu ce DPE parmi deux pistes « non confirmées », faute d'avoir cherché l'annonce d'origine.
+
 Règles :
 - Lecture seule : ne remplis aucun formulaire de contact et ne te connecte à aucun compte.
 - Le nom du conseiller sert seulement à reconnaître le réseau : ne le note nulle part.
@@ -81,6 +87,8 @@ Vérifications du 20 octobre 2026 sur des annonces Ouest-France Immo :
 - **La fourchette « Estimation des coûts annuels » de la fenêtre « Voir le DPE » d'Ouest-France est un calcul du site** (« prix moyens des énergies indexés… ») : ne l'utilise pas. Seule compte la fourchette écrite par l'agence.
 - **Vraie commune** : l'agence peut donner une autre commune que l'agrégateur. La n° 26/80, annoncée « Tourville-sur-Odon » sur Ouest-France, est à Trois-Monts (Montillières-sur-Orne) d'après Orpi : hors zone. Vérifie toujours la zone avec la commune donnée par l'agence, et signale l'écart dans le message de fin.
 - **Vendu** : le site de l'agence peut marquer le bien « Vendu » alors que l'agrégateur l'affiche encore (UNI, Tourville-sur-Odon, 2 305 m², même DPE que la n° 60). Signale-le dans le message de fin ; ne retire pas le bien tant que ses liens sont en ligne.
+
+Ne conclus jamais « non trouvée » sur un bien dont l'annonce n'a pas de DPE chiffré sans avoir fait cette étape 1 bis : deux DPE « proches mais non confirmés » sont justement le cas où les chiffres de l'annonce d'origine tranchent.
 
 Agences déjà vues sur les biens sans adresse : Orpi, UNI Immobilier, Laforêt, Safti, iad France, Rue du Particulier, Maisons Anciennes, Just in Home, De Fombelle Immobilier, Normandie Privilège, AXO, Immo Bocage.
 

@@ -204,7 +204,7 @@ Juge la maison sur `texte`. Les autres champs sont des repères : en cas de dout
 - `a_verifier` : biens actifs qui n'ont été ni vus dans une liste ni vérifiés depuis 3 jours. Ouvre au moins un lien de chacun : s'il est toujours en ligne, opération `maj` avec `"verifie": true` (et le prix s'il a changé) ; si la fiche a disparu sur tous les liens, `maj` avec `"etat": "retiree"`.
 - `galerie` : biens sans galerie de photos (voir « Galerie de photos » dans consignes.md).
 - `sans_photo` : biens sans photo_url. Prends le champ `photo` du script de fiche.
-- `adresse` : biens à traiter à l'étape 6 bis, déjà dans l'ordre de la consigne (au plus 8).
+- `adresse` : biens à traiter à l'étape 6 bis, déjà dans l'ordre de la consigne (au plus 8, dont jusqu'à 4 biens « non trouvée » à rattraper). Quand un bien porte `a_faire`, commence par ce qui y est écrit : cherche l'annonce d'origine (site de l'agence, ou immobilier.notaires.fr pour un notaire) avant toute autre recherche. Si tu ne la trouves pas, ajoute « annonce d'origine introuvable » à adresse.preuves.
 
 ## 5. Enregistrer : les opérations
 
