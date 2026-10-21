@@ -47,6 +47,20 @@ function p_adresse_ok($a) {
     if ($a['confiance'] !== 'non_trouvee' && (!isset($a['texte']) || trim((string) $a['texte']) === '')) return 'adresse : texte attendu pour forte ou probable';
     return true;
 }
+// Une source non lue doit avoir une cause réelle : pas de « manque de temps » (la tâche n'a pas de limite de temps)
+// ni de « pas tenté » sans raison. Ces deux excuses revenaient alors que les passages duraient 17 à 30 minutes.
+function p_note_source($note) {
+    if (preg_match('/(faute|manque|pas eu le|plus le|par manque)\s+(de\s+|du\s+)?temps|temps\s+(insuffisant|manquant|limit)/iu', $note))
+        return "note refusée : il n'y a aucune limite de temps. Lis cette source ; elle ne peut rester non lue que pour une cause réelle et vérifiable (site bloqué, page en erreur, adresse de liste introuvable après avoir navigué depuis l'accueil), à écrire dans la note.";
+    if (trim(preg_replace('/(pas|non)\s+(tent[ée]e?|fait|relu|lu)|(à|a)?\s*ce passage|[.\s()]/iu', '', $note)) === '')
+        return 'note refusée : donne la vraie cause (ce qui a été essayé et ce qui a échoué), ou lis la source.';
+    return true;
+}
+function p_sources_manquantes($r, $d, $auj) {
+    $vues = array(); foreach ($d['sources'] as $s) if (isset($s['nom']) && isset($s['passage_le']) && $s['passage_le'] === $auj) $vues[strtolower($s['nom'])] = 1;
+    $m = array(); foreach (donnees_sources_attendues($r) as $n) if (!isset($vues[strtolower($n)])) $m[] = $n;
+    return $m;
+}
 function p_indice_bien($d, $id) { foreach ($d['biens'] as $i => $b) if (isset($b['id']) && $b['id'] === $id) return $i; return -1; }
 // Retire des écartées les annonces données ; l'index (construit une seule fois par envoi) est tenu à jour.
 function p_retirer_vus(&$d, &$ix, $urls) {
@@ -185,15 +199,19 @@ $res = donnees_modifier($r, function (&$d) use ($ops, &$resultats, &$nouveaux, $
             if ($nom === '') $err = 'nom manquant';
             elseif (!isset($o['statut']) || !in_array($o['statut'], $STATUTS, true)) $err = 'statut : ok|partiel|echec|nt';
             elseif (isset($o['dernier_ok']) && $o['dernier_ok'] !== null && !p_date($o['dernier_ok'])) $err = 'dernier_ok : AAAA-MM-JJ ou null';
+            elseif ($o['statut'] !== 'ok' && ($x = p_note_source(isset($o['note']) ? (string) $o['note'] : '')) !== true) $err = $x;
             else {
                 $j = -1; foreach ($d['sources'] as $x => $s) if (isset($s['nom']) && strtolower($s['nom']) === strtolower($nom)) $j = $x;
                 $s = $j >= 0 ? $d['sources'][$j] : array('nom' => $nom, 'dernier_ok' => null);
                 $s['statut'] = $o['statut'];
+                $s['passage_le'] = $auj;
                 if (isset($o['note'])) $s['note'] = (string) $o['note'];
                 if (array_key_exists('dernier_ok', $o)) $s['dernier_ok'] = $o['dernier_ok'];
                 elseif ($o['statut'] === 'ok') $s['dernier_ok'] = $auj;
                 if ($j >= 0) $d['sources'][$j] = $s; else $d['sources'][] = $s;
             }
+        } elseif ($op === 'fin' && ($manque = p_sources_manquantes($r, $d, $auj))) {
+            $err = 'fin refusée : aucune opération source ce passage pour ' . implode(', ', $manque) . '. Lis ces sources (aucune limite de temps), ou envoie pour chacune une opération source avec la vraie cause, puis renvoie fin.';
         } elseif ($op === 'fin') {
             $d['maj'] = $auj;
             $d['note_passage'] = isset($o['note_passage']) ? (string) $o['note_passage'] : '';

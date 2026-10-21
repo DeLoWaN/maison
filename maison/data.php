@@ -23,6 +23,9 @@ if (isset($_GET['leger'])) {
     foreach ($d['biens'] as $i => $b) { $n = isset($b['photos']) && is_array($b['photos']) ? count($b['photos']) : 0; unset($d['biens'][$i]['photos']); $d['biens'][$i]['nb_photos'] = $n; }
     $d['vus_nb'] = isset($d['vus']) && is_array($d['vus']) ? count($d['vus']) : 0;
     unset($d['vus']);
+    require_once __DIR__ . '/donnees-lib.php';
+    if (!isset($d['sources']) || !is_array($d['sources'])) $d['sources'] = array();
+    $d['ordre_sources'] = donnees_ordre_sources($r, $d);
 }
 // Le registre des annonces écartées (plusieurs milliers de lignes) ne sert pas à la page : seulement avec &vus=1.
 if (!isset($_GET['vus']) && isset($d['vus'])) { $d['vus_nb'] = is_array($d['vus']) ? count($d['vus']) : 0; unset($d['vus']); }

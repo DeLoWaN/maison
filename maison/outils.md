@@ -230,7 +230,10 @@ Opérations possibles :
 - **Source** : `{"op":"source", "nom":"Bien'ici", "statut":"ok|partiel|echec|nt", "note":"…", "dernier_ok":"2026-10-20"}`
   - Avec le statut "ok" et sans dernier_ok, le serveur met la date du jour.
   - Pour garder l'ancienne date (lecture incomplète), n'envoie pas dernier_ok.
+  - Statut autre que "ok" : la note doit donner la vraie cause, ce qui a été essayé et ce qui a échoué. Le serveur refuse « manque de temps », « faute de temps » (la tâche n'a aucune limite de temps) et « pas tenté » sans raison.
+- **Ordre des sources** : lis les sources de l'étape 4 dans l'ordre du champ `ordre_sources` de la liste allégée (section 1) : les moins récemment lues en entier passent en premier, pour qu'une source sautée un jour soit lue le lendemain.
 - **Fin du passage** (une fois, à la fin) : `{"op":"fin", "note_passage":"…"}`
+  - Le serveur refuse fin tant qu'une des sources de la tâche n'a pas reçu son opération source pendant ce passage ; le refus donne leur nom. Lis-les, ou envoie leur opération source avec la vraie cause, puis renvoie fin.
   - maj passe à la date du jour, et les annonces écartées de plus de 90 jours sont retirées.
 
 Envoie par paquets de 40 opérations au plus, au fil du passage (ne garde pas tout pour la fin).

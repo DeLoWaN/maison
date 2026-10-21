@@ -1,0 +1,17 @@
+{
+ "note": "Sources que chaque passage doit traiter (une opération source chacune). patch.php refuse l'opération fin tant qu'il en manque ; data.php&leger=1 donne ordre_sources (les moins récemment lues d'abord).",
+ "attendues": [
+  "Ouest-France Immo",
+  "Bien'ici",
+  "SeLoger",
+  "Etreproprio",
+  "FNAIM",
+  "Leboncoin",
+  "Immonot",
+  "PAP",
+  "iad France",
+  "Square Habitat",
+  "Les Clefs de chez moi",
+  "Optimhome"
+ ]
+}

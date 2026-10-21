@@ -103,3 +103,20 @@ function donnees_entier($x) {
     if (is_string($x) && preg_match('/^\s*\d[\d\s.\x{202f}\x{a0}]*$/u', $x)) return (int) preg_replace('/\D/', '', $x);
     return null;
 }
+
+// Sources que la tâche doit lire à chaque passage (recherches/<r>/sources.json).
+function donnees_sources_attendues($r) {
+    $j = json_decode((string) @file_get_contents(__DIR__ . '/recherches/' . $r . '/sources.json'), true);
+    return is_array($j) && isset($j['attendues']) && is_array($j['attendues']) ? $j['attendues'] : array();
+}
+// Ordre de lecture : les sources les moins récemment lues en entier d'abord (jamais lues en tête).
+function donnees_ordre_sources($r, $d) {
+    $dates = array();
+    foreach ($d['sources'] as $s) if (isset($s['nom'])) $dates[strtolower($s['nom'])] = isset($s['dernier_ok']) && $s['dernier_ok'] ? $s['dernier_ok'] : '';
+    $att = donnees_sources_attendues($r); $rang = array();
+    foreach ($att as $i => $n) $rang[] = array('nom' => $n, 'd' => isset($dates[strtolower($n)]) ? $dates[strtolower($n)] : '', 'i' => $i);
+    usort($rang, function ($a, $b) { return $a['d'] === $b['d'] ? $a['i'] - $b['i'] : strcmp($a['d'], $b['d']); });
+    $out = array(); foreach ($rang as $x) $out[] = $x['nom'] . ' (dernière lecture complète : ' . ($x['d'] ? $x['d'] : 'jamais') . ')';
+    return $out;
+}
+
