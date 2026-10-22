@@ -1,12 +1,7 @@
 [
  {
-  "id": "longere",
-  "nom": "Longères",
-  "sous": "Maison ancienne en pierre, une chambre en bas"
- },
- {
-  "id": "plainpied",
-  "nom": "Deux chambres en bas",
-  "sous": "Plain-pied ou deux chambres au rez-de-chaussée, tout type de maison"
+  "id": "maison",
+  "nom": "Maisons",
+  "sous": "Au moins une chambre au rez-de-chaussée, tout type de maison sauf le neuf"
  }
 ]
