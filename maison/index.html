@@ -198,6 +198,11 @@ details.groupe-replie > summary .nb { font: 600 1.05rem/1 var(--f-texte); color:
 .ancien { color: var(--gris); text-decoration: line-through; font-weight: 400; font-size: 1rem; margin-left: 8px; }
 .surface { font-weight: 700; font-variant-numeric: tabular-nums; }
 .surface small { font-weight: 400; color: var(--gris); font-size: .95rem; margin-left: 4px; }
+.marche:empty { display: none; }
+.marche { margin-top: 8px; padding: 8px 10px; border-left: 4px solid var(--trait-fort); background: var(--lin); border-radius: 4px; font-size: .95rem; }
+.marche strong { display: block; }
+.marche.bas { border-left-color: var(--ok); } .marche.haut { border-left-color: var(--ko); } .marche.dans { border-left-color: var(--s-visiter); }
+.marche small { display: block; color: var(--gris); }
 
 /* Statut : les trois boutons ont la couleur de la plaque qu'ils donnent */
 .statuts { display: grid; gap: 8px; }
@@ -638,6 +643,7 @@ function carte(b) {
           <span class="prix">${euros(b.prix)}${baisse ? `<span class="ancien">${premier.toLocaleString("fr-FR")} €</span>` : ""}</span>
           ${b.surface ? `<span class="surface">${esc(b.surface)} m² habitables${parM2}</span>` : ""}
         </div>
+        <div class="marche" data-marche="${esc(b.id)}"></div>
       </div>
       <div class="slot">${b.etat === "active" ? boutons(b) : ""}</div>
       <div class="slot">${b.etat === "active" ? avisHtml(b) : ""}</div>
@@ -726,7 +732,6 @@ function dessinerCarte(el) {
   geoCalvados().then(async g => {
     const p = await situerPrecis(b, g);
     if (!p) { el.innerHTML = `<div class="vide">Commune introuvable sur la carte</div>`; return; }
-    const ici = [p.ll[1], p.ll[0]];
     const v = await lieuChez(g), vv = v ? [v.ll[1], v.ll[0]] : null;
     const exact = !!(p.adresse || p.precis);
     const carte = L.map(el, { dragging: !L.Browser.mobile, scrollWheelZoom: false, tap: false });
@@ -763,6 +768,67 @@ const obsCartes = "IntersectionObserver" in window
   : null;
 function preparerCartes() {
   document.querySelectorAll(".carte[data-carte]").forEach(el => obsCartes ? obsCartes.observe(el) : dessinerCarte(el));
+}
+// ---- Prix du marché : ventes réelles (DVF) et annonces suivies comparables ----
+// recherches/<r>/marche.json est construit par scripts/marche.py : quartiles du prix au m² des maisons vendues
+// autour de chaque commune, par bande de surface habitable et de terrain. Aucune vente individuelle n'y figure.
+let PMARCHE = null;
+const chargerMarche = () => PMARCHE || (PMARCHE = fetch(`recherches/${encodeURIComponent(R)}/marche.json`).then(r => r.ok ? r.json() : null).catch(() => null));
+// Terrain en m² lu dans le texte du critère (« 3 650 m² », « environ 1 ha ») ; null s'il n'est pas chiffré.
+function terrainM2(b) {
+  const t = String(((b.crit || {}).terrain || [])[1] || "");
+  const ha = t.match(/(\d+(?:[.,]\d+)?)\s*ha\b/i);
+  if (ha) return Math.round(parseFloat(ha[1].replace(",", ".")) * 10000);
+  const m2 = [...t.matchAll(/(\d[\d\s  .]*)\s*m²/g)].map(x => parseInt(x[1].replace(/\D/g, ""), 10)).filter(n => n > 0);
+  return m2.length ? Math.max(...m2) : null;
+}
+// Famille d'annonce, pour comparer les prix demandés : maison ancienne ou non, à rénover ou non.
+function familleAnnonce(b) {
+  const t = norm([b.titre, ((b.crit || {}).pierre || [])[1], ((b.crit || {}).budget || [])[1]].join(" "));
+  const ancienne = /pierre|longere|ferme|maitre|ancienne|manoir|presbytere|caractere|colombage|\b1[5-8]\d\d\b|\b19[0-3]\d\b/.test(t);
+  const travaux = /renover|renovation a prevoir|travaux|rafraichir|restaurer/.test(t);
+  return (ancienne ? "ancienne" : "recente") + (travaux ? " a renover" : "");
+}
+const quartile = (v, p) => { const s = [...v].sort((a, b) => a - b), k = (s.length - 1) * p, i = Math.floor(k); return s[i] + (s[Math.min(i + 1, s.length - 1)] - s[i]) * (k - i); };
+const fm = n => (Math.round(n / 10) * 10).toLocaleString("fr-FR");
+async function remplirMarche() {
+  const boites = [...document.querySelectorAll(".marche[data-marche]")].filter(el => !el.dataset.fait);
+  if (!boites.length) return;
+  const [m, g] = await Promise.all([chargerMarche(), geoCalvados().catch(() => null)]);
+  if (!m || !g) return;
+  const communes = Object.values(m.communes);
+  const bornes = m.surfaces;
+  for (const el of boites) {
+    el.dataset.fait = "1";
+    const b = D.biens.find(x => x.id === el.dataset.marche);
+    if (!b || !b.prix || !b.surface) continue;
+    const p = await situerPrecis(b, g).catch(() => null);
+    if (!p) continue;
+    const ici = [p.ll[1], p.ll[0]];
+    let proche = null, dmin = 1e9;
+    for (const c of communes) { const d = kmEntre([c.c[1], c.c[0]], p.ll); if (d < dmin) { dmin = d; proche = c; } }
+    if (!proche || dmin > 8) continue;
+    let i = bornes.length - 2; for (let k = 0; k < bornes.length - 1; k++) if (b.surface >= bornes[k] && (bornes[k + 1] === null || b.surface < bornes[k + 1])) { i = k; break; }
+    const terrain = terrainM2(b);
+    const grand = terrain !== null ? terrain >= m.grand_terrain : ((b.crit || {}).terrain || [])[0] === "ok";
+    const q = proche.b[`${i}${grand ? 1 : 0}`];
+    const pm2 = b.prix / b.surface;
+    const lignes = [];
+    if (q) {
+      const [q1, med, q3, n, rayon] = q;
+      const verdict = pm2 < q1 ? ["bas", "Plutôt en dessous du marché"] : pm2 > q3 ? ["haut", "Plutôt au-dessus du marché"] : ["dans", "Dans les prix du marché"];
+      el.classList.add(verdict[0]);
+      const haut = bornes[i + 1] === null ? `plus de ${bornes[i]} m²` : `${bornes[i]} à ${bornes[i + 1]} m²`;
+      lignes.push(`<strong>${verdict[1]}</strong>`,
+        `Les maisons de ${haut}${grand ? " avec plus de 1 000 m² de terrain" : ""} se sont vendues entre ${fm(q1)} et ${fm(q3)} € le m² à moins de ${rayon} km de ${esc(proche.nom)} (${n} ventes, ${m.periode.replace("-", " à ")}). Celle-ci est affichée à ${fm(pm2)} € le m².`,
+        `<small>Fiabilité : ${n >= 20 ? "bonne" : "moyenne"}. L'état, les travaux et le charme ne sont pas pris en compte ; le prix affiché inclut souvent les frais d'agence.</small>`);
+    }
+    // Annonces suivies de la même famille et de taille proche : des prix demandés, pas des prix de vente.
+    const fam = familleAnnonce(b);
+    const sem = D.biens.filter(x => x.id !== b.id && x.prix && x.surface && familleAnnonce(x) === fam && Math.abs(x.surface - b.surface) / b.surface <= 0.4).map(x => x.prix / x.surface);
+    if (sem.length >= 5) lignes.push(`<small>Annonces suivies comparables (maisons ${fam.replace("recente", "récentes ou sans caractère").replace("ancienne", "anciennes").replace(" a renover", " à rénover")}, ${sem.length} annonces) : entre ${fm(quartile(sem, .25))} et ${fm(quartile(sem, .75))} € le m² demandés.</small>`);
+    el.innerHTML = lignes.join("");
+  }
 }
 // ---- Carte d'ensemble : une plaque par maison en vente, de la couleur du choix de la famille ----
 let VUE = null, VUE_R = null, VUE_N = 0;
@@ -904,6 +970,7 @@ function rendre() {
   document.getElementById("note-passage").textContent = D.note_passage || "";
   preparerCartes();
   dessinerVue();
+  remplirMarche();
 }
 document.addEventListener("click", ev => {
   if (!ev.target.closest("[data-f-tout]")) return;
