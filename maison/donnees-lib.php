@@ -204,6 +204,8 @@ function donnees_fusionner_biens($g, $a) {
     if (empty($g['photo_url']) && !empty($a['photo_url'])) $g['photo_url'] = $a['photo_url'];
     if (donnees_rang_adresse(isset($a['adresse']) ? $a['adresse'] : null) > donnees_rang_adresse(isset($g['adresse']) ? $g['adresse'] : null)) $g['adresse'] = $a['adresse'];
     if (empty($g['surface']) && !empty($a['surface'])) $g['surface'] = $a['surface'];
+    // Valeurs du DPE (scripts/adresse.py) : celles du bien gardé, complétées par celles du doublon.
+    if (isset($a['indices']) && is_array($a['indices'])) $g['indices'] = (isset($g['indices']) && is_array($g['indices']) ? $g['indices'] : array()) + $a['indices'];
     return $g;
 }
 

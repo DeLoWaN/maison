@@ -35,11 +35,13 @@ verifier('le refus rdc dit quoi faire', true, strpos($msg, 'opération vu') !== 
 // Fusion.
 $g = array('id' => 'a', 'num' => 79, 'verdict' => 'presque', 'titre' => 'Gardé', 'repere_le' => '2026-10-19', 'verifie_le' => '2026-10-20',
     'liens' => array(array('site' => 'OF', 'url' => 'https://www.ouestfrance-immo.com/x/1.htm', 'ok' => true)),
-    'prix_hist' => array(array('d' => '2026-10-19', 'p' => 339000)), 'adresse' => array('confiance' => 'non_trouvee', 'essais' => 1));
+    'prix_hist' => array(array('d' => '2026-10-19', 'p' => 339000)), 'adresse' => array('confiance' => 'non_trouvee', 'essais' => 1),
+    'indices' => array('kwh' => '229', 'terrain' => '1 000'));
 $a = array('id' => 'b', 'num' => 114, 'verdict' => 'top', 'titre' => 'Doublon', 'repere_le' => '2026-10-18', 'verifie_le' => '2026-10-22', 'surface' => 133,
     'liens' => array(array('site' => 'SeLoger', 'url' => 'https://www.seloger.com/y', 'ok' => true), array('site' => 'OF bis', 'url' => 'https://ouestfrance-immo.com/x/1.htm?ref=2', 'ok' => true)),
     'prix_hist' => array(array('d' => '2026-10-18', 'p' => 345000), array('d' => '2026-10-19', 'p' => 339000)),
-    'photos' => array('https://p/1', 'https://p/2'), 'photo_url' => 'https://p/1', 'adresse' => array('confiance' => 'forte', 'texte' => 'X'));
+    'photos' => array('https://p/1', 'https://p/2'), 'photo_url' => 'https://p/1', 'adresse' => array('confiance' => 'forte', 'texte' => 'X'),
+    'indices' => array('kwh' => '230', 'depense' => 'entre 1 960 € et 2 710 €'));
 $f = donnees_fusionner_biens($g, $a);
 verifier('fusion : id, numéro, verdict et titre du bien gardé', array('a', 79, 'presque', 'Gardé'), array($f['id'], $f['num'], $f['verdict'], $f['titre']));
 verifier('fusion : liens réunis sans doublon d\'adresse', 2, count($f['liens']));
@@ -48,6 +50,7 @@ verifier('fusion : repéré au plus tôt, vérifié au plus tard', array('2026-1
 verifier('fusion : galerie et photo du doublon reprises', array(2, 'https://p/1'), array(count($f['photos']), $f['photo_url']));
 verifier('fusion : adresse la plus sûre', 'forte', $f['adresse']['confiance']);
 verifier('fusion : surface reprise si absente', 133, $f['surface']);
+verifier('fusion : indices du bien gardé complétés par ceux du doublon', array('229', '1 000', 'entre 1 960 € et 2 710 €'), array($f['indices']['kwh'], $f['indices']['terrain'], $f['indices']['depense']));
 
 echo $echecs ? "\n$echecs échec(s)\n" : "\nTous les tests passent.\n";
 exit($echecs ? 1 : 0);
