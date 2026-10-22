@@ -8,7 +8,10 @@
 //                                                                     etat "ecartee" avec ecartee_motif : ne remplit plus les critères)
 //   {"op":"lien", "id":..., "site":..., "url":..., "ok":true}
 //   {"op":"vu", "url":..., "motif":..., "prix":...}       {"op":"oublier_vu", "url":...}
+//   {"op":"fusionner", "id":<bien gardé>, "avec":<doublon>}   (liens, prix, galerie et adresse réunis ; le numéro du doublon mène au bien gardé)
 //   {"op":"source", "nom":..., "statut":"ok|partiel|echec|nt", "note":..., "dernier_ok":"AAAA-MM-JJ"|null}
+// ajout et maj d'un bien actif sont refusés s'ils contredisent les règles de donnees_regles_bien (plafond de prix,
+// chambre au rez-de-chaussée, verdict cohérent avec les critères « ko »).
 //   {"op":"fin", "note_passage":...}   (maj = aujourd'hui, retrait des « vus » de plus de 90 jours)
 // Une opération refusée n'empêche pas les autres ; chaque refus est expliqué dans resultats.
 require_once __DIR__ . '/auth-lib.php';
@@ -77,7 +80,9 @@ function p_retirer_vus(&$d, &$ix, $urls) {
 
 $resultats = array();
 $nouveaux = array();
-$res = donnees_modifier($r, function (&$d) use ($ops, &$resultats, &$nouveaux, $VERDICTS, $ETATS, $STATUTS, $CHAMPS, $CRIT_ETATS, $r) {
+$fusions = array();
+$plafond = donnees_plafond($r);
+$res = donnees_modifier($r, function (&$d) use ($ops, &$resultats, &$nouveaux, &$fusions, $VERDICTS, $ETATS, $STATUTS, $CHAMPS, $CRIT_ETATS, $r, $plafond) {
     $auj = donnees_aujourdhui();
     $ix = donnees_index($d);
     foreach ($ops as $n => $o) {
@@ -92,6 +97,7 @@ $res = donnees_modifier($r, function (&$d) use ($ops, &$resultats, &$nouveaux, $
             elseif (($x = p_liens_ok(isset($b['liens']) ? $b['liens'] : null)) !== true) $err = $x;
             elseif (($x = p_crit_ok(isset($b['crit']) ? $b['crit'] : null, $CRIT_ETATS)) !== true) $err = $x;
             elseif (isset($b['adresse']) && ($x = p_adresse_ok($b['adresse'])) !== true) $err = $x;
+            elseif (($x = donnees_regles_bien(array('prix' => isset($b['prix']) ? donnees_entier($b['prix']) : null, 'crit' => $b['crit'], 'verdict' => $b['verdict']), $plafond)) !== true) $err = $x;
             else {
                 foreach ($b['liens'] as $l) { $k = donnees_cle_url($l['url']); if (isset($ix[$k]) && $ix[$k]['type'] === 'bien') { $err = 'lien déjà suivi par ' . $d['biens'][$ix[$k]['i']]['id']; break; } }
             }
@@ -148,7 +154,9 @@ $res = donnees_modifier($r, function (&$d) use ($ops, &$resultats, &$nouveaux, $
                 if (isset($ch['etat']) && $ch['etat'] === 'retiree' && empty($b['retiree_le'])) $b['retiree_le'] = $auj;
                 if (isset($ch['etat']) && $ch['etat'] === 'active') $b['retiree_le'] = null;
                 if (!empty($o['verifie'])) $b['verifie_le'] = $auj;
-                $d['biens'][$i] = $b;
+                $touche = array_intersect(array_keys($ch), array('verdict', 'crit', 'prix', 'etat'));
+                if ($touche && isset($b['etat']) && $b['etat'] === 'active' && ($x = donnees_regles_bien($b, $plafond)) !== true) $err = $x;
+                else $d['biens'][$i] = $b;
             }
         } elseif ($op === 'lien') {
             $id = isset($o['id']) ? (string) $o['id'] : '';
@@ -195,6 +203,20 @@ $res = donnees_modifier($r, function (&$d) use ($ops, &$resultats, &$nouveaux, $
                 if (isset($b['liens']) && is_array($b['liens'])) foreach ($b['liens'] as $l) if (isset($l['url'])) $d['vus'][] = array('url' => $l['url'], 'motif' => $motif, 'prix' => isset($b['prix']) ? $b['prix'] : null, 'le' => $auj);
                 $ix = donnees_index($d);
             }
+        } elseif ($op === 'fusionner') {
+            $id = isset($o['id']) ? (string) $o['id'] : '';
+            $avec = isset($o['avec']) ? (string) $o['avec'] : '';
+            $i = p_indice_bien($d, $id); $j = p_indice_bien($d, $avec);
+            if ($i < 0) $err = 'bien inconnu : ' . $id;
+            elseif ($j < 0) $err = 'bien inconnu : ' . $avec;
+            elseif ($i === $j) $err = 'un bien ne se fusionne pas avec lui-même';
+            else {
+                $a = $d['biens'][$j];
+                $d['biens'][$i] = donnees_fusionner_biens($d['biens'][$i], $a);
+                array_splice($d['biens'], $j, 1);
+                $ix = donnees_index($d);
+                $fusions[] = array('de' => $avec, 'vers' => $id, 'num_de' => isset($a['num']) ? $a['num'] : null, 'num_vers' => isset($d['biens'][p_indice_bien($d, $id)]['num']) ? $d['biens'][p_indice_bien($d, $id)]['num'] : null);
+            }
         } elseif ($op === 'oublier_vu') {
             p_retirer_vus($d, $ix, array(isset($o['url']) ? (string) $o['url'] : ''));
         } elseif ($op === 'source') {
@@ -231,6 +253,11 @@ $res = donnees_modifier($r, function (&$d) use ($ops, &$resultats, &$nouveaux, $
     return true;
 });
 if (is_array($res) && isset($res['erreur'])) { http_response_code(500); echo json_encode(array('erreur' => $res['erreur'], 'enregistre' => false, 'conseil' => 'Rien n\'a été enregistré. Ne renvoie pas en boucle : signale « envoi au site échoué » avec ce message dans le message de fin.'), JSON_UNESCAPED_UNICODE); exit; }
+// Après l'écriture de la liste : numéro et choix de la famille du doublon passent au bien gardé.
+foreach ($fusions as $f) {
+    if ($f['num_de'] !== null && $f['num_vers'] !== null) numeros_alias($f['num_de'], $f['num_vers']);
+    donnees_transferer_choix($r, $f['de'], $f['vers']);
+}
 $d = donnees_lire($r);
 $nums = array();
 foreach ($d['biens'] as $b) if (in_array($b['id'], $nouveaux, true)) $nums[$b['id']] = isset($b['num']) ? $b['num'] : null;

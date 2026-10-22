@@ -44,3 +44,19 @@ function numeroter($r, $biens) {
     }
     return $biens;
 }
+
+// Ancien numéro d'un doublon fusionné : il mène désormais au numéro du bien gardé (numeros.php).
+function numeros_alias($ancien, $garde) {
+    $f = numeros_fichier();
+    $fp = fopen($f, 'c+');
+    if (!$fp) return false;
+    flock($fp, LOCK_EX);
+    $j = json_decode(stream_get_contents($fp), true);
+    if (!is_array($j) || !isset($j['carte'])) $j = array('suivant' => 1, 'carte' => array());
+    if (!isset($j['alias']) || !is_array($j['alias'])) $j['alias'] = array();
+    $j['alias'][(string) $ancien] = (int) $garde;
+    foreach ($j['alias'] as $k => $v) if ((int) $v === (int) $ancien) $j['alias'][$k] = (int) $garde;
+    ftruncate($fp, 0); rewind($fp); fwrite($fp, json_encode($j)); fflush($fp);
+    flock($fp, LOCK_UN); fclose($fp);
+    return true;
+}

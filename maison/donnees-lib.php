@@ -142,3 +142,85 @@ function donnees_ordre_sources($r, $d) {
     return $out;
 }
 
+
+// Plafond d'ouverture des annonces (recherches/<r>/zone.json), null s'il n'est pas fixé.
+function donnees_plafond($r) {
+    $z = json_decode((string) @file_get_contents(__DIR__ . '/recherches/' . $r . '/zone.json'), true);
+    return is_array($z) && isset($z['plafond_ouverture']) ? (int) $z['plafond_ouverture'] : null;
+}
+
+/**
+ * Règles de la consigne contrôlées par le serveur sur un bien actif.
+ * Renvoie true, ou le message de refus à donner à la veille.
+ * - prix au-dessus du plafond d'ouverture : refusé ;
+ * - critère rdc « ko » (aucune chambre au rez-de-chaussée) : refusé ;
+ * - verdict « top » avec un critère « ko », « hors » sans critère « ko », deux critères « ko » ou plus : refusé.
+ */
+function donnees_regles_bien($b, $plafond) {
+    if ($plafond !== null && isset($b['prix']) && $b['prix'] !== null && (int) $b['prix'] > $plafond)
+        return 'prix ' . $b['prix'] . ' € au-dessus du plafond de ' . $plafond . ' € : envoie une opération vu (motif « Au-dessus du budget »)';
+    $crit = isset($b['crit']) && is_array($b['crit']) ? $b['crit'] : array();
+    if (isset($crit['rdc'][0]) && $crit['rdc'][0] === 'ko')
+        return 'aucune chambre au rez-de-chaussée : envoie une opération vu (motif « Pas de chambre au RDC »), ou etat « ecartee » pour un bien déjà suivi';
+    $ko = 0; foreach ($crit as $c) if (is_array($c) && isset($c[0]) && $c[0] === 'ko') $ko++;
+    $verdict = isset($b['verdict']) ? $b['verdict'] : '';
+    if ($ko >= 2) return $ko . ' critères « ko » : le bien n\'est pas gardé, envoie une opération vu';
+    if ($verdict === 'top' && $ko) return 'verdict « top » avec un critère « ko » : choisis « presque » ou « hors »';
+    if ($verdict === 'hors' && !$ko) return 'verdict « hors » sans critère « ko » : choisis « top » ou « presque »';
+    return true;
+}
+
+// Rang de confiance d'une adresse : la plus sûre est gardée quand deux biens fusionnent.
+function donnees_rang_adresse($a) {
+    $r = array('non_trouvee' => 1, 'probable' => 2, 'forte' => 3);
+    return is_array($a) && isset($a['confiance'], $r[$a['confiance']]) ? $r[$a['confiance']] : 0;
+}
+
+/**
+ * Fusionne le bien $a (doublon) dans le bien $g (gardé) et renvoie le bien gardé complété :
+ * liens et historique des prix réunis, repéré au plus tôt, vérifié et vu en liste au plus tard,
+ * galerie la plus longue, adresse la plus sûre. Le reste (id, num, verdict, crit, titre) vient de $g.
+ */
+function donnees_fusionner_biens($g, $a) {
+    $liens = array(); $cles = array();
+    foreach (array($g, $a) as $b) if (isset($b['liens']) && is_array($b['liens'])) foreach ($b['liens'] as $l) {
+        if (!isset($l['url'])) continue;
+        $k = donnees_cle_url($l['url']);
+        if (isset($cles[$k])) continue;
+        $cles[$k] = 1; $liens[] = $l;
+    }
+    $g['liens'] = $liens;
+    $hist = array(); $vus = array();
+    foreach (array($g, $a) as $b) if (isset($b['prix_hist']) && is_array($b['prix_hist'])) foreach ($b['prix_hist'] as $h) {
+        $k = (isset($h['d']) ? $h['d'] : '') . '/' . (isset($h['p']) ? $h['p'] : '');
+        if (!isset($vus[$k])) { $vus[$k] = 1; $hist[] = $h; }
+    }
+    usort($hist, function ($x, $y) { return strcmp(isset($x['d']) ? $x['d'] : '', isset($y['d']) ? $y['d'] : ''); });
+    $g['prix_hist'] = $hist;
+    if (isset($a['repere_le']) && (!isset($g['repere_le']) || $a['repere_le'] < $g['repere_le'])) $g['repere_le'] = $a['repere_le'];
+    foreach (array('verifie_le', 'vu_en_liste_le') as $c) if (isset($a[$c]) && (!isset($g[$c]) || $a[$c] > $g[$c])) $g[$c] = $a[$c];
+    $ng = isset($g['photos']) && is_array($g['photos']) ? count($g['photos']) : 0;
+    if (isset($a['photos']) && is_array($a['photos']) && count($a['photos']) > $ng) $g['photos'] = $a['photos'];
+    if (empty($g['photo_url']) && !empty($a['photo_url'])) $g['photo_url'] = $a['photo_url'];
+    if (donnees_rang_adresse(isset($a['adresse']) ? $a['adresse'] : null) > donnees_rang_adresse(isset($g['adresse']) ? $g['adresse'] : null)) $g['adresse'] = $a['adresse'];
+    if (empty($g['surface']) && !empty($a['surface'])) $g['surface'] = $a['surface'];
+    return $g;
+}
+
+// Statut et avis de la famille : ceux du doublon passent au bien gardé quand celui-ci n'en a pas.
+function donnees_transferer_choix($r, $de, $vers) {
+    $dir = dirname(dirname(__DIR__)) . '/maison-data/' . $r;
+    foreach (array('statuts.json', 'avis.json') as $nom) {
+        $f = $dir . '/' . $nom;
+        if (!is_file($f)) continue;
+        $fp = fopen($f, 'c+'); if (!$fp) continue;
+        flock($fp, LOCK_EX);
+        $j = json_decode(stream_get_contents($fp), true);
+        if (is_array($j) && isset($j[$de])) {
+            if (!isset($j[$vers])) $j[$vers] = $j[$de];
+            unset($j[$de]);
+            ftruncate($fp, 0); rewind($fp); fwrite($fp, json_encode((object) $j, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)); fflush($fp);
+        }
+        flock($fp, LOCK_UN); fclose($fp);
+    }
+}
