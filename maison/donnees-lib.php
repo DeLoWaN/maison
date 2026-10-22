@@ -6,6 +6,20 @@ date_default_timezone_set('Europe/Paris');
 function donnees_recherche_valide($r) {
     return is_string($r) && preg_match('/^[a-z0-9-]{1,40}$/', $r) && is_dir(__DIR__ . '/recherches/' . $r);
 }
+// Recherche fusionnée dans une autre : lisible, mais plus aucune écriture (recherches/<r>/archivee.txt donne la raison).
+function donnees_archivee($r) {
+    $f = __DIR__ . '/recherches/' . $r . '/archivee.txt';
+    return is_file($f) ? trim((string) @file_get_contents($f)) : false;
+}
+// Arrête la requête avec 409 si la recherche est archivée.
+function donnees_refuser_si_archivee($r) {
+    $m = donnees_archivee($r);
+    if ($m === false) return;
+    http_response_code(409);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(array('erreur' => 'recherche archivée : ' . $m), JSON_UNESCAPED_UNICODE);
+    exit;
+}
 function donnees_fichier($r) { return dirname(dirname(__DIR__)) . '/maison-data/' . $r . '/data.json'; }
 function donnees_aujourdhui() { return date('Y-m-d'); }
 

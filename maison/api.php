@@ -39,6 +39,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo '{"erreur":"méthode non permise"}';
     exit;
 }
+require_once __DIR__ . '/donnees-lib.php';
+donnees_refuser_si_archivee($r);
 
 $in = json_decode(file_get_contents('php://input'), true);
 $id = is_array($in) && isset($in['id']) ? (string) $in['id'] : '';

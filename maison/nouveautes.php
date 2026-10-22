@@ -27,6 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['seuil'])) {
     echo json_encode(array('of_seuil' => $max)); exit;
 }
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); echo '{"erreur":"POST attendu"}'; exit; }
+donnees_refuser_si_archivee($r);
 $in = json_decode(file_get_contents('php://input'), true);
 if (is_array($in) && isset($in['of']) && is_string($in['of'])) {
     if (!isset($in['annonces']) || !is_array($in['annonces'])) $in['annonces'] = array();
@@ -43,7 +44,7 @@ if (is_array($zone) && isset($zone['communes'])) {
 
 $autres = array();
 foreach (glob(__DIR__ . '/recherches/*', GLOB_ONLYDIR) as $dir) {
-    $x = basename($dir); if ($x === $r) continue;
+    $x = basename($dir); if ($x === $r || donnees_archivee($x) !== false) continue;
     $da = donnees_lire($x);
     foreach ($da['biens'] as $b) if (isset($b['liens']) && is_array($b['liens'])) foreach ($b['liens'] as $l) if (isset($l['url'])) $autres[donnees_cle_url($l['url'])] = array('r' => $x, 'id' => $b['id'], 'num' => isset($b['num']) ? $b['num'] : null);
 }

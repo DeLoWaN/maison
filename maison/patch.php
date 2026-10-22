@@ -4,7 +4,8 @@
 // POST patch.php?r=longere  {"ops": [ {...}, ... ]}   Réponse : {"ok":true, "resultats":[...], "nums":{id:num}, "maj":...}
 // Opérations :
 //   {"op":"ajout", "bien":{id, titre, commune, lieu, prix, verdict, crit, verifier, liens:[{site,url,ok}], photo_url, surface, adresse?}}
-//   {"op":"maj", "id":..., "champs":{...}, "verifie":true}   (prix modifié : ajouté à prix_hist ; etat "retiree" : retiree_le = aujourd'hui)
+//   {"op":"maj", "id":..., "champs":{...}, "verifie":true}   (prix modifié : ajouté à prix_hist ; etat "retiree" : retiree_le = aujourd'hui ;
+//                                                                     etat "ecartee" avec ecartee_motif : ne remplit plus les critères)
 //   {"op":"lien", "id":..., "site":..., "url":..., "ok":true}
 //   {"op":"vu", "url":..., "motif":..., "prix":...}       {"op":"oublier_vu", "url":...}
 //   {"op":"source", "nom":..., "statut":"ok|partiel|echec|nt", "note":..., "dernier_ok":"AAAA-MM-JJ"|null}
@@ -19,6 +20,7 @@ header('Cache-Control: no-store');
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); echo '{"erreur":"POST attendu"}'; exit; }
 $r = isset($_GET['r']) ? (string) $_GET['r'] : '';
 if (!donnees_recherche_valide($r)) { http_response_code(404); echo '{"erreur":"recherche inconnue"}'; exit; }
+donnees_refuser_si_archivee($r);
 $brut = file_get_contents('php://input');
 if (strlen($brut) > 600000) { http_response_code(413); echo '{"erreur":"trop gros : envoyez en plusieurs fois"}'; exit; }
 $in = json_decode($brut, true);
@@ -26,9 +28,10 @@ if (!is_array($in) || !isset($in['ops']) || !is_array($in['ops'])) { http_respon
 $ops = $in['ops'];
 
 $VERDICTS = array('top', 'presque', 'hors');
-$ETATS = array('active', 'retiree');
+// ecartee : bien qui ne remplit plus les critères (motif dans ecartee_motif), gardé pour l'historique de la famille.
+$ETATS = array('active', 'retiree', 'ecartee');
 $STATUTS = array('ok', 'partiel', 'echec', 'nt');
-$CHAMPS = array('titre', 'commune', 'lieu', 'prix', 'verdict', 'crit', 'verifier', 'liens', 'photo_url', 'surface', 'adresse', 'etat', 'retiree_le', 'geo', 'note', 'verifie_le');
+$CHAMPS = array('titre', 'commune', 'lieu', 'prix', 'verdict', 'crit', 'verifier', 'liens', 'photo_url', 'surface', 'adresse', 'etat', 'retiree_le', 'geo', 'note', 'verifie_le', 'ecartee_motif');
 $CRIT_ETATS = array('ok', 'warn', 'ko', 'unk');
 
 function p_date($s) { return is_string($s) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $s); }
@@ -121,7 +124,7 @@ $res = donnees_modifier($r, function (&$d) use ($ops, &$resultats, &$nouveaux, $
                 foreach ($ch as $k => $v) {
                     if (!in_array($k, $CHAMPS, true)) { $err = 'champ non modifiable : ' . $k; break; }
                     if ($k === 'verdict' && !in_array($v, $VERDICTS, true)) { $err = 'verdict : top|presque|hors'; break; }
-                    if ($k === 'etat' && !in_array($v, $ETATS, true)) { $err = 'etat : active|retiree'; break; }
+                    if ($k === 'etat' && !in_array($v, $ETATS, true)) { $err = 'etat : active|retiree|ecartee'; break; }
                     if ($k === 'liens' && ($x = p_liens_ok($v)) !== true) { $err = $x; break; }
                     if ($k === 'crit' && ($x = p_crit_ok($v, $CRIT_ETATS)) !== true) { $err = $x; break; }
                     if ($k === 'adresse' && ($x = p_adresse_ok($v)) !== true) { $err = $x; break; }

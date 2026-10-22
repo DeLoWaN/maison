@@ -12,6 +12,8 @@ $r = isset($_GET['r']) ? (string) $_GET['r'] : '';
 if (!preg_match('/^[a-z0-9-]{1,40}$/', $r) || !is_dir(__DIR__ . '/recherches/' . $r)) {
     http_response_code(404); echo '{"erreur":"recherche inconnue"}'; exit;
 }
+require_once __DIR__ . '/donnees-lib.php';
+donnees_refuser_si_archivee($r);
 $brut = file_get_contents('php://input');
 if (strlen($brut) > 3000000) { http_response_code(413); echo '{"erreur":"trop gros"}'; exit; }
 $d = json_decode($brut, true);

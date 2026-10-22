@@ -1,6 +1,7 @@
 <?php
 // Numéros de maison partagés par toutes les recherches : <home>/maison-data/numeros.json
-// {"suivant": 52, "carte": {"longere/thue-185": 7, ...}}. Compatible PHP 5.4.
+// {"suivant": 52, "carte": {"maison/thue-185": 7, ...}, "alias": {"62": 10}}. Compatible PHP 5.4.
+// alias : numéro d'une maison suivie deux fois avant la fusion des recherches => numéro gardé.
 
 function numeros_fichier() { return dirname(dirname(__DIR__)) . '/maison-data/numeros.json'; }
 

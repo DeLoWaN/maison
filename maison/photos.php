@@ -16,6 +16,8 @@ $ph = is_array($in) && isset($in['photos']) && is_array($in['photos']) ? $in['ph
 if (!preg_match('/^[a-z0-9-]{1,40}$/', $r) || !is_dir(__DIR__ . '/recherches/' . $r) || !preg_match('/^[a-z0-9-]{1,60}$/', $id) || $ph === null) {
     http_response_code(400); echo '{"erreur":"format invalide"}'; exit;
 }
+require_once __DIR__ . '/donnees-lib.php';
+donnees_refuser_si_archivee($r);
 $photos = array();
 foreach ($ph as $u) {
     if (is_string($u) && strlen($u) <= 800 && preg_match('#^https://[^\s"<>]+$#', $u) && !in_array($u, $photos, true)) $photos[] = $u;
