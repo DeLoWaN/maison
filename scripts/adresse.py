@@ -68,7 +68,6 @@ ECART_SURFACE_CONTRADICTION = 0.30
 # Step 3: the land area must equal one parcel or the sum of two, within 3 m².
 # Sums of three or four parcels within 3 % matched four wrong DPE on a single test house.
 ECART_PARCELLE_M2 = 3
-RAYON_VOISINES_M = 150
 RAYON_ANCRE_M = 60
 RAYON_DPE_PARCELLE_M = 80
 MAX_PARCELLES_SOMME = 2
@@ -305,26 +304,26 @@ class Recherche:
                 for d in self.s.dpe({**zone, **f}):
                     vus.setdefault(d["numero_dpe"], d)
             notes = [n for n in (noter(d, ind, nom) for d in dedoublonner(vus.values())) if n["indices"]]
-            # Far from the announced commune, a contradiction means another house (a test found one 30 km away).
+            # In the whole department, values or the date alone matched houses 30 and 60 km away.
+            # Keep only a DPE with both, and drop any contradiction: it means another house.
             if large:
-                notes = [n for n in notes if not n["contradictions"]]
+                notes = [n for n in notes if not n["contradictions"]
+                         and "date" in (g := {k for k, _ in n["indices"]}) and g & {"valeurs", "depense"}]
             if any(solide(n) for n in notes):
                 return notes
             toutes += [n for n in notes if n["dpe"]["numero_dpe"] not in {t["dpe"]["numero_dpe"] for t in toutes}]
         return toutes
 
     def confirmer_terrain(self, cand, ind):
-        """Step 3, point 2: one or two parcels near the DPE address whose area equals the exact land area."""
+        """Step 3, point 2: one or two parcels at the DPE address whose area equals the exact land area."""
         pt = point_dpe(cand["dpe"])
-        parcelles = self.s.parcelles(cand["dpe"]["code_insee_ban"])
-        proches = [p for p in parcelles if distance_m(centre(p[2]), pt) <= RAYON_VOISINES_M]
-        if not proches:
-            return None
         # The address point often sits on the road, a few tens of metres from the house parcel.
-        ancres = [p for p in proches if contient(p[2], pt) or distance_m(centre(p[2]), pt) <= RAYON_ANCRE_M]
+        # Farther parcels are not used: in a town, two small ones matched a wrong house by chance.
+        ancres = [p for p in self.s.parcelles(cand["dpe"]["code_insee_ban"])
+                  if contient(p[2], pt) or distance_m(centre(p[2]), pt) <= RAYON_ANCRE_M]
         for n in range(1, MAX_PARCELLES_SOMME + 1):
-            for combo in itertools.combinations(proches, n):
-                if any(p in ancres for p in combo) and abs(sum(p[1] for p in combo) - ind["terrain"]) <= ECART_PARCELLE_M2:
+            for combo in itertools.combinations(ancres, n):
+                if abs(sum(p[1] for p in combo) - ind["terrain"]) <= ECART_PARCELLE_M2:
                     return {"parcelles": [p[0] for p in combo], "surface": sum(p[1] for p in combo)}
         return None
 
@@ -407,6 +406,9 @@ def noter(d, ind, zone):
     if "date" in ind and d.get("date_etablissement_dpe"):
         if abs((date_fr(d["date_etablissement_dpe"]) - ind["date"]).days) <= JOURS_DATE:
             indices.append(("date", f"DPE du {d['date_etablissement_dpe']}"))
+        else:
+            # methode-adresse.md: a DPE that matches everything but the date is a false positive.
+            contradictions.append(f"DPE du {d['date_etablissement_dpe']} contre le {ind['date'].isoformat()} dans l'annonce")
     if "kwh" in ind and conso is not None:
         co2_ok = "co2" not in ind or (co2 is not None and abs(co2 - ind["co2"]) <= ECART_CO2)
         if abs(conso - ind["kwh"]) <= ECART_KWH and co2_ok:
@@ -439,8 +441,10 @@ def conclure(notes, ind):
     # Letters and surface alone match many houses: they are never enough.
     if solide(meilleur) and not egaux:
         confiance = "forte"
-    # One clue against a contradiction is a coincidence: a DPE of the same day with three gaps was found.
-    elif p >= (2 if meilleur["contradictions"] else 1) and not egaux and "lettres" not in {k for k, _ in meilleur["indices"]}:
+    # One clue against a contradiction, or two contradictions, point to another dwelling:
+    # tests found a DPE of the same day with three gaps, and a 53 m² flat for a 117 m² house.
+    elif len(meilleur["contradictions"]) <= 1 and p >= (2 if meilleur["contradictions"] else 1) \
+            and not egaux and "lettres" not in {k for k, _ in meilleur["indices"]}:
         confiance = "probable"
     elif egaux:
         return None, f"{len(egaux) + 1} DPE aussi plausibles, aucun ne se détache"

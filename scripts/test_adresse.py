@@ -131,11 +131,25 @@ class Recherche(unittest.TestCase):
         confiance, res = chercher(self.BIEN, dpes)
         self.assertEqual((confiance, res["texte"]), ("forte", "5 Rue Deux 14999 Beta"), res)
 
-    def test_dans_le_departement_valeurs_et_depense_comptent_pour_un(self):
+    def test_dans_le_departement_seule_la_date_garde_un_dpe(self):
         bien = dict(self.BIEN, commune="Inconnue")
-        dpes = [dpe("Z1", "9 Rue Loin 14500 Gamma", "14500", 200, 7, 2300, 150)]
-        confiance, res = chercher(bien, dpes)
-        self.assertEqual(confiance, "probable", res)
+        dpes = [dpe("Z1", "9 Rue Loin 14500 Gamma", "14500", 200, 7, 2300, 150, jour="2024-03-10")]
+        sans_date, raison = chercher(bien, dpes)
+        self.assertIsNone(sans_date, raison)
+        bien["indices"] = dict(bien["indices"], date_dpe="11/03/2024")
+        avec_date, res = chercher(bien, dpes)
+        self.assertEqual((avec_date, res["texte"]), ("forte", "9 Rue Loin 14500 Gamma"), res)
+
+    def test_dans_le_departement_la_date_seule_ne_suffit_pas(self):
+        bien = {"id": "x", "commune": "Inconnue", "surface": 140, "indices": {"date_dpe": "25/08/2023", "kwh": "290"}}
+        dpes = [dpe("Z2", "Rue du Bas 14790 Loin", "14500", 180, 9, 2000, 107, jour="2023-08-24")]
+        confiance, raison = chercher(bien, dpes)
+        self.assertIsNone(confiance, raison)
+
+    def test_dans_le_departement_valeurs_et_depense_comptent_pour_un(self):
+        note = {"zone": A.ZONE_DEPARTEMENT, "indices": [("valeurs", ""), ("depense", "")]}
+        self.assertEqual(A.poids(note), 1)
+        self.assertEqual(A.poids(dict(note, zone="Alpha")), 2)
 
     def test_dans_le_departement_une_contradiction_ecarte_le_dpe(self):
         bien = {"id": "x", "commune": "Inconnue", "indices": {"date_dpe": "07/09/2026", "kwh": "150", "co2": "42", "dpe": "C"}}
@@ -162,6 +176,19 @@ class Recherche(unittest.TestCase):
                 dpe("A2", "2 Rue Une 14999 Alpha", "14001", 201, 7, 2310, 150, jour="2023-01-01")]
         confiance, res = chercher(bien, dpes)
         self.assertEqual((confiance, res["texte"]), ("forte", "1 Rue Une 14999 Alpha"), res)
+
+    def test_date_differente_contredit(self):
+        bien = {"id": "x", "commune": "Alpha", "surface": 140, "indices": {"date_dpe": "25/08/2023", "kwh": "290", "co2": "9"}}
+        dpes = [dpe("A1", "1 Rue Une 14999 Alpha", "14001", 292, 10, 2000, 137, jour="2025-02-01")]
+        confiance, raison = chercher(bien, dpes)
+        self.assertIsNone(confiance, raison)
+        self.assertIn("DPE du 2025-02-01 contre le 2023-08-25", raison)
+
+    def test_deux_contradictions_ecartent_le_dpe(self):
+        bien = dict(self.BIEN, indices=dict(self.BIEN["indices"], dpe="D", date_dpe="10/03/2024"))
+        dpes = [dpe("A1", "1 Rue Une 14999 Alpha", "14001", 201, 7, 2310, 53, lettres=("F", "F"))]
+        confiance, raison = chercher(bien, dpes)
+        self.assertIsNone(confiance, raison)
 
     def test_etiquette_contraire(self):
         bien = dict(self.BIEN, indices=dict(self.BIEN["indices"], dpe="C"))
@@ -208,6 +235,13 @@ class Cadastre(unittest.TestCase):
         confiance, res = chercher(self.BIEN, self.dpes(), parc)
         self.assertEqual((confiance, res["texte"]), ("forte", "4 Route du Pré 14999 Beta"), res)
         self.assertIn("P1 = 6862 m²", res["preuves"])
+
+    def test_somme_avec_une_parcelle_eloignee_ne_compte_pas(self):
+        # P2 is about 110 m from the address point: too far to belong to the house.
+        parc = {"14002": [("P1", 6000, carre(-0.5003, 49.0)), ("P2", 862, carre(-0.4985, 49.0))]}
+        confiance, res = chercher(self.BIEN, self.dpes(), parc)
+        self.assertEqual(confiance, "probable", res)
+        self.assertNotIn("parcelles", res["preuves"])
 
     def test_somme_de_trois_parcelles_ne_compte_pas(self):
         parc = {"14002": [("P1", 2000, carre(-0.5003, 49.0)), ("P2", 2000, carre(-0.4998, 49.0)),

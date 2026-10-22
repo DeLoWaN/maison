@@ -9,9 +9,11 @@ Méthode testée le 19 octobre 2026 sur 10 maisons (9 adresses trouvées, dont 7
 Ce que le script ne fait pas : lire les annonces (étape 1), chercher l'annonce d'origine (étape 1 bis), regarder la vue aérienne (étape 4).
 
 Seuils propres au script, plus prudents que la méthode manuelle :
-- un écart de surface de plus de 30 % entre le DPE et l'annonce empêche la confiance forte ;
-- dans tout le département, consommation et dépense comptent pour un seul indice : sur un test, elles désignaient quatre mauvaises maisons ;
-- le terrain ne compte que s'il égale une parcelle, ou la somme de deux, à 3 m² près : les sommes de trois ou quatre parcelles à 3 % près tombaient juste par hasard.
+- un écart de surface de plus de 30 % entre le DPE et l'annonce est une contradiction ;
+- une date de DPE différente de celle de l'annonce (plus de 3 jours) est une contradiction ;
+- une contradiction empêche la confiance forte. Avec un seul indice, ou avec deux contradictions, le script ne conclut pas ;
+- dans tout le département, le script ne garde un DPE que si sa date ET une valeur (consommation ou dépense) concordent, sans aucune contradiction. Les valeurs seules, ou la date seule, désignaient des maisons à 30 et 60 km ;
+- le terrain ne compte que s'il égale une parcelle, ou la somme de deux, à 3 m² près, et seulement avec les parcelles à moins de 60 m du point d'adresse. Des sommes de parcelles plus éloignées tombaient juste par hasard.
 
 ## Règles
 - Uniquement des données publiques ouvertes sur les bâtiments : DPE (ADEME), cadastre (Etalab, sans nom de propriétaire), Base Adresse Nationale, photos aériennes IGN.
