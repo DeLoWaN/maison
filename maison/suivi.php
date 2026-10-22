@@ -4,7 +4,7 @@
 //   a_verifier : biens actifs à rouvrir. Un bien vu dans une liste de résultats aujourd'hui ou récemment
 //                (nouveautes.php) ou vérifié il y a moins de `jours` jours n'a pas besoin d'être rouvert.
 //   galerie    : biens actifs top ou presque sans galerie de photos (moins de 2 photos)
-//   adresse    : biens actifs top ou presque à traiter à l'étape 6 bis, dans l'ordre de la consigne (au plus 8).
+//   adresse    : tous les biens actifs top ou presque à traiter à l'étape 6 bis, dans l'ordre de la consigne.
 //                Les biens « hors » ne sont pas proposés : chercher leur adresse ou leur galerie ne sert pas aux parents.
 //   sans_photo : biens actifs sans photo_url
 require_once __DIR__ . '/auth-lib.php';
@@ -49,11 +49,8 @@ foreach ($d['biens'] as $b) {
 }
 usort($adr[1], function ($p, $q) use ($rang) { $a = isset($rang[$p['verdict']]) ? $rang[$p['verdict']] : 3; $b = isset($rang[$q['verdict']]) ? $rang[$q['verdict']] : 3; return $a - $b; });
 // $adr[3] (annonce d'origine déjà cherchée) : seulement si une information nouvelle est apparue, ce que la veille seule peut juger.
-// Jusqu'à 4 places sont gardées pour les biens « non trouvée » dont l'annonce d'origine n'a pas encore été cherchée :
-// sans cette réserve, les biens nouveaux prenaient toutes les places et le rattrapage ne se faisait jamais.
 usort($adr[2], function ($p, $q) use ($rang) { $a = isset($rang[$p['verdict']]) ? $rang[$p['verdict']] : 3; $b = isset($rang[$q['verdict']]) ? $rang[$q['verdict']] : 3; return $a - $b; });
-$rattrapage = array_slice($adr[2], 0, 4);
-$out['adresse'] = array_merge(array_slice(array_merge($adr[0], $adr[1]), 0, 8 - count($rattrapage)), $rattrapage);
+$out['adresse'] = array_merge($adr[0], $adr[1], $adr[2]);
 // Les plus anciennement vérifiés d'abord.
 usort($out['a_verifier'], function ($p, $q) { return strcmp((string) $p['dernier'], (string) $q['dernier']); });
 echo json_encode($out, JSON_UNESCAPED_UNICODE);
