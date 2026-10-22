@@ -93,6 +93,8 @@ class Lecture(unittest.TestCase):
         self.assertEqual(A.fourchette("entre 1 960 € et 2 710 €"), (1960, 2710))
         self.assertEqual(A.fourchette("Entre 5 620 € et 7 660 € par an"), (5620, 7660))
         self.assertIsNone(A.fourchette("non communiqué"))
+        self.assertEqual(A.fourchette("entre 2400.00 € et 3310.00 €"), (2400, 3310))
+        self.assertEqual(A.fourchette("entre 860 et 1 230 € par an"), (860, 1230))
 
     def test_date(self):
         self.assertEqual(A.date_fr("18/01/2022"), date(2022, 1, 18))
@@ -130,6 +132,11 @@ class Recherche(unittest.TestCase):
                 dpe("B1", "5 Rue Deux 14999 Beta", "14002", 199, 8, 2290, 152)]
         confiance, res = chercher(self.BIEN, dpes)
         self.assertEqual((confiance, res["texte"]), ("forte", "5 Rue Deux 14999 Beta"), res)
+
+    def test_un_seul_indice_dans_une_autre_commune_ne_suffit_pas(self):
+        dpes = [dpe("B1", "5 Rue Deux 14999 Beta", "14002", 150, 3, 2310, 150)]
+        confiance, raison = chercher(self.BIEN, dpes)
+        self.assertIsNone(confiance, raison)
 
     def test_dans_le_departement_seule_la_date_garde_un_dpe(self):
         bien = dict(self.BIEN, commune="Inconnue")
@@ -234,21 +241,27 @@ class Cadastre(unittest.TestCase):
         parc = {"14002": [("P1", 6862, carre(-0.5003, 49.0)), ("P2", 900, carre(-0.4902, 49.0))]}
         confiance, res = chercher(self.BIEN, self.dpes(), parc)
         self.assertEqual((confiance, res["texte"]), ("forte", "4 Route du Pré 14999 Beta"), res)
-        self.assertIn("P1 = 6862 m²", res["preuves"])
+        self.assertIn("parcelle P1 de 6862 m² à l'adresse", res["preuves"])
+
+    def test_somme_de_deux_parcelles_proches_ne_compte_pas(self):
+        parc = {"14002": [("P1", 6000, carre(-0.5003, 49.0)), ("P2", 862, carre(-0.4998, 49.0))]}
+        confiance, res = chercher(self.BIEN, self.dpes(), parc)
+        self.assertIsNone(confiance, res)
+        self.assertIn("un seul indice", res)
 
     def test_somme_avec_une_parcelle_eloignee_ne_compte_pas(self):
         # P2 is about 110 m from the address point: too far to belong to the house.
         parc = {"14002": [("P1", 6000, carre(-0.5003, 49.0)), ("P2", 862, carre(-0.4985, 49.0))]}
         confiance, res = chercher(self.BIEN, self.dpes(), parc)
-        self.assertEqual(confiance, "probable", res)
-        self.assertNotIn("parcelles", res["preuves"])
+        self.assertIsNone(confiance, res)
+        self.assertIn("un seul indice", res)
 
     def test_somme_de_trois_parcelles_ne_compte_pas(self):
         parc = {"14002": [("P1", 2000, carre(-0.5003, 49.0)), ("P2", 2000, carre(-0.4998, 49.0)),
                           ("P3", 2862, carre(-0.5003, 49.0004))]}
         confiance, res = chercher(self.BIEN, self.dpes(), parc)
-        self.assertEqual(confiance, "probable", res)
-        self.assertNotIn("parcelles", res["preuves"])
+        self.assertIsNone(confiance, res)
+        self.assertIn("un seul indice", res)
 
     def test_parcelle_exacte_seule_sans_dpe_concordant(self):
         bien = dict(self.BIEN, indices={"terrain": "1 403"})

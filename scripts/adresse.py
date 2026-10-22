@@ -24,7 +24,6 @@ Exit status 1 when patch.php refuses an operation.
 """
 import argparse
 import gzip
-import itertools
 import json
 import math
 import pathlib
@@ -50,6 +49,9 @@ TAILLE_PAQUET = 40
 ESSAIS_RESEAU = 3
 DEPARTEMENT = "14"
 ZONE_DEPARTEMENT = "le département"
+ZONE_CODE_POSTAL = "le code postal"
+ZONE_PARCELLE = "la parcelle exacte"
+AUTRES_COMMUNES = (ZONE_CODE_POSTAL, ZONE_DEPARTEMENT)
 CHAMPS_DPE = ",".join((
     "numero_dpe", "adresse_ban", "code_insee_ban", "code_postal_ban", "surface_habitable_logement",
     "conso_5_usages_par_m2_ep", "emission_ges_5_usages_par_m2", "etiquette_dpe", "etiquette_ges",
@@ -65,12 +67,11 @@ ECART_SURFACE = 0.08
 # Beyond this gap, the listing consumption contradicts the DPE (252 announced for 242.7 is still a match).
 ECART_KWH_CONTRADICTION = 0.20
 ECART_SURFACE_CONTRADICTION = 0.30
-# Step 3: the land area must equal one parcel or the sum of two, within 3 m².
-# Sums of three or four parcels within 3 % matched four wrong DPE on a single test house.
+# Step 3: the land area must equal one parcel within 3 m². Sums of two to four nearby parcels
+# matched wrong houses in other communes on four test houses: a housing estate has many small parcels.
 ECART_PARCELLE_M2 = 3
 RAYON_ANCRE_M = 60
 RAYON_DPE_PARCELLE_M = 80
-MAX_PARCELLES_SOMME = 2
 # Each confirmation loads the cadastre of one commune (a few MB): check the closest DPE only.
 MAX_CONFIRMATIONS = 5
 
@@ -105,7 +106,8 @@ def fourchette(v):
     m = re.search(r"([\d\s  .]+)\s*€?\s*et\s*([\d\s  .]+)\s*€", str(v), re.I)
     if not m:
         return None
-    bas, haut = (float(re.sub(r"\D", "", x)) for x in m.groups())
+    # "2400.00 €" is 2400, not 240000.
+    bas, haut = (float(re.sub(r"\D", "", re.sub(r"[.,]\d{1,2}\s*$", "", x.strip()))) for x in m.groups())
     return (bas, haut) if 0 < bas <= haut else None
 
 
@@ -253,7 +255,7 @@ class Recherche:
         codes = sorted({x for cp in c.get("codesPostaux", []) for x in self.s.communes_du_code_postal(cp)} - {c["code"]})
         zones = [(c["nom"], {"code_insee_ban_eq": c["code"]})]
         if codes:
-            zones.append(("le code postal", {"code_insee_ban_in": ",".join(codes)}))
+            zones.append((ZONE_CODE_POSTAL, {"code_insee_ban_in": ",".join(codes)}))
         zones.append((ZONE_DEPARTEMENT, {"code_departement_ban_eq": DEPARTEMENT}))
         return zones
 
@@ -315,16 +317,12 @@ class Recherche:
         return toutes
 
     def confirmer_terrain(self, cand, ind):
-        """Step 3, point 2: one or two parcels at the DPE address whose area equals the exact land area."""
+        """Step 3, point 2: a parcel at the DPE address whose area equals the exact land area, or None."""
         pt = point_dpe(cand["dpe"])
         # The address point often sits on the road, a few tens of metres from the house parcel.
-        # Farther parcels are not used: in a town, two small ones matched a wrong house by chance.
-        ancres = [p for p in self.s.parcelles(cand["dpe"]["code_insee_ban"])
-                  if contient(p[2], pt) or distance_m(centre(p[2]), pt) <= RAYON_ANCRE_M]
-        for n in range(1, MAX_PARCELLES_SOMME + 1):
-            for combo in itertools.combinations(ancres, n):
-                if abs(sum(p[1] for p in combo) - ind["terrain"]) <= ECART_PARCELLE_M2:
-                    return {"parcelles": [p[0] for p in combo], "surface": sum(p[1] for p in combo)}
+        for p in self.s.parcelles(cand["dpe"]["code_insee_ban"]):
+            if (contient(p[2], pt) or distance_m(centre(p[2]), pt) <= RAYON_ANCRE_M) and abs(p[1] - ind["terrain"]) <= ECART_PARCELLE_M2:
+                return p
         return None
 
     def parcelle_exacte(self, ind, commune):
@@ -352,13 +350,13 @@ class Recherche:
             for n in sorted(notes, key=lambda n: (bool(n["contradictions"]), -poids(n), ecart_surface(n["dpe"], ind)))[:MAX_CONFIRMATIONS]:
                 t = self.confirmer_terrain(n, ind)
                 if t:
-                    n["indices"].append(("terrain", f"parcelles {' + '.join(t['parcelles'])} = {t['surface']:g} m²"))
+                    n["indices"].append(("terrain", f"parcelle {t[0]} de {t[1]:g} m² à l'adresse"))
             if not any(solide(n) for n in notes):
                 exactes = self.parcelle_exacte(ind, bien.get("commune"))
                 if len(exactes) == 1:
                     notes = []
                     for d in dedoublonner(self.dpe_pres_de(exactes[0])):
-                        n = noter(d, ind, "la parcelle exacte")
+                        n = noter(d, ind, ZONE_PARCELLE)
                         n["indices"].append(("terrain", f"parcelle {exactes[0][0]} de {exactes[0][1]:g} m², seule de cette surface"))
                         notes.append(n)
         return conclure(notes, ind)
@@ -443,13 +441,16 @@ def conclure(notes, ind):
         confiance = "forte"
     # One clue against a contradiction, or two contradictions, point to another dwelling:
     # tests found a DPE of the same day with three gaps, and a 53 m² flat for a 117 m² house.
-    elif len(meilleur["contradictions"]) <= 1 and p >= (2 if meilleur["contradictions"] else 1) \
-            and not egaux and "lettres" not in {k for k, _ in meilleur["indices"]}:
+    # Another commune than the announced one is already a weakness: one clue is not enough there.
+    elif len(meilleur["contradictions"]) <= 1 and not egaux and "lettres" not in {k for k, _ in meilleur["indices"]} \
+            and p >= (2 if meilleur["contradictions"] or meilleur["zone"] in AUTRES_COMMUNES else 1):
         confiance = "probable"
     elif egaux:
         return None, f"{len(egaux) + 1} DPE aussi plausibles, aucun ne se détache"
-    else:
+    elif meilleur["contradictions"]:
         return None, f"meilleur DPE ({meilleur['dpe']['numero_dpe']}) contredit l'annonce : " + " ; ".join(meilleur["contradictions"])
+    else:
+        return None, f"un seul indice, pour un DPE ({meilleur['dpe']['numero_dpe']}) dans une autre commune que celle de l'annonce"
     d = meilleur["dpe"]
     morceaux = [t for _, t in meilleur["indices"]]
     morceaux.append(f"DPE {d['numero_dpe']}, {d.get('surface_habitable_logement', '?')} m², {d.get('etiquette_dpe', '?')}/{d.get('etiquette_ges', '?')}, trouvé dans {meilleur['zone']}")

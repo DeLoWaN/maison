@@ -13,7 +13,7 @@ Seuils propres au script, plus prudents que la méthode manuelle :
 - une date de DPE différente de celle de l'annonce (plus de 3 jours) est une contradiction ;
 - une contradiction empêche la confiance forte. Avec un seul indice, ou avec deux contradictions, le script ne conclut pas ;
 - dans tout le département, le script ne garde un DPE que si sa date ET une valeur (consommation ou dépense) concordent, sans aucune contradiction. Les valeurs seules, ou la date seule, désignaient des maisons à 30 et 60 km ;
-- le terrain ne compte que s'il égale une parcelle, ou la somme de deux, à 3 m² près, et seulement avec les parcelles à moins de 60 m du point d'adresse. Des sommes de parcelles plus éloignées tombaient juste par hasard.
+- le terrain ne compte que s'il égale une seule parcelle, à 3 m² près, à moins de 60 m du point d'adresse. Des sommes de deux à quatre parcelles voisines tombaient juste par hasard et désignaient des maisons d'autres communes.
 
 ## Règles
 - Uniquement des données publiques ouvertes sur les bâtiments : DPE (ADEME), cadastre (Etalab, sans nom de propriétaire), Base Adresse Nationale, photos aériennes IGN.
