@@ -11,12 +11,16 @@ Clues come from the `indices` field of each house:
 Every key is optional. The strings are the raw output of the listing script of outils.md, section 3.
 
 Usage:
-    python3 scripts/adresse.py --entree biens.json            # reads {"biens": [...]} from a file
-    python3 scripts/adresse.py --entree biens.json --ids a,b  # only these houses
+    python3 scripts/adresse.py                     # houses of the `adresse` list of suivi.php, nothing sent
+    python3 scripts/adresse.py --envoyer           # same, and sends the operations to patch.php
+    python3 scripts/adresse.py --ids a,b           # only these houses
+    python3 scripts/adresse.py --entree biens.json # reads {"biens": [...]} from a file instead of the site
 
-Output (stdout, JSON): {"ops": [maj operations for patch.php], "a_escalader": [{id, raison}]}.
+Reading and writing the site needs the script token in ~/.config/maison/token (see auth-lib.php).
+
+Output (stdout, JSON): {"ops": [maj operations for patch.php], "a_escalader": [{id, raison}], "refus"?: [...]}.
 Houses in a_escalader need step 1 bis of the method (listing on the agency site), done by a model.
-The script writes nothing to the site: the caller sends `ops` to patch.php.
+Exit status 1 when patch.php refuses an operation.
 """
 import argparse
 import gzip
@@ -37,6 +41,10 @@ ADEME_VUE = "https://data.ademe.fr/datasets/dpe03existant/full?adresse_ban_eq="
 GEO = "https://geo.api.gouv.fr"
 CADASTRE = "https://cadastre.data.gouv.fr/bundler/cadastre-etalab/communes/{insee}/geojson/parcelles"
 CACHE = pathlib.Path(tempfile.gettempdir()) / "maison-cadastre"
+SITE = "https://damien-gustave.fr/maison/"
+JETON = pathlib.Path.home() / ".config" / "maison" / "token"
+# patch.php accepts at most 40 operations per call.
+TAILLE_PAQUET = 40
 DEPARTEMENT = "14"
 ZONE_DEPARTEMENT = "le département"
 CHAMPS_DPE = ",".join((
@@ -446,18 +454,61 @@ def traiter(biens, recherche, aujourdhui):
     return {"ops": ops, "a_escalader": escalade}
 
 
+class Site:
+    """Reads and writes the tracking site with the script token (header X-Maison-Jeton, see auth-lib.php)."""
+
+    def __init__(self, jeton):
+        self.jeton = jeton
+
+    def _appel(self, page, corps=None):
+        req = urllib.request.Request(SITE + page, data=None if corps is None else json.dumps(corps).encode(),
+                                     headers={"X-Maison-Jeton": self.jeton, "Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                return json.loads(r.read())
+        except OSError as e:
+            raise ErreurSource(f"{SITE}{page}: {e}") from e
+
+    def biens_a_traiter(self):
+        """Returns the houses of the `adresse` list of suivi.php, in its order."""
+        ordre = [x["id"] for x in self._appel("suivi.php")["adresse"]]
+        biens = {b["id"]: b for b in self._appel("data.php?leger=1")["biens"]}
+        return [biens[i] for i in ordre if i in biens]
+
+    def envoyer(self, ops):
+        """Sends the operations to patch.php in packets. Returns the refusals, with their reason."""
+        refus = []
+        for i in range(0, len(ops), TAILLE_PAQUET):
+            res = self._appel("patch.php", {"ops": ops[i:i + TAILLE_PAQUET]})
+            refus += [r for r in res.get("resultats", []) if not r.get("ok", True)]
+        return refus
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    p.add_argument("--entree", required=True, help='JSON file {"biens": [...]}, as returned by data.php')
-    p.add_argument("--ids", help="comma-separated house ids to process (default: all houses of the file)")
+    p.add_argument("--entree", help='JSON file {"biens": [...]}; by default, the `adresse` list of the site')
+    p.add_argument("--ids", help="comma-separated house ids to process (default: all)")
+    p.add_argument("--envoyer", action="store_true", help="send the operations to patch.php")
     a = p.parse_args(argv)
-    biens = json.loads(pathlib.Path(a.entree).read_text())["biens"]
-    if a.ids:
-        voulus = set(a.ids.split(","))
-        biens = [b for b in biens if b["id"] in voulus]
-    json.dump(traiter(biens, Recherche(Sources()), date.today().isoformat()), sys.stdout, ensure_ascii=False, indent=1)
+    site = None
+    if not a.entree or a.envoyer:
+        if not JETON.exists():
+            p.error(f"{JETON} is missing: the site cannot be read or written without the script token")
+        site = Site(JETON.read_text().strip())
+    try:
+        biens = json.loads(pathlib.Path(a.entree).read_text())["biens"] if a.entree else site.biens_a_traiter()
+        if a.ids:
+            voulus = set(a.ids.split(","))
+            biens = [b for b in biens if b["id"] in voulus]
+        out = traiter(biens, Recherche(Sources()), date.today().isoformat())
+        if a.envoyer:
+            out["refus"] = site.envoyer(out["ops"])
+    except ErreurSource as e:
+        p.exit(2, f"adresse.py: {e}\n")
+    json.dump(out, sys.stdout, ensure_ascii=False, indent=1)
     print()
+    return 1 if out.get("refus") else 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

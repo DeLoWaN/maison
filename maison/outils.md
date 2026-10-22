@@ -210,16 +210,17 @@ Garde les valeurs du DPE dans le champ `indices` du bien, telles que le script l
 
 ### Adresses : le script d'abord
 
-1. Dans l'onglet du site, prépare l'entrée du script :
-   ```js
-   const s = await (await fetch('suivi.php?x=' + Date.now())).json();
-   const d = await (await fetch('data.php?leger=1&x=' + Date.now())).json();
-   const ids = new Set(s.adresse.map(x => x.id));
-   JSON.stringify({ biens: d.biens.filter(b => ids.has(b.id)).map(b => ({ id: b.id, commune: b.commune, surface: b.surface, indices: b.indices, adresse: b.adresse })) })
-   ```
-2. Écris ce JSON dans un fichier, puis lance `python3 ~/git_perso/maison/scripts/adresse.py --entree <fichier>`. Le script interroge la base DPE, le cadastre et l'API geo, en 2 à 5 secondes par bien.
-3. Il renvoie `{"ops": [...], "a_escalader": [{id, raison}]}`. Envoie `ops` tel quel à `patch.php` (section 5) : ce sont des `maj` du champ `adresse`, confiance « forte » ou « probable ».
-4. Traite chaque bien de `a_escalader` avec methode-adresse.md. La `raison` dit ce qui manque, par exemple « pas de DPE chiffré ni de terrain exact dans les indices ». Si tu trouves des chiffres sur une autre fiche, enregistre-les dans `indices` et relance le script pour ce bien (`--ids <id>`).
+1. Dans Bash, lance `python3 ~/git_perso/maison/scripts/adresse.py --envoyer`. Le script lit la liste `adresse` de `suivi.php`, interroge la base DPE, le cadastre et l'API geo (2 à 5 secondes par bien), puis envoie les `maj` du champ `adresse` à `patch.php`. Il s'authentifie avec le jeton de `~/.config/maison/token`.
+2. Il affiche `{"ops": [...], "a_escalader": [{id, raison}], "refus": [...]}`. `ops` contient les adresses trouvées, déjà enregistrées, à reprendre dans le message de fin. `refus` doit être vide.
+3. Traite chaque bien de `a_escalader` avec methode-adresse.md. La `raison` dit ce qui manque, par exemple « pas de DPE chiffré ni de terrain exact dans les indices ». Si tu trouves des chiffres sur une autre fiche, enregistre-les dans `indices` et relance le script pour ce bien (`--ids <id> --envoyer`).
+
+Si le script répond 401 (jeton absent ou révoqué), prépare son entrée depuis l'onglet du site, puis lance-le avec `--entree <fichier>`, sans `--envoyer`, et envoie toi-même `ops` à `patch.php` (section 5) :
+```js
+const s = await (await fetch('suivi.php?x=' + Date.now())).json();
+const d = await (await fetch('data.php?leger=1&x=' + Date.now())).json();
+const ids = new Set(s.adresse.map(x => x.id));
+JSON.stringify({ biens: d.biens.filter(b => ids.has(b.id)).map(b => ({ id: b.id, commune: b.commune, surface: b.surface, indices: b.indices, adresse: b.adresse })) })
+```
 
 ## 5. Enregistrer : les opérations
 

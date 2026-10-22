@@ -12,4 +12,4 @@ La veille automatique n'écrit pas dans le dépôt : elle envoie la liste à jou
 Scripts locaux (`scripts/`, Python, bibliothèque standard) :
 
 - `marche.py` : prix de vente au m² par commune, à partir des fichiers DVF.
-- `adresse.py` : adresse des biens à partir de leur champ `indices` (valeurs du DPE et terrain), par la base DPE de l'ADEME et le cadastre Etalab. Mode d'emploi : `maison/outils.md`, section 4. Tests : `python3 -m unittest scripts/test_adresse.py`.
+- `adresse.py` : adresse des biens à partir de leur champ `indices` (valeurs du DPE et terrain), par la base DPE de l’ADEME et le cadastre Etalab. Il lit et écrit le site avec un jeton de script (`~/.config/maison/token`, empreinte dans `maison/auth-lib.php`). Mode d’emploi : `maison/outils.md`, section 4. Tests : `python3 -m unittest scripts/test_adresse.py`.

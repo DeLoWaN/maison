@@ -38,6 +38,14 @@ function auth_prenom($email) {
     return isset($a[$h]) ? $a[$h] : '';
 }
 
+// Jetons des scripts lancés depuis le Mac (en-tête X-Maison-Jeton), sous forme d'empreintes SHA-256.
+// Le jeton lui-même reste dans ~/.config/maison/token. Pour révoquer un jeton : retirer sa ligne.
+function auth_jetons() {
+    return array(
+        'ec216e1f853ae7b0e188d52df79a1d6ed04731416ec4aba1f7c381802f2a3fb7' => 'mac-damien',
+    );
+}
+
 function auth_autorise($email) {
     return in_array(hash('sha256', strtolower(trim((string) $email))), auth_empreintes(), true);
 }
@@ -63,8 +71,14 @@ function auth_https() {
 function auth_b64($s) { return rtrim(strtr(base64_encode($s), '+/', '-_'), '='); }
 function auth_b64d($s) { return base64_decode(strtr($s, '-_', '+/')); }
 
-// Adresse du compte connecté, ou null.
+// Adresse du compte connecté, « script:<nom> » pour un jeton de script, ou null.
 function auth_utilisateur() {
+    // En-tête personnalisé : l'hébergement ne transmet pas toujours Authorization à PHP.
+    if (!empty($_SERVER['HTTP_X_MAISON_JETON'])) {
+        $j = auth_jetons();
+        $h = hash('sha256', trim((string) $_SERVER['HTTP_X_MAISON_JETON']));
+        return isset($j[$h]) ? 'script:' . $j[$h] : null;
+    }
     if (empty($_COOKIE[AUTH_COOKIE])) return null;
     $p = explode('.', (string) $_COOKIE[AUTH_COOKIE]);
     if (count($p) !== 3) return null;

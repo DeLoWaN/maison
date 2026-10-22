@@ -227,5 +227,34 @@ class Traitement(unittest.TestCase):
         self.assertIn("service indisponible", out["a_escalader"][0]["raison"])
 
 
+class FauxSite(A.Site):
+    """Answers like the site, without network; keeps the calls."""
+
+    def __init__(self):
+        super().__init__("jeton")
+        self.appels = []
+
+    def _appel(self, page, corps=None):
+        self.appels.append((page, corps))
+        if page == "suivi.php":
+            return {"adresse": [{"id": "b"}, {"id": "a"}, {"id": "parti"}]}
+        if page == "data.php?leger=1":
+            return {"biens": [{"id": "a"}, {"id": "b"}, {"id": "c"}]}
+        return {"resultats": [{"n": i, "op": "maj", "ok": o["id"] != "refuse"} for i, o in enumerate(corps["ops"])]}
+
+
+class Site(unittest.TestCase):
+    def test_biens_dans_l_ordre_de_suivi(self):
+        self.assertEqual([b["id"] for b in FauxSite().biens_a_traiter()], ["b", "a"])
+
+    def test_envoi_par_paquets_et_refus(self):
+        site = FauxSite()
+        ops = [{"op": "maj", "id": f"x{i}"} for i in range(85)] + [{"op": "maj", "id": "refuse"}]
+        refus = site.envoyer(ops)
+        print("\n", [len(c["ops"]) for _, c in site.appels], refus)
+        self.assertEqual([len(c["ops"]) for _, c in site.appels], [40, 40, 6])
+        self.assertEqual(len(refus), 1)
+
+
 if __name__ == "__main__":
     unittest.main()
