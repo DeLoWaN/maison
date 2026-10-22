@@ -196,6 +196,8 @@ Le script renvoie :
 
 Juge la maison sur `texte`. Les autres champs sont des repères : en cas de doute (champ vide, valeur étonnante), vérifie dans `texte`.
 
+Garde les valeurs du DPE dans le champ `indices` du bien, telles que le script les renvoie : `{"kwh", "co2", "depense", "date_dpe", "terrain"}`. Mets-les dans l'`ajout`, ou dans une `maj` si une autre fiche du bien en donne de plus complètes. Ajoute `"dpe"` et `"ges"` (lettres) si la fiche les affiche, et `"terrain_exact": false` si le terrain est arrondi. Le script `scripts/adresse.py` cherche l'adresse à partir de ce champ, sans relire l'annonce (section 4).
+
 ## 4. Biens suivis : ce qu'il reste à faire
 
 `await (await fetch('suivi.php?x=' + Date.now())).json()`
@@ -204,7 +206,20 @@ Juge la maison sur `texte`. Les autres champs sont des repères : en cas de dout
 - `a_verifier` : biens actifs qui n'ont été ni vus dans une liste ni vérifiés depuis 3 jours. Ouvre au moins un lien de chacun : s'il est toujours en ligne, opération `maj` avec `"verifie": true` (et le prix s'il a changé) ; si la fiche a disparu sur tous les liens, `maj` avec `"etat": "retiree"`.
 - `galerie` : biens sans galerie de photos (voir « Galerie de photos » dans consignes.md).
 - `sans_photo` : biens sans photo_url. Prends le champ `photo` du script de fiche.
-- `adresse` : biens à traiter à l'étape 6 bis, déjà dans l'ordre de la consigne (tous, sans limite de nombre). Quand un bien porte `a_faire`, commence par ce qui y est écrit : cherche l'annonce d'origine (site de l'agence, ou immobilier.notaires.fr pour un notaire) avant toute autre recherche. Si tu ne la trouves pas, ajoute « annonce d'origine introuvable » à adresse.preuves.
+- `adresse` : biens à traiter à l'étape 6 bis, déjà dans l'ordre de la consigne (tous, sans limite de nombre). Lance d'abord le script ci-dessous : il traite seul les biens dont le champ `indices` suffit. Pour les biens qu'il renvoie dans `a_escalader`, suis methode-adresse.md. Quand un de ces biens porte `a_faire`, commence par ce qui y est écrit : cherche l'annonce d'origine (site de l'agence, ou immobilier.notaires.fr pour un notaire) avant toute autre recherche. Si tu ne la trouves pas, ajoute « annonce d'origine introuvable » à adresse.preuves.
+
+### Adresses : le script d'abord
+
+1. Dans l'onglet du site, prépare l'entrée du script :
+   ```js
+   const s = await (await fetch('suivi.php?x=' + Date.now())).json();
+   const d = await (await fetch('data.php?leger=1&x=' + Date.now())).json();
+   const ids = new Set(s.adresse.map(x => x.id));
+   JSON.stringify({ biens: d.biens.filter(b => ids.has(b.id)).map(b => ({ id: b.id, commune: b.commune, surface: b.surface, indices: b.indices, adresse: b.adresse })) })
+   ```
+2. Écris ce JSON dans un fichier, puis lance `python3 ~/git_perso/maison/scripts/adresse.py --entree <fichier>`. Le script interroge la base DPE, le cadastre et l'API geo, en 2 à 5 secondes par bien.
+3. Il renvoie `{"ops": [...], "a_escalader": [{id, raison}]}`. Envoie `ops` tel quel à `patch.php` (section 5) : ce sont des `maj` du champ `adresse`, confiance « forte » ou « probable ».
+4. Traite chaque bien de `a_escalader` avec methode-adresse.md. La `raison` dit ce qui manque, par exemple « pas de DPE chiffré ni de terrain exact dans les indices ». Si tu trouves des chiffres sur une autre fiche, enregistre-les dans `indices` et relance le script pour ce bien (`--ids <id>`).
 
 ## 5. Enregistrer : les opérations
 

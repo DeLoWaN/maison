@@ -3,7 +3,9 @@
 // contrôle et numérote. La veille n'a plus à relire ni renvoyer la liste complète.
 // POST patch.php[?r=<recherche>]  {"ops": [ {...}, ... ]}   Réponse : {"ok":true, "resultats":[...], "nums":{id:num}, "maj":...}
 // Opérations :
-//   {"op":"ajout", "bien":{id, titre, commune, lieu, prix, verdict, crit, verifier, liens:[{site,url,ok}], photo_url, surface, adresse?}}
+//   {"op":"ajout", "bien":{id, titre, commune, lieu, prix, verdict, crit, verifier, liens:[{site,url,ok}], photo_url, surface, adresse?, indices?}}
+//   indices : valeurs brutes du script de fiche (outils.md, section 3) que lit scripts/adresse.py :
+//             {kwh, co2, depense, date_dpe, terrain, terrain_exact?, dpe?, ges?}
 //   {"op":"maj", "id":..., "champs":{...}, "verifie":true}   (prix modifié : ajouté à prix_hist ; etat "retiree" : retiree_le = aujourd'hui ;
 //                                                                     etat "ecartee" avec ecartee_motif : ne remplit plus les critères)
 //   {"op":"lien", "id":..., "site":..., "url":..., "ok":true}
@@ -34,7 +36,7 @@ $VERDICTS = array('top', 'presque', 'hors');
 // ecartee : bien qui ne remplit plus les critères (motif dans ecartee_motif), gardé pour l'historique de la famille.
 $ETATS = array('active', 'retiree', 'ecartee');
 $STATUTS = array('ok', 'partiel', 'echec', 'nt');
-$CHAMPS = array('titre', 'commune', 'lieu', 'prix', 'verdict', 'crit', 'verifier', 'liens', 'photo_url', 'surface', 'adresse', 'etat', 'retiree_le', 'geo', 'note', 'verifie_le', 'ecartee_motif');
+$CHAMPS = array('titre', 'commune', 'lieu', 'prix', 'verdict', 'crit', 'verifier', 'liens', 'photo_url', 'surface', 'adresse', 'etat', 'retiree_le', 'geo', 'note', 'verifie_le', 'ecartee_motif', 'indices');
 $CRIT_ETATS = array('ok', 'warn', 'ko', 'unk');
 
 function p_date($s) { return is_string($s) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $s); }
@@ -51,6 +53,11 @@ function p_crit_ok($c, $etats) {
 function p_adresse_ok($a) {
     if (!is_array($a) || !isset($a['confiance']) || !in_array($a['confiance'], array('forte', 'probable', 'non_trouvee'), true)) return 'adresse : confiance forte|probable|non_trouvee attendue';
     if ($a['confiance'] !== 'non_trouvee' && (!isset($a['texte']) || trim((string) $a['texte']) === '')) return 'adresse : texte attendu pour forte ou probable';
+    return true;
+}
+function p_indices_ok($x) {
+    if (!is_array($x)) return 'indices : objet attendu';
+    foreach ($x as $k => $v) if (!in_array($k, array('kwh', 'co2', 'depense', 'date_dpe', 'terrain', 'terrain_exact', 'dpe', 'ges'), true)) return 'indices : clé inconnue ' . $k;
     return true;
 }
 // Une source non lue doit avoir une cause réelle : pas de « manque de temps » (la tâche n'a pas de limite de temps)
@@ -98,6 +105,7 @@ $res = donnees_modifier($r, function (&$d) use ($ops, &$resultats, &$nouveaux, &
             elseif (($x = p_crit_ok(isset($b['crit']) ? $b['crit'] : null, $CRIT_ETATS)) !== true) $err = $x;
             elseif (isset($b['adresse']) && ($x = p_adresse_ok($b['adresse'])) !== true) $err = $x;
             elseif (($x = donnees_regles_bien(array('prix' => isset($b['prix']) ? donnees_entier($b['prix']) : null, 'crit' => $b['crit'], 'verdict' => $b['verdict']), $plafond)) !== true) $err = $x;
+            elseif (isset($b['indices']) && ($x = p_indices_ok($b['indices'])) !== true) $err = $x;
             else {
                 foreach ($b['liens'] as $l) { $k = donnees_cle_url($l['url']); if (isset($ix[$k]) && $ix[$k]['type'] === 'bien') { $err = 'lien déjà suivi par ' . $d['biens'][$ix[$k]['i']]['id']; break; } }
             }
@@ -114,6 +122,7 @@ $res = donnees_modifier($r, function (&$d) use ($ops, &$resultats, &$nouveaux, &
                 );
                 if (isset($b['surface']) && donnees_entier($b['surface'])) $nb['surface'] = donnees_entier($b['surface']);
                 if (isset($b['adresse'])) $nb['adresse'] = $b['adresse'];
+                if (isset($b['indices'])) $nb['indices'] = $b['indices'];
                 if (isset($b['geo']) && is_array($b['geo'])) $nb['geo'] = $b['geo'];
                 $d['biens'][] = $nb;
                 $iBien = count($d['biens']) - 1;
@@ -134,6 +143,7 @@ $res = donnees_modifier($r, function (&$d) use ($ops, &$resultats, &$nouveaux, &
                     if ($k === 'liens' && ($x = p_liens_ok($v)) !== true) { $err = $x; break; }
                     if ($k === 'crit' && ($x = p_crit_ok($v, $CRIT_ETATS)) !== true) { $err = $x; break; }
                     if ($k === 'adresse' && ($x = p_adresse_ok($v)) !== true) { $err = $x; break; }
+                    if ($k === 'indices' && ($x = p_indices_ok($v)) !== true) { $err = $x; break; }
                     if (($k === 'retiree_le' || $k === 'verifie_le') && $v !== null && !p_date($v)) { $err = $k . ' : AAAA-MM-JJ'; break; }
                 }
             }

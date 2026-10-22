@@ -3,6 +3,16 @@
 Méthode testée le 19 octobre 2026 sur 10 maisons (9 adresses trouvées, dont 7 avec une confiance forte, après correction d'une erreur relevée par Damien).
 À suivre dans l'ordre, sans réinventer : chaque étape indique ce qui marche et ce qui a échoué.
 
+## Étape 0 : le script
+`scripts/adresse.py` fait les étapes 2, 3 et 5 sans modèle, à partir du champ `indices` du bien (outils.md, section 4, « Adresses : le script d'abord »). Testé le 22 octobre 2026 sur les trois exemples de cette page : il retrouve les trois adresses, avec une confiance forte. Ne suis la suite de cette page que pour les biens qu'il renvoie dans `a_escalader`.
+
+Ce que le script ne fait pas : lire les annonces (étape 1), chercher l'annonce d'origine (étape 1 bis), regarder la vue aérienne (étape 4).
+
+Seuils propres au script, plus prudents que la méthode manuelle :
+- un écart de surface de plus de 30 % entre le DPE et l'annonce empêche la confiance forte ;
+- dans tout le département, consommation et dépense comptent pour un seul indice : sur un test, elles désignaient quatre mauvaises maisons ;
+- le terrain ne compte que s'il égale une parcelle, ou la somme de deux, à 3 m² près : les sommes de trois ou quatre parcelles à 3 % près tombaient juste par hasard.
+
 ## Règles
 - Uniquement des données publiques ouvertes sur les bâtiments : DPE (ADEME), cadastre (Etalab, sans nom de propriétaire), Base Adresse Nationale, photos aériennes IGN.
 - Ne cherche jamais le nom du propriétaire ou du vendeur. Ne consulte aucun annuaire de personnes, réseau social ou registre d'entreprises.
