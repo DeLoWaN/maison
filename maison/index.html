@@ -382,6 +382,8 @@ th { font-size: .9rem; color: var(--gris); }
           <span><span class="plaque mini s-pas_interesses">12</span>Pas intéressés</span>
           <span><span class="plaque mini">12</span>Pas encore décidé</span>
           <span><span class="plaque mini village">12</span>Seulement le village, adresse pas retrouvée</span>
+          <span><svg width="26" height="16" viewBox="0 0 26 16" aria-hidden="true"><rect x="1.5" y="1.5" width="23" height="13" rx="2" fill="rgba(29,79,156,.08)" stroke="#1d4f9c" stroke-width="2.5" stroke-dasharray="5 3"/></svg>Zone de recherche</span>
+          <span><svg width="26" height="16" viewBox="0 0 26 16" aria-hidden="true"><rect x="1.5" y="1.5" width="23" height="13" rx="2" fill="none" stroke="#1d4f9c" stroke-width="2" stroke-dasharray="1.5 3.5"/></svg>Communes en bordure</span>
           <span><svg width="20" height="26" viewBox="0 0 34 44" aria-hidden="true"><path d="M17 2C8.7 2 2 8.6 2 16.8 2 28 17 42 17 42s15-14 15-25.2C32 8.6 25.3 2 17 2z" fill="#26323c" stroke="#fff" stroke-width="3"/><path d="M17 9.5 9.5 16h2v7h4v-4.5h3V23h4v-7h2z" fill="#fff"/></svg>Chez Damien et Aurélia</span>
         </div>
         <p class="aide">Touchez une plaque pour voir la maison et aller à sa fiche.</p>
@@ -772,6 +774,18 @@ function allerA(id) {
   el.classList.add("repere");
   el.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
 }
+// Contour de la zone de recherche (recherches/<r>/zone.geojson, construit par scripts/zone-geojson.py).
+// Sans fichier, la carte reste sans contour.
+function dessinerZone(groupe) {
+  groupe.clearLayers();
+  const bleu = couleurVar("--s-visiter") || "#1d4f9c";
+  fetch(`recherches/${encodeURIComponent(R)}/zone.geojson`, { cache: "no-store" }).then(r => r.ok ? r.json() : null).then(gj => {
+    if (!gj) return;
+    L.geoJSON(gj, { interactive: false, style: f => f.properties.nom === "bordure"
+      ? { color: bleu, weight: 2, dashArray: "2 6", fillOpacity: 0 }
+      : { color: bleu, weight: 3, dashArray: "8 5", fillColor: bleu, fillOpacity: .06 } }).addTo(groupe);
+  }).catch(() => {});
+}
 async function dessinerVue() {
   const el = document.getElementById("vue-carte");
   if (typeof L === "undefined") { el.innerHTML = `<div class="vide">Carte indisponible</div>`; return; }
@@ -784,8 +798,10 @@ async function dessinerVue() {
   if (!VUE) {
     VUE = L.map(el, { dragging: !L.Browser.mobile, scrollWheelZoom: false, tap: false });
     fondsCarte(VUE);
+    VUE.zone = L.layerGroup().addTo(VUE);
     VUE.couche = L.layerGroup().addTo(VUE);
   }
+  if (VUE_R !== R) dessinerZone(VUE.zone);
   VUE.couche.clearLayers();
   const vus = {}, pts = [];
   biens.forEach((b, i) => {
