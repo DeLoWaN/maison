@@ -210,9 +210,13 @@ Garde les valeurs du DPE dans le champ `indices` du bien, telles que le script l
 
 ### Adresses : le script d'abord
 
-1. Dans Bash, lance `python3 ~/git_perso/maison/scripts/adresse.py --envoyer`. Le script lit la liste `adresse` de `suivi.php`, interroge la base DPE, le cadastre et l'API geo (2 à 5 secondes par bien), puis envoie les `maj` du champ `adresse` à `patch.php`. Il s'authentifie avec le jeton de `~/.config/maison/token`.
+1. Dans Bash, lance la version de `main`, quelle que soit la branche du clone :
+   ```bash
+   git -C ~/git_perso/maison fetch -q origin && git -C ~/git_perso/maison show origin/main:scripts/adresse.py | python3 -I - --envoyer
+   ```
+   Le script lit la liste `adresse` de `suivi.php`, interroge la base DPE, le cadastre et l'API geo (2 à 5 secondes par bien), puis envoie les `maj` du champ `adresse` à `patch.php`. Il s'authentifie avec le jeton de `~/.config/maison/token`.
 2. Il affiche `{"ops": [...], "a_escalader": [{id, raison}], "refus": [...]}`. `ops` contient les adresses trouvées, déjà enregistrées, à reprendre dans le message de fin. `refus` doit être vide.
-3. Traite chaque bien de `a_escalader` avec methode-adresse.md. La `raison` dit ce qui manque, par exemple « pas de DPE chiffré ni de terrain exact dans les indices ». Si tu trouves des chiffres sur une autre fiche, enregistre-les dans `indices` et relance le script pour ce bien (`--ids <id> --envoyer`).
+3. Traite chaque bien de `a_escalader` avec methode-adresse.md. La `raison` dit ce qui manque, par exemple « pas de DPE chiffré ni de terrain exact dans les indices ». Si tu trouves des chiffres sur une autre fiche, enregistre-les dans `indices` et relance la même commande avec `--ids <id> --envoyer`.
 
 Si le script répond 401 (jeton absent ou révoqué), prépare son entrée depuis l'onglet du site, puis lance-le avec `--entree <fichier>`, sans `--envoyer`, et envoie toi-même `ops` à `patch.php` (section 5) :
 ```js
