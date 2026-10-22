@@ -261,7 +261,7 @@ details.groupe-replie > summary .nb { font: 600 1.05rem/1 var(--f-texte); color:
 .adresse.forte { border-left-color: var(--ok); background: var(--ok-bg); }
 .adresse.probable { border-left-color: var(--warn); background: var(--warn-bg); }
 .adresse strong { display: block; }
-.adresse .txt { font-size: 1.2rem; font-weight: 700; }
+.adresse .txt { font-size: 1.2rem; font-weight: 700; color: inherit; text-underline-offset: 3px; }
 .adresse .conf { justify-self: start; display: inline-flex; align-items: center; gap: 8px; font-weight: 700; padding: 3px 12px; border-radius: 999px; color: var(--papier); background: var(--unk); }
 .adresse.forte .conf { background: var(--ok); }
 .adresse.probable .conf { background: var(--warn); }
@@ -598,7 +598,7 @@ function blocAdresse(b) {
   const forte = a.confiance === "forte";
   return `<div class="adresse ${a.confiance}">
     <strong>Adresse retrouvée</strong>
-    <span class="txt">${esc(a.texte)}</span>
+    <a class="txt" href="https://www.google.com/maps/search/?api=1&amp;query=${encodeURIComponent(a.texte)}" target="_blank" rel="noopener" title="Ouvrir dans Google Maps">${esc(a.texte)}</a>
     <span class="conf"><span class="jauge" aria-hidden="true">${forte ? "●●●" : "●●○"}</span>${forte ? "Confiance forte" : "Confiance moyenne"}</span>
     <p>${forte
       ? "Plusieurs indices publics concordent (diagnostic énergétique, surface, dépenses d'énergie). C'est très probablement elle, mais demandez confirmation à l'agence avant de vous déplacer."
@@ -732,6 +732,7 @@ function dessinerCarte(el) {
   geoCalvados().then(async g => {
     const p = await situerPrecis(b, g);
     if (!p) { el.innerHTML = `<div class="vide">Commune introuvable sur la carte</div>`; return; }
+    const ici = [p.ll[1], p.ll[0]];
     const v = await lieuChez(g), vv = v ? [v.ll[1], v.ll[0]] : null;
     const exact = !!(p.adresse || p.precis);
     const carte = L.map(el, { dragging: !L.Browser.mobile, scrollWheelZoom: false, tap: false });
