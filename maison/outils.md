@@ -11,7 +11,7 @@ Tous les appels à `data.php`, `nouveautes.php`, `suivi.php`, `patch.php` et `ph
 
 ## 1. Lire la liste actuelle (allégée)
 
-`await (await fetch('data.php?r=RECHERCHE&leger=1&x=' + Date.now())).json()`
+`await (await fetch('data.php?leger=1&x=' + Date.now())).json()`
 
 Cette lecture ne contient ni les galeries de photos (seulement `nb_photos`) ni le registre des annonces écartées (seulement `vus_nb`) : c'est le serveur qui fait ce tri. Garde-la en mémoire pour juger, ne la renvoie jamais.
 
@@ -70,7 +70,7 @@ Ensuite, envoie la liste au serveur, qui dit ce qui est nouveau :
 
 ```js
 const annonces = [/* recopie {url, prix} de chaque annonce */];
-await (await fetch('nouveautes.php?r=RECHERCHE', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ annonces }) })).json()
+await (await fetch('nouveautes.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ annonces }) })).json()
 ```
 
 Tu peux aussi envoyer `annonces: r.annonces.map(a => ({url: a.url, prix: a.prix}))` si tu as gardé le résultat dans l'onglet du site. Recopie les adresses telles quelles, sans les retaper.
@@ -98,7 +98,7 @@ Le 20 octobre, le premier passage outillé a lu les 76 pages d'Ouest-France Immo
 
 Pour Ouest-France Immo, n'utilise pas le script de la section 2 page par page. Ce site envoie ses pages toutes faites : un seul script lit les pages de résultats l'une après l'autre (2 à 4 secondes entre deux pages), sans les afficher, et rend une liste courte. Testé le 20 octobre 2026 : 2 pages lues en 4 secondes, 1 900 caractères à recopier au lieu d'environ 15 000.
 
-1. Sur l'onglet du site : `await (await fetch('nouveautes.php?r=RECHERCHE&seuil=of&x=' + Date.now())).json()` donne `of_seuil`, le plus grand numéro d'annonce Ouest-France déjà connu. Si le dernier_ok de la source est vide ou date de plus de 7 jours, prends 0 à la place (tout relire).
+1. Sur l'onglet du site : `await (await fetch('nouveautes.php?seuil=of&x=' + Date.now())).json()` donne `of_seuil`, le plus grand numéro d'annonce Ouest-France déjà connu. Si le dernier_ok de la source est vide ou date de plus de 7 jours, prends 0 à la place (tout relire).
 2. Ouvre dans l'onglet Ouest-France l'adresse de recherche de ta tâche (page 1, tri par date décroissante), attends 3 secondes, puis lance ce script en remplaçant SEUIL par le nombre de l'étape 1 :
 
 ```js
@@ -150,7 +150,7 @@ Pour Ouest-France Immo, n'utilise pas le script de la section 2 page par page. C
 3. Sur l'onglet du site, envoie la chaîne `of` telle quelle, sans la retaper ni la découper :
 
 ```js
-await (await fetch('nouveautes.php?r=RECHERCHE', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ of: "…colle ici la chaîne of…" }) })).json()
+await (await fetch('nouveautes.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ of: "…colle ici la chaîne of…" }) })).json()
 ```
 
    Le serveur écarte lui-même, sans opération vu de ta part, les nouvelles annonces hors zone (commune lue dans l'adresse) et celles au-dessus de 385 000 € : il les compte dans `ecartees_auto`. `nouvelles` ne contient donc que des annonces de la zone, dans le budget d'ouverture.
@@ -198,7 +198,7 @@ Juge la maison sur `texte`. Les autres champs sont des repères : en cas de dout
 
 ## 4. Biens suivis : ce qu'il reste à faire
 
-`await (await fetch('suivi.php?r=RECHERCHE&x=' + Date.now())).json()`
+`await (await fetch('suivi.php?x=' + Date.now())).json()`
 
 À appeler APRÈS avoir parcouru les listes de résultats (étape 4 de la tâche), car les annonces vues dans les listes du jour comptent comme vérifiées.
 - `a_verifier` : biens actifs qui n'ont été ni vus dans une liste ni vérifiés depuis 3 jours. Ouvre au moins un lien de chacun : s'il est toujours en ligne, opération `maj` avec `"verifie": true` (et le prix s'il a changé) ; si la fiche a disparu sur tous les liens, `maj` avec `"etat": "retiree"`.
@@ -212,7 +212,7 @@ Au lieu de renvoyer la liste complète, envoie la liste des changements :
 
 ```js
 const ops = [ /* opérations ci-dessous */ ];
-await (await fetch('patch.php?r=RECHERCHE', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops }) })).json()
+await (await fetch('patch.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops }) })).json()
 ```
 
 Opérations possibles :
@@ -247,13 +247,12 @@ Si patch.php répond une erreur (code 500, « écriture impossible »), rien n'a
 ## 6. Contrôle des photos (après les envois)
 
 ```js
-const r = 'RECHERCHE';
-const d = await (await fetch('data.php?r=' + r + '&leger=1&x=' + Date.now())).json();
+const d = await (await fetch('data.php?leger=1&x=' + Date.now())).json();
 const actifs = d.biens.filter(b => b.etat === 'active'), ko = [];
 for (let i = 0; i < actifs.length; i += 6) await Promise.all(actifs.slice(i, i + 6).map(async b => {
-  const x = await fetch('photo.php?r=' + r + '&id=' + encodeURIComponent(b.id)).catch(() => null);
+  const x = await fetch('photo.php?id=' + encodeURIComponent(b.id)).catch(() => null);
   if (!x || !x.ok || !(x.headers.get('content-type') || '').startsWith('image/')) {
-    const g = await fetch('photo.php?r=' + r + '&id=' + encodeURIComponent(b.id) + '&diag=1').then(y => y.json()).catch(() => ({}));
+    const g = await fetch('photo.php?id=' + encodeURIComponent(b.id) + '&diag=1').then(y => y.json()).catch(() => ({}));
     ko.push({ id: b.id, num: b.num, diag: g });
   }
 }));

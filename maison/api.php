@@ -2,7 +2,7 @@
 // Statuts posés par la famille sur chaque maison, par recherche.
 // Stockés hors du dossier déployé par Git (<home>/maison-data/<recherche>/statuts.json),
 // pour qu'un déploiement ne les efface jamais.
-// GET  api.php?r=longere                -> {"<id>": {"statut": "...", "le": "AAAA-MM-JJ HH:MM"}}
+// GET  api.php[?r=<recherche>]          -> {"<id>": {"statut": "...", "le": "AAAA-MM-JJ HH:MM"}}
 // POST api.php?r=longere {id, statut}   -> enregistre ("" efface le statut)
 // Avis de Damien et Aurélia (pouce levé ou baissé), rangé à part dans avis.json :
 // GET  api.php?r=longere&avis=1              -> {"<id>": {"avis": "pour"|"contre", "le": "...", "par": "..."}}
@@ -14,7 +14,8 @@ $moi = auth_exiger(); // réservé aux comptes Google de la famille
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 
-$r = isset($_GET['r']) ? (string) $_GET['r'] : '';
+require_once __DIR__ . '/donnees-lib.php';
+$r = donnees_recherche_demandee(isset($_GET['r']) ? $_GET['r'] : '');
 if (!preg_match('/^[a-z0-9-]{1,40}$/', $r) || !is_dir(__DIR__ . '/recherches/' . $r)) {
     http_response_code(404);
     echo '{"erreur":"recherche inconnue"}';

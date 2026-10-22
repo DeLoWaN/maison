@@ -1,6 +1,6 @@
 <?php
 // Tri des annonces lues dans une liste de résultats : le serveur dit lesquelles sont nouvelles.
-// POST nouveautes.php?r=longere  {"annonces": [{"url": "...", "prix": 285000}, ...]}
+// POST nouveautes.php[?r=<recherche>]  {"annonces": [{"url": "...", "prix": 285000}, ...]}
 // Réponse :
 //   nouvelles   : adresses jamais vues (à ouvrir si elles semblent correspondre)
 //   a_rouvrir   : écartées pour leur prix, et le prix affiché est maintenant plus bas
@@ -12,13 +12,13 @@
 //   (chemin après /immobilier/vente/, sans .htm, puis :prix). Pour ces annonces, le serveur écarte lui-même les nouvelles
 //   hors zone (commune lue dans l'adresse, liste recherches/<r>/zone.json) et au-dessus du plafond d'ouverture :
 //   elles sont ajoutées aux écartées sans opération vu (compte dans ecartees_auto).
-// GET nouveautes.php?r=longere&seuil=of : plus grand numéro d'annonce Ouest-France déjà connu (pour le script de relevé).
+// GET nouveautes.php?seuil=of : plus grand numéro d'annonce Ouest-France déjà connu (pour le script de relevé).
 require_once __DIR__ . '/auth-lib.php';
 auth_exiger();
 require_once __DIR__ . '/donnees-lib.php';
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
-$r = isset($_GET['r']) ? (string) $_GET['r'] : '';
+$r = donnees_recherche_demandee(isset($_GET['r']) ? $_GET['r'] : '');
 if (!donnees_recherche_valide($r)) { http_response_code(404); echo '{"erreur":"recherche inconnue"}'; exit; }
 $OF = '#^https://www\.ouestfrance-immo\.com/immobilier/vente/[^/]+/([a-z0-9-]+?)-14-\d+/(\d+)\.htm$#';
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['seuil'])) {

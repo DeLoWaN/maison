@@ -3,6 +3,14 @@
 // Compatible PHP 5.4 (pas de ??, pas de fonctions fléchées).
 date_default_timezone_set('Europe/Paris');
 
+// Recherche visée par une requête : la valeur de r, ou la première de recherches.json quand r est absent.
+// Le site n'a qu'une recherche active : la veille n'a pas à donner r.
+function donnees_recherche_demandee($valeur) {
+    $r = is_string($valeur) ? $valeur : '';
+    if ($r !== '') return $r;
+    $l = json_decode((string) @file_get_contents(__DIR__ . '/recherches.json'), true);
+    return is_array($l) && isset($l[0]['id']) ? (string) $l[0]['id'] : '';
+}
 function donnees_recherche_valide($r) {
     return is_string($r) && preg_match('/^[a-z0-9-]{1,40}$/', $r) && is_dir(__DIR__ . '/recherches/' . $r);
 }

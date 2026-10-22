@@ -1,12 +1,13 @@
 <?php
 // Liste des maisons d'une recherche.
-// GET data.php?r=longere : renvoie la dernière liste envoyée par la veille
+// GET data.php[?r=<recherche>] : renvoie la dernière liste envoyée par la veille
 // (<home>/maison-data/<r>/data.json), sinon la liste d'origine du dépôt.
 require_once __DIR__ . '/auth-lib.php';
 auth_exiger(); // réservé aux comptes Google de la famille
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
-$r = isset($_GET['r']) ? (string) $_GET['r'] : '';
+require_once __DIR__ . '/donnees-lib.php';
+$r = donnees_recherche_demandee(isset($_GET['r']) ? $_GET['r'] : '');
 if (!preg_match('/^[a-z0-9-]{1,40}$/', $r) || !is_dir(__DIR__ . '/recherches/' . $r)) {
     http_response_code(404);
     echo '{"erreur":"recherche inconnue"}';

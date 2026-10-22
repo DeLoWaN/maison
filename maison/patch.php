@@ -1,7 +1,7 @@
 <?php
 // Modifications de la liste d'une recherche, envoyées une à une par la veille : le serveur applique,
 // contrôle et numérote. La veille n'a plus à relire ni renvoyer la liste complète.
-// POST patch.php?r=longere  {"ops": [ {...}, ... ]}   Réponse : {"ok":true, "resultats":[...], "nums":{id:num}, "maj":...}
+// POST patch.php[?r=<recherche>]  {"ops": [ {...}, ... ]}   Réponse : {"ok":true, "resultats":[...], "nums":{id:num}, "maj":...}
 // Opérations :
 //   {"op":"ajout", "bien":{id, titre, commune, lieu, prix, verdict, crit, verifier, liens:[{site,url,ok}], photo_url, surface, adresse?}}
 //   {"op":"maj", "id":..., "champs":{...}, "verifie":true}   (prix modifié : ajouté à prix_hist ; etat "retiree" : retiree_le = aujourd'hui ;
@@ -18,7 +18,7 @@ require_once __DIR__ . '/numeros-lib.php';
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); echo '{"erreur":"POST attendu"}'; exit; }
-$r = isset($_GET['r']) ? (string) $_GET['r'] : '';
+$r = donnees_recherche_demandee(isset($_GET['r']) ? $_GET['r'] : '');
 if (!donnees_recherche_valide($r)) { http_response_code(404); echo '{"erreur":"recherche inconnue"}'; exit; }
 donnees_refuser_si_archivee($r);
 $brut = file_get_contents('php://input');

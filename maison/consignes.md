@@ -5,7 +5,7 @@ Ce fichier complète la consigne de la tâche planifiée. Lis-le à chaque passa
 ## Travailler dans l'onglet du site
 
 Pour les deux recherches, il n'y a plus de fichier data.json local ni de renvoi de la liste complète.
-- Lecture : liste allégée (`data.php?r=<recherche>&leger=1`), gardée pour juger.
+- Lecture : liste allégée (`data.php?leger=1`), gardée pour juger.
 - Tri des annonces lues : `nouveautes.php`.
 - Biens à revérifier : `suivi.php`.
 - Enregistrement : opérations envoyées à `patch.php`, au fil du passage.
@@ -128,15 +128,15 @@ N'injecte aucun script extérieur dans une page d'annonce et ne fais pas changer
 ```
 
    Le résultat est compact : `p` est le début commun des adresses, `s` la fin commune, `f` la partie qui change pour chaque photo, `L` et `h` la longueur et l'empreinte de la liste complète. Si `n` vaut moins de 2, la page ne donne pas sa galerie : essaie un autre lien du bien, sinon laisse tomber. Ce n'est pas une erreur à signaler. C'est le cas de SeLoger et des Clefs de chez moi, et Square Habitat bloque les scripts.
-3. Sur l'onglet https://damien-gustave.fr/maison/ , recopie exactement `p`, `s`, `f`, `L` et `h` dans ce script, avec la bonne recherche et le bon id, puis lance-le :
+3. Sur l'onglet https://damien-gustave.fr/maison/ , recopie exactement `p`, `s`, `f`, `L` et `h` dans ce script, avec le bon id, puis lance-le :
 
 ```js
-const g = { r: "longere", id: "<id>", L: <L>, h: <h>, p: "<p>", s: "<s>", f: [ /* recopie f */ ] };
+const g = { id: "<id>", L: <L>, h: <h>, p: "<p>", s: "<s>", f: [ /* recopie f */ ] };
 const photos = g.f.map(x => g.p + x + g.s);
 const t = JSON.stringify(photos); let h = 0; for (const c of t) h = (h * 31 + c.codePointAt(0)) >>> 0;
 let out;
 if (t.length !== g.L || h !== g.h) out = { erreur: "empreinte différente : rien envoyé", L: t.length, h };
-else { const r = await fetch('photos.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ r: g.r, id: g.id, photos }) }); out = { s: r.status, t: await r.text() }; }
+else { const r = await fetch('photos.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: g.id, photos }) }); out = { s: r.status, t: await r.text() }; }
 out
 ```
 
@@ -170,7 +170,7 @@ Quand le faire : à l'étape 4, à la place de toute liste Leboncoin.
    Le nombre de pièces est parfois faux (« 55 pièces ») : seule la fiche fait foi.
 3. Écarte d'emblée, sans ouvrir la fiche, et ajoute à vus avec l'adresse sans le # :
    - une commune hors zone (Troarn par exemple), motif « Hors zone : … » ;
-   - une annonce que la règle d'ouverture de l'étape 2 de ta recherche fait écarter (prix, terrain pour « plainpied ») ;
+   - une annonce que la règle d'ouverture de l'étape 2 de ta recherche fait écarter (prix, terrain) ;
    - une surface habitable sous 80 m², motif « Trop petite : N m² ».
 
    Une annonce déjà dans vus ou dans les liens d'un bien suivi ne demande rien. Les alertes ne filtrent pas comme nous : la plupart des annonces seront écartées à ce stade, c'est normal.

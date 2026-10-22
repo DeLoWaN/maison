@@ -1,11 +1,12 @@
 <?php
 // Photo d'une maison : d'abord la copie du dépôt (recherches/<r>/photos/<id>.jpg),
 // sinon téléchargement unique depuis photo_url, gardé en cache hors du dossier déployé.
-// photo.php?r=longere&id=<id>&diag=1 : n'affiche rien, renvoie en JSON le résultat
+// photo.php?id=<id>&diag=1 : n'affiche rien, renvoie en JSON le résultat
 // du téléchargement (code HTTP, type, format détecté) pour savoir qui bloque.
 // Compatible PHP 5.4 (version imposée par l'offre OVH).
 
-$r = isset($_GET['r']) ? (string) $_GET['r'] : '';
+require_once __DIR__ . '/donnees-lib.php';
+$r = donnees_recherche_demandee(isset($_GET['r']) ? $_GET['r'] : '');
 $id = isset($_GET['id']) ? (string) $_GET['id'] : '';
 $diag = isset($_GET['diag']);
 if (!preg_match('/^[a-z0-9-]{1,40}$/', $r) || !preg_match('/^[a-z0-9-]{1,60}$/', $id)) { http_response_code(400); exit; }

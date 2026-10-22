@@ -1,6 +1,6 @@
 <?php
 // Ce que la veille doit faire sur les biens déjà suivis, calculé par le serveur.
-// GET suivi.php?r=longere[&jours=3]
+// GET suivi.php[?r=<recherche>][&jours=3]
 //   a_verifier : biens actifs à rouvrir. Un bien vu dans une liste de résultats aujourd'hui ou récemment
 //                (nouveautes.php) ou vérifié il y a moins de `jours` jours n'a pas besoin d'être rouvert.
 //   galerie    : biens actifs top ou presque sans galerie de photos (moins de 2 photos)
@@ -12,7 +12,7 @@ auth_exiger();
 require_once __DIR__ . '/donnees-lib.php';
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
-$r = isset($_GET['r']) ? (string) $_GET['r'] : '';
+$r = donnees_recherche_demandee(isset($_GET['r']) ? $_GET['r'] : '');
 if (!donnees_recherche_valide($r)) { http_response_code(404); echo '{"erreur":"recherche inconnue"}'; exit; }
 $jours = isset($_GET['jours']) ? max(0, min(14, (int) $_GET['jours'])) : 3;
 $d = donnees_lire($r);

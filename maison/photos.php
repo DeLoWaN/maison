@@ -1,6 +1,6 @@
 <?php
 // Enregistre la galerie de photos d'un bien, sans toucher au reste de la liste.
-// POST photos.php {"r": "longere", "id": "<id>", "photos": ["https://...", ...]}
+// POST photos.php {"id": "<id>", "photos": ["https://...", ...]}
 // Verrou sur le fichier pour que plusieurs envois simultanés ne s'écrasent pas.
 // Compatible PHP 5.4.
 require_once __DIR__ . '/auth-lib.php';
@@ -10,7 +10,8 @@ header('Cache-Control: no-store');
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); echo '{"erreur":"POST attendu"}'; exit; }
 
 $in = json_decode(file_get_contents('php://input'), true);
-$r = is_array($in) && isset($in['r']) ? (string) $in['r'] : '';
+require_once __DIR__ . '/donnees-lib.php';
+$r = donnees_recherche_demandee(is_array($in) && isset($in['r']) ? $in['r'] : '');
 $id = is_array($in) && isset($in['id']) ? (string) $in['id'] : '';
 $ph = is_array($in) && isset($in['photos']) && is_array($in['photos']) ? $in['photos'] : null;
 if (!preg_match('/^[a-z0-9-]{1,40}$/', $r) || !is_dir(__DIR__ . '/recherches/' . $r) || !preg_match('/^[a-z0-9-]{1,60}$/', $id) || $ph === null) {
