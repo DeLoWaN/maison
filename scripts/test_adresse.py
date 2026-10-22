@@ -266,13 +266,16 @@ class FauxSite(A.Site):
         if page == "suivi.php":
             return {"adresse": [{"id": "b"}, {"id": "a"}, {"id": "parti"}]}
         if page == "data.php?leger=1":
-            return {"biens": [{"id": "a"}, {"id": "b"}, {"id": "c"}]}
+            return {"biens": [{"id": "a"}, {"id": "b"}, {"id": "c", "etat": "ecartee"}]}
         return {"resultats": [{"n": i, "op": "maj", "ok": o["id"] != "refuse"} for i, o in enumerate(corps["ops"])]}
 
 
 class Site(unittest.TestCase):
     def test_biens_dans_l_ordre_de_suivi(self):
         self.assertEqual([b["id"] for b in FauxSite().biens_a_traiter()], ["b", "a"])
+
+    def test_biens_actifs_sans_les_ecartes(self):
+        self.assertEqual([b["id"] for b in FauxSite().biens_actifs()], ["a", "b"])
 
     def test_envoi_par_paquets_et_refus(self):
         site = FauxSite()

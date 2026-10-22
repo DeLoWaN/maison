@@ -498,6 +498,10 @@ class Site:
         biens = {b["id"]: b for b in self._appel("data.php?leger=1")["biens"]}
         return [biens[i] for i in ordre if i in biens]
 
+    def biens_actifs(self):
+        """Returns the houses of data.php whose state is `active`."""
+        return [b for b in self._appel("data.php?leger=1")["biens"] if b.get("etat", "active") == "active"]
+
     def envoyer(self, ops):
         """Sends the operations to patch.php in packets. Returns the refusals, with their reason."""
         refus = []

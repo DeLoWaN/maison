@@ -206,7 +206,23 @@ Garde les valeurs du DPE dans le champ `indices` du bien, telles que le script l
 - `a_verifier` : biens actifs qui n'ont été ni vus dans une liste ni vérifiés depuis 3 jours. Ouvre au moins un lien de chacun : s'il est toujours en ligne, opération `maj` avec `"verifie": true` (et le prix s'il a changé) ; si la fiche a disparu sur tous les liens, `maj` avec `"etat": "retiree"`.
 - `galerie` : biens sans galerie de photos (voir « Galerie de photos » dans consignes.md).
 - `sans_photo` : biens sans photo_url. Prends le champ `photo` du script de fiche.
-- `adresse` : biens à traiter à l'étape 6 bis, déjà dans l'ordre de la consigne (tous, sans limite de nombre). Lance d'abord le script ci-dessous : il traite seul les biens dont le champ `indices` suffit. Pour les biens qu'il renvoie dans `a_escalader`, suis methode-adresse.md. Quand un de ces biens porte `a_faire`, commence par ce qui y est écrit : cherche l'annonce d'origine (site de l'agence, ou immobilier.notaires.fr pour un notaire) avant toute autre recherche. Si tu ne la trouves pas, ajoute « annonce d'origine introuvable » à adresse.preuves.
+- `adresse` : biens à traiter à l'étape 6 bis, déjà dans l'ordre de la consigne (tous, sans limite de nombre). Lance d'abord les deux scripts ci-dessous, dans l'ordre : le premier complète les indices depuis Bien'ici, le second traite seul les biens dont le champ `indices` suffit. Pour les biens qu'il renvoie dans `a_escalader`, suis methode-adresse.md. Quand un de ces biens porte `a_faire`, commence par ce qui y est écrit : cherche l'annonce d'origine (site de l'agence, ou immobilier.notaires.fr pour un notaire) avant toute autre recherche. Si tu ne la trouves pas, ajoute « annonce d'origine introuvable » à adresse.preuves.
+
+### Indices : le script Bien'ici d'abord
+
+Avant le script d'adresse, complète le champ `indices` depuis les annonces Bien'ici. Dans Bash, lance la version de `main`, quelle que soit la branche du clone :
+```bash
+d=$(mktemp -d) && git -C ~/git_perso/maison fetch -q origin && git -C ~/git_perso/maison archive origin/main scripts | tar -x -C "$d" && python3 -I "$d/scripts/indices_bienici.py" --envoyer
+```
+Le script lit les biens actifs de `data.php` qui ont un lien bienici.com. Il lit le JSON de chaque annonce (environ 1 seconde par annonce), sans navigateur. Il ajoute au champ `indices` les clés absentes (`kwh`, `co2`, `depense`, `date_dpe`, `terrain`, `dpe`, `ges`) et ne remplace jamais une valeur déjà présente. Il saute les biens qui ont déjà une adresse `forte` ou `probable` et des indices complets.
+
+Il affiche `{"ops": [...], "communes_differentes": [...], "erreurs": [...], "refus": [...]}` :
+- `ops` : les `maj` du champ `indices`, déjà envoyées à `patch.php` ;
+- `communes_differentes` : biens dont la commune ne correspond pas à celle de Bien'ici (`{id, commune, bienici, url}`). Bien'ici donne parfois la commune voisine ou l'ancienne commune fusionnée. Vérifie la vraie commune dans la description. Si elle est hors zone, signale le bien dans la section « À vérifier » du message de fin ;
+- `erreurs` : annonces illisibles, le plus souvent retirées (404) ;
+- `refus` : doit être vide.
+
+Sans jeton (401), saute ce script : les fiches lues pendant le passage remplissent `indices` comme à la section 3.
 
 ### Adresses : le script d'abord
 
