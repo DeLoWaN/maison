@@ -31,7 +31,9 @@ import pathlib
 import re
 import sys
 import tempfile
+import time
 import unicodedata
+import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import date, timedelta
@@ -45,6 +47,7 @@ SITE = "https://damien-gustave.fr/maison/"
 JETON = pathlib.Path.home() / ".config" / "maison" / "token"
 # patch.php accepts at most 40 operations per call.
 TAILLE_PAQUET = 40
+ESSAIS_RESEAU = 3
 DEPARTEMENT = "14"
 ZONE_DEPARTEMENT = "le département"
 CHAMPS_DPE = ",".join((
@@ -150,11 +153,17 @@ class Sources:
     def _json(self, url, params=None):
         if params:
             url += "?" + urllib.parse.urlencode(params)
-        try:
-            with urllib.request.urlopen(urllib.request.Request(url, headers={"Accept-Encoding": "gzip"}), timeout=90) as r:
-                data = r.read()
-        except OSError as e:
-            raise ErreurSource(f"{url}: {e}") from e
+        for essai in range(ESSAIS_RESEAU):
+            try:
+                with urllib.request.urlopen(urllib.request.Request(url, headers={"Accept-Encoding": "gzip"}), timeout=90) as r:
+                    data = r.read()
+                break
+            except OSError as e:
+                # The public APIs sometimes reset a connection; a 4xx answer will not change on retry.
+                definitif = isinstance(e, urllib.error.HTTPError) and e.code < 500
+                if definitif or essai == ESSAIS_RESEAU - 1:
+                    raise ErreurSource(f"{url}: {e}") from e
+                time.sleep(2 * (essai + 1))
         if data[:2] == b"\x1f\x8b":
             data = gzip.decompress(data)
         try:
@@ -188,13 +197,21 @@ class Sources:
         fichier = CACHE / f"{insee}.json"
         if fichier.exists():
             return [tuple(p) for p in json.loads(fichier.read_text())]
-        out = []
-        for f in self._json(CADASTRE.format(insee=insee))["features"]:
-            g = f["geometry"]
-            anneau = g["coordinates"][0] if g["type"] == "Polygon" else max((p[0] for p in g["coordinates"]), key=len)
-            out.append((f["properties"]["id"], f["properties"]["contenance"], anneau))
+        out = lire_parcelles(self._json(CADASTRE.format(insee=insee)))
         fichier.write_text(json.dumps(out))
         return out
+
+
+def lire_parcelles(geojson):
+    """Returns [(id, area m², outer ring)] from an Etalab parcel file. Parcels without an area are left out."""
+    out = []
+    for f in geojson["features"]:
+        g, contenance = f.get("geometry"), f["properties"].get("contenance")
+        if not g or not contenance:
+            continue
+        anneau = g["coordinates"][0] if g["type"] == "Polygon" else max((p[0] for p in g["coordinates"]), key=len)
+        out.append((f["properties"]["id"], contenance, anneau))
+    return out
 
 
 # ---------------------------------------------------------------- geometry
@@ -288,6 +305,9 @@ class Recherche:
                 for d in self.s.dpe({**zone, **f}):
                     vus.setdefault(d["numero_dpe"], d)
             notes = [n for n in (noter(d, ind, nom) for d in dedoublonner(vus.values())) if n["indices"]]
+            # Far from the announced commune, a contradiction means another house (a test found one 30 km away).
+            if large:
+                notes = [n for n in notes if not n["contradictions"]]
             if any(solide(n) for n in notes):
                 return notes
             toutes += [n for n in notes if n["dpe"]["numero_dpe"] not in {t["dpe"]["numero_dpe"] for t in toutes}]
@@ -419,10 +439,13 @@ def conclure(notes, ind):
     # Letters and surface alone match many houses: they are never enough.
     if solide(meilleur) and not egaux:
         confiance = "forte"
-    elif p >= 1 and not egaux and "lettres" not in {k for k, _ in meilleur["indices"]}:
+    # One clue against a contradiction is a coincidence: a DPE of the same day with three gaps was found.
+    elif p >= (2 if meilleur["contradictions"] else 1) and not egaux and "lettres" not in {k for k, _ in meilleur["indices"]}:
         confiance = "probable"
-    else:
+    elif egaux:
         return None, f"{len(egaux) + 1} DPE aussi plausibles, aucun ne se détache"
+    else:
+        return None, f"meilleur DPE ({meilleur['dpe']['numero_dpe']}) contredit l'annonce : " + " ; ".join(meilleur["contradictions"])
     d = meilleur["dpe"]
     morceaux = [t for _, t in meilleur["indices"]]
     morceaux.append(f"DPE {d['numero_dpe']}, {d.get('surface_habitable_logement', '?')} m², {d.get('etiquette_dpe', '?')}/{d.get('etiquette_ges', '?')}, trouvé dans {meilleur['zone']}")

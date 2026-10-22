@@ -137,6 +137,13 @@ class Recherche(unittest.TestCase):
         confiance, res = chercher(bien, dpes)
         self.assertEqual(confiance, "probable", res)
 
+    def test_dans_le_departement_une_contradiction_ecarte_le_dpe(self):
+        bien = {"id": "x", "commune": "Inconnue", "indices": {"date_dpe": "07/09/2026", "kwh": "150", "co2": "42", "dpe": "C"}}
+        dpes = [dpe("Z1", "15 Allée Loin 14970 Gamma", "14500", 151, 44, 2000, 112, jour="2026-09-07", lettres=("D", "D"))]
+        confiance, raison = chercher(bien, dpes)
+        self.assertIsNone(confiance)
+        self.assertIn("aucun DPE concordant", raison)
+
     def test_deux_dpe_aussi_bons_sont_escalades(self):
         dpes = [dpe("A1", "1 Rue Une 14999 Alpha", "14001", 201, 7, 2310, 150),
                 dpe("A3", "3 Rue Une 14999 Alpha", "14001", 199, 6, 2290, 148)]
@@ -174,6 +181,19 @@ class Recherche(unittest.TestCase):
         self.assertIn("aucun DPE concordant", raison)
 
 
+class FichierCadastre(unittest.TestCase):
+    def test_parcelles_sans_surface_ou_multipolygones(self):
+        geo = {"features": [
+            {"properties": {"id": "P1", "contenance": 500}, "geometry": {"type": "Polygon", "coordinates": [carre(0, 0)]}},
+            {"properties": {"id": "P2"}, "geometry": {"type": "Polygon", "coordinates": [carre(1, 1)]}},
+            {"properties": {"id": "P3", "contenance": 900}, "geometry": {"type": "MultiPolygon",
+                                                                         "coordinates": [[carre(2, 2)[:3]], [carre(3, 3)]]}},
+            {"properties": {"id": "P4", "contenance": 100}, "geometry": None},
+        ]}
+        out = A.lire_parcelles(geo)
+        self.assertEqual([(p[0], p[1], len(p[2])) for p in out], [("P1", 500, 4), ("P3", 900, 4)])
+
+
 class Cadastre(unittest.TestCase):
     # Only the yearly cost matches: one clue. The exact land area is the second one.
     BIEN = {"id": "beta-250", "commune": "Alpha", "surface": 184,
@@ -199,10 +219,17 @@ class Cadastre(unittest.TestCase):
     def test_parcelle_exacte_seule_sans_dpe_concordant(self):
         bien = dict(self.BIEN, indices={"terrain": "1 403"})
         parc = {"14001": [("Q1", 1403, carre(-0.6, 49.1)), ("Q2", 1500, carre(-0.7, 49.1))]}
-        dpes = [dpe("C1", "2 Chemin Vert 14999 Alpha", "14001", 300, 50, 4000, 120, pt=(-0.5998, 49.1002))]
+        dpes = [dpe("C1", "2 Chemin Vert 14999 Alpha", "14001", 300, 50, 4000, 180, pt=(-0.5998, 49.1002))]
         confiance, res = chercher(bien, dpes, parc)
         self.assertEqual((confiance, res["texte"]), ("probable", "2 Chemin Vert 14999 Alpha"), res)
         self.assertIn("seule de cette surface", res["preuves"])
+
+    def test_un_seul_indice_contre_une_contradiction_est_escalade(self):
+        bien = dict(self.BIEN, indices={"terrain": "1 403"})
+        parc = {"14001": [("Q1", 1403, carre(-0.6, 49.1))]}
+        dpes = [dpe("C1", "2 Chemin Vert 14999 Alpha", "14001", 300, 50, 4000, 90, pt=(-0.5998, 49.1002))]
+        confiance, raison = chercher(bien, dpes, parc)
+        self.assertIsNone(confiance, raison)
 
 
 class Traitement(unittest.TestCase):

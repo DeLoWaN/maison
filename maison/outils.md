@@ -178,7 +178,7 @@ Sur la fiche affichée (attends qu'elle soit chargée : environ 4 secondes pour 
     photo: (document.querySelector('meta[property="og:image"]') || {}).content || null,
     prix: px ? +px[1].replace(/\D/g, "") : null,
     kwh: un(/(\d{1,4}(?:[.,]\d)?)\s*\*?\s*kWh/i), co2: un(/(\d{1,4}(?:[.,]\d)?)\s*\*?\s*kg\s?(?:éq\.?\s?|eq)?CO\s?[2₂]/i),
-    depense: un(/(entre\s*[\d\s.,]+\s*€\s*et\s*[\d\s.,]+\s*€)/i),
+    depense: un(/(entre\s*[\d\s.,]+\s*€?\s*et\s*[\d\s.,]+\s*€)/i),
     date_dpe: un(/(?:date de réalisation(?: du (?:DPE|diagnostic))?|DPE (?:réalisé|établi) le|date du DPE)[^\d\n]{0,25}(\d{2}\/\d{2}\/\d{4}|\d{1,2}(?:er)? [a-zéû]+ \d{4})/i),
     terrain: un(/(\d[\d ]*)\s*m²\s*de terrain/i) || un(/terrain[^\d\n]{0,25}(\d[\d ]*)\s*m²/i),
     chambres: un(/(\d+)\s*chambres?/i), construit: un(/(?:construit|construite|construction|année)\D{0,15}((?:1[6-9]|20)\d{2})/i),
