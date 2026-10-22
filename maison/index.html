@@ -770,10 +770,10 @@ function preparerCartes() {
   document.querySelectorAll(".carte[data-carte]").forEach(el => obsCartes ? obsCartes.observe(el) : dessinerCarte(el));
 }
 // ---- Prix du marché : ventes réelles (DVF) et annonces suivies comparables ----
-// recherches/<r>/marche.json est construit par scripts/marche.py : quartiles du prix au m² des maisons vendues
+// marche.php renvoie recherches/<r>/marche.json, construit par scripts/marche.py : quartiles du prix au m² des maisons vendues
 // autour de chaque commune, par bande de surface habitable et de terrain. Aucune vente individuelle n'y figure.
 let PMARCHE = null;
-const chargerMarche = () => PMARCHE || (PMARCHE = fetch(`recherches/${encodeURIComponent(R)}/marche.json`).then(r => r.ok ? r.json() : null).catch(() => null));
+const chargerMarche = () => PMARCHE || (PMARCHE = fetch(`marche.php?r=${encodeURIComponent(R)}`).then(r => r.ok ? r.json() : null).catch(() => null));
 // Terrain en m² lu dans le texte du critère (« 3 650 m² », « environ 1 ha ») ; null s'il n'est pas chiffré.
 function terrainM2(b) {
   const t = String(((b.crit || {}).terrain || [])[1] || "");
