@@ -5,7 +5,7 @@ commune with house sales, the output gives the quartiles of the price per m² of
 a few kilometres, by band of living area and of land area. The page compares each house with the band
 that matches it. No individual sale is published: each band holds at least MIN_VENTES sales.
 
-Usage: python3 scripts/marche.py   (downloads about 4 MB, run after each DVF release, April and October)
+Usage: python3 scripts/marche.py   (downloads about 4 MB; uses the 3 most recent years published)
 """
 import collections
 import csv
@@ -15,10 +15,12 @@ import json
 import math
 import pathlib
 import statistics
+import urllib.error
 import urllib.request
 from datetime import date
 
-ANNEES = (2023, 2024, 2025)
+# The three most recent years that DVF has published.
+NB_ANNEES = 3
 URL = "https://files.data.gouv.fr/geo-dvf/latest/csv/{annee}/departements/14.csv.gz"
 SORTIE = pathlib.Path(__file__).resolve().parent.parent / "maison" / "recherches" / "maison" / "marche.json"
 SURFACES = (0, 80, 110, 140, 180, 250, 100000)
@@ -28,9 +30,22 @@ MIN_VENTES = 8
 PRIX_M2_MIN, PRIX_M2_MAX = 500, 8000
 
 
-def lire_ventes():
+def annees_publiees():
+    annees = []
+    for annee in range(date.today().year, date.today().year - 8, -1):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(URL.format(annee=annee), method="HEAD"), timeout=30):
+                annees.append(annee)
+        except urllib.error.HTTPError:
+            continue
+        if len(annees) == NB_ANNEES:
+            break
+    return sorted(annees)
+
+
+def lire_ventes(annees):
     lignes = collections.defaultdict(list)
-    for annee in ANNEES:
+    for annee in annees:
         with urllib.request.urlopen(URL.format(annee=annee), timeout=120) as r:
             texte = gzip.decompress(r.read()).decode("utf-8")
         for ligne in csv.DictReader(io.StringIO(texte)):
@@ -82,7 +97,8 @@ def bande(surf):
 
 
 def main():
-    ventes = lire_ventes()
+    annees = annees_publiees()
+    ventes = lire_ventes(annees)
     par_commune = collections.defaultdict(list)
     for v in ventes:
         par_commune[v["commune"]].append(v)
@@ -102,7 +118,7 @@ def main():
                         break
     sortie = {
         "source": "DVF géolocalisé (Etalab), ventes de maisons du Calvados",
-        "periode": f"{ANNEES[0]}-{ANNEES[-1]}", "calcule_le": date.today().isoformat(),
+        "periode": f"{annees[0]}-{annees[-1]}", "calcule_le": date.today().isoformat(),
         "surfaces": list(SURFACES[:-1]) + [None], "grand_terrain": GRAND_TERRAIN,
         "format": "b[<bande de surface><1 si terrain >= grand_terrain>] = [Q1, médiane, Q3, ventes, rayon km] en €/m²",
         "communes": communes,
