@@ -198,8 +198,8 @@ details.groupe-replie > summary .nb { font: 600 1.05rem/1 var(--f-texte); color:
   .pages button { padding: 6px 8px; font-size: .9rem; white-space: nowrap; }
   .pages .pos { font-size: .9rem; white-space: nowrap; }
 }
-.haut { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(16px, env(safe-area-inset-bottom, 0px)); z-index: 6; min-width: 52px; min-height: 52px; border-radius: 26px; border: 2px solid var(--sur-ardoise); background: var(--ardoise); color: var(--sur-ardoise); font: 700 1rem/1 inherit; cursor: pointer; padding: 0 14px; box-shadow: 0 4px 14px rgba(0, 0, 0, .3); }
-.haut[hidden] { display: none; }
+.retour-haut { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(16px, env(safe-area-inset-bottom, 0px)); z-index: 6; min-width: 52px; min-height: 52px; border-radius: 26px; border: 2px solid var(--sur-ardoise); background: var(--ardoise); color: var(--sur-ardoise); font: 700 1rem/1 inherit; cursor: pointer; padding: 0 14px; box-shadow: 0 4px 14px rgba(0, 0, 0, .3); }
+.retour-haut[hidden] { display: none; }
 .tri-barre p { font-size: 1.1rem; }
 .tri-barre b { font-variant-numeric: tabular-nums; }
 .tri-barre button { font: inherit; font-weight: 700; min-height: 46px; padding: 6px 16px; border-radius: 10px; border: 2px solid #fff; background: #fff; color: var(--s-visiter); cursor: pointer; margin-left: auto; }
@@ -395,7 +395,7 @@ th { font-size: .9rem; color: var(--gris); }
   <nav class="nav-barre" id="nav-barre" aria-label="Sections de la page" hidden>
     <div class="large gouttiere" id="nav-in"></div>
   </nav>
-  <button type="button" class="haut" id="haut" aria-label="Revenir en haut de la page" hidden>↑ Haut</button>
+  <button type="button" class="retour-haut" id="haut" aria-label="Revenir en haut de la page" hidden>↑ Haut</button>
 
   <main class="large gouttiere">
     <div class="tri-barre" id="tri-barre" hidden>
