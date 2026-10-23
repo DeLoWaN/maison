@@ -52,5 +52,17 @@ verifier('fusion : adresse la plus sûre', 'forte', $f['adresse']['confiance']);
 verifier('fusion : surface reprise si absente', 133, $f['surface']);
 verifier('fusion : indices du bien gardé complétés par ceux du doublon', array('229', '1 000', 'entre 1 960 € et 2 710 €'), array($f['indices']['kwh'], $f['indices']['terrain'], $f['indices']['depense']));
 
-echo $echecs ? "\n$echecs échec(s)\n" : "\nTous les tests passent.\n";
+// Clé d'adresse d'annonce.
+verifier('clé : deux annonces ADA restent distinctes', true,
+    donnees_cle_url('https://www.ada-immo.com/fr/detail.htm?cle=140061747') !== donnees_cle_url('https://www.ada-immo.com/fr/detail.htm?cle=140061749'));
+verifier('clé : ADA garde cle et ignore les autres paramètres', donnees_cle_url('https://www.ada-immo.com/fr/detail.htm?cle=140061749'),
+    donnees_cle_url('http://ada-immo.com/fr/detail.htm?monnaie=2&cle=140061749#photos'));
+verifier('clé : paramètres de suivi bienici ignorés', 'bienici.com/annonce/vente/x/maison/5pieces/abc',
+    donnees_cle_url('https://www.bienici.com/annonce/vente/x/maison/5pieces/abc?q=%2Frecherche&utm_source=mail'));
+verifier('clé : paramètres de suivi seloger ignorés', 'seloger.com/annonces/achat/maison/x/123.htm',
+    donnees_cle_url('https://www.seloger.com/annonces/achat/maison/x/123.htm?projects=2&tracking=abc'));
+verifier('clé : leboncoin par numéro d\'annonce', donnees_cle_url('https://www.leboncoin.fr/vi/2876543210.htm'),
+    donnees_cle_url('https://www.leboncoin.fr/ad/ventes_immobilieres/2876543210?utm=x'));
+
+echo $echecs ?"\n$echecs échec(s)\n" : "\nTous les tests passent.\n";
 exit($echecs ? 1 : 0);
