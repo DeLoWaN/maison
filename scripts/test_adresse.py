@@ -124,6 +124,7 @@ class Recherche(unittest.TestCase):
         confiance, res = chercher(self.BIEN, dpes)
         self.assertEqual(confiance, "forte", res)
         self.assertEqual(res["texte"], "1 Rue Une 14999 Alpha")
+        self.assertEqual((res["lon"], res["lat"]), ORIGINE)
         self.assertIn("trouvé dans Alpha", res["preuves"])
 
     def test_surface_tres_differente_empeche_forte_et_poursuit_la_recherche(self):

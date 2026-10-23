@@ -456,8 +456,9 @@ def conclure(notes, ind):
     morceaux.append(f"DPE {d['numero_dpe']}, {d.get('surface_habitable_logement', '?')} m², {d.get('etiquette_dpe', '?')}/{d.get('etiquette_ges', '?')}, trouvé dans {meilleur['zone']}")
     if meilleur["contradictions"]:
         morceaux.append("écarts : " + " ; ".join(meilleur["contradictions"]))
+    lon, lat = point_dpe(d)
     return confiance, {
-        "texte": d["adresse_ban"], "confiance": confiance,
+        "texte": d["adresse_ban"], "lat": lat, "lon": lon, "confiance": confiance,
         "preuves": " ; ".join(morceaux) + " (recherche automatique, scripts/adresse.py)",
         "lien": ADEME_VUE + urllib.parse.quote(d["adresse_ban"]),
     }
