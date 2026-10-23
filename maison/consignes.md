@@ -24,7 +24,7 @@ Galeries en attente (bien nouveau dont la galerie est relevée avant son ajout) 
 Pour SeLoger et Etreproprio, utilise les scripts ci-dessous plutôt que le script de liste générique d'outils.md. Envoie ensuite les adresses obtenues à `nouveautes.php` comme pour les autres sites.
 
 ### SeLoger
-- Le site n'a pas de filtre plain-pied. La recherche se fait en texte libre depuis la page d'accueil (« Nouvelle recherche ») : « maison à acheter à <commune> <code postal>, … jusqu'à 350000 euros ». Mets 5 communes au plus par recherche, chacune avec son code postal (sans lui, « Vendes » donne Montaigu-Vendée). Le titre de la page dit combien de communes ont été retenues (« Bayeux (+5) ») : relance avec celles qui manquent.
+- Le site n'a pas de filtre plain-pied. La recherche se fait en texte libre depuis la page d'accueil (« Nouvelle recherche ») : « maison à acheter à <commune> <code postal>, … jusqu'à 385000 euros ». Mets 5 communes au plus par recherche, chacune avec son code postal (sans lui, « Vendes » donne Montaigu-Vendée). Le titre de la page dit combien de communes ont été retenues (« Bayeux (+5) ») : relance avec celles qui manquent.
 - Lis chaque page de résultats avec ce script, une page par appel (au-delà, l'appel dépasse le délai) : `window.__go(1)`, puis `window.__go(2)`, etc. Il clique sur le numéro de page, fait défiler la liste et garde les cartes dans `window.__all`.
 
 ```js
@@ -48,7 +48,9 @@ window.__go = async (pg) => {
 - Sur une fiche, attends 3 secondes ; la description commence après « Calculer un temps de trajet ». La photo est le og:image (mms.seloger.com). SeLoger ne donne pas de galerie.
 
 ### Etreproprio
-- Les pages de commune (`immobilier-vente-<commune>-v14XXX/maison`) se trouvent sur https://www.etreproprio.com/maison-a-vendre/14. Lis chacune avec ce script : il clique « Voir plus » jusqu'au bout et garde le lien complet de chaque fiche (ne reconstruis jamais un lien à partir du seul numéro : la page répond « introuvable »).
+- Une page de commune (`immobilier-vente-<commune>-v14XXX/maison`, liens sur https://www.etreproprio.com/maison-a-vendre/14) affiche 60 annonces au plus, même après « Voir plus ». Lis donc la recherche de la commune : le bouton « Préciser ma recherche » de la page de commune y mène (`annonces/th.lc<code INSEE>`, puis `-r0.g2`, `-r0.g3`…). Elle donne 20 annonces par page, triées par date : arrête-toi à la première page sans nouvelle.
+- La lecture directe répond 403 (Cloudflare) : passe par le navigateur.
+- Lis chaque page avec ce script : il garde le lien complet de chaque fiche (ne reconstruis jamais un lien à partir du seul numéro : la page répond « introuvable »).
 
 ```js
 for (let k = 0; k < 10; k++) { const b = [...document.querySelectorAll('a,button')].find(e => /^\s*Voir plus/i.test(e.textContent) && e.offsetParent); if (!b) break; b.click(); await new Promise(r => setTimeout(r, 2000)); }

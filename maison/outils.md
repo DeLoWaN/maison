@@ -276,6 +276,16 @@ Opérations possibles :
 
 Envoie par paquets de 40 opérations au plus, au fil du passage (ne garde pas tout pour la fin).
 
+### Envoi d'un fichier par la session principale
+
+Un sous-agent écrit ses opérations dans un fichier JSON. La session principale les envoie avec `scripts/envoyer.py`, sans les recopier dans javascript_tool. Le script lit le jeton de `~/.config/maison/token`, envoie par paquets de 40 et rend `nums` et les refus :
+```bash
+d=$(mktemp -d) && git -C ~/git_perso/maison fetch -q origin && git -C ~/git_perso/maison archive origin/main scripts | tar -x -C "$d" && python3 -I "$d/scripts/envoyer.py" ops <fichier.json>
+```
+- `ops <fichier.json>` : tableau d'opérations → patch.php.
+- `nouveautes <dossier>` : `<dossier>/annonces_nouveautes.json` → nouveautes.php ; la réponse va dans `<dossier>/reponse_nouveautes.json`.
+- `photos <fichier.json>` : `[{"id", "photos"}]` → photos.php.
+
 Termine toujours par un envoi à part, qui ne contient que les opérations `source` (une par site, y compris ceux en échec) et l'opération `fin`, et vérifie que la réponse dit `"ok": true`.
 
 Si patch.php répond une erreur (code 500, « écriture impossible »), rien n'a été enregistré. Réessaie une seule fois, une minute plus tard. Si l'erreur revient, arrête le passage : continuer ne servirait à rien, puisque rien ne serait gardé. Termine alors par le message d'échec, avec le texte de l'erreur (« envoi au site échoué : … »).
