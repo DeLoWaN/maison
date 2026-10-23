@@ -162,12 +162,52 @@ details.groupe-replie > summary .nb { font: 600 1.05rem/1 var(--f-texte); color:
 .tri-btn b { font-variant-numeric: tabular-nums; }
 .tri-btn:hover { border-color: var(--sur-ardoise); }
 .tri-barre { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; padding: 14px 18px; border-radius: 0 0 12px 12px; background: var(--s-visiter); color: #fff; margin-top: -28px; }
+/* ---------- Barre de navigation : carte et groupes de maisons ---------- */
+.nav-barre { position: sticky; top: 0; z-index: 6; background: var(--ardoise-2); color: var(--sur-ardoise); border-bottom: 1px solid var(--ardoise); }
+.nav-barre[hidden] { display: none; }
+.nav-barre .large { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-block: 8px; position: relative; }
+.nav-barre button {
+  font: inherit; font-weight: 700; cursor: pointer; min-height: 48px; padding: 6px 14px; border-radius: 10px; white-space: nowrap;
+  border: 2px solid var(--sur-ardoise-2); background: transparent; color: var(--sur-ardoise); display: inline-flex; align-items: baseline; gap: 8px;
+}
+.nav-barre button:hover { border-color: var(--sur-ardoise); }
+.nav-barre button[aria-pressed="true"] { background: var(--sur-ardoise); border-color: var(--sur-ardoise); color: var(--ardoise); }
+.nav-barre .nb { font-weight: 600; font-variant-numeric: tabular-nums; }
+.nav-barre :focus-visible { outline-color: #fff; }
+.nav-barre .nav-carte { margin-right: 8px; }
+.nav-barre .nav-autres { display: none; }
+.nav-menu { position: absolute; top: 100%; right: max(16px, env(safe-area-inset-right, 0px)); display: grid; min-width: 260px; gap: 6px; padding: 10px; border-radius: 12px; background: var(--ardoise); box-shadow: 0 8px 24px rgba(0, 0, 0, .35); }
+.nav-menu[hidden] { display: none; }
+.nav-menu button { justify-content: space-between; }
+@media (max-width: 700px) {
+  .nav-barre .large { gap: 4px; flex-wrap: nowrap; }
+  .nav-barre button { padding: 4px 6px; gap: 4px; font-size: .84rem; min-height: 46px; }
+  .nav-barre .nav-suite { display: none; }
+  .nav-barre .nav-autres { display: inline-flex; }
+  .nav-barre .nav-carte { margin-right: 0; }
+}
+.pages { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px 16px; }
+.pages button {
+  font: inherit; font-weight: 700; cursor: pointer; min-height: 48px; padding: 6px 18px; border-radius: 10px;
+  border: 2px solid var(--ardoise); background: var(--papier); color: var(--ardoise);
+}
+.pages button:disabled { opacity: .4; cursor: default; }
+.pages .pos { font-weight: 700; font-variant-numeric: tabular-nums; }
+@media (max-width: 700px) {
+  .pages { flex-wrap: nowrap; gap: 6px; }
+  .pages button { padding: 6px 8px; font-size: .9rem; white-space: nowrap; }
+  .pages .pos { font-size: .9rem; white-space: nowrap; }
+}
+.haut { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(16px, env(safe-area-inset-bottom, 0px)); z-index: 6; min-width: 52px; min-height: 52px; border-radius: 26px; border: 2px solid var(--sur-ardoise); background: var(--ardoise); color: var(--sur-ardoise); font: 700 1rem/1 inherit; cursor: pointer; padding: 0 14px; box-shadow: 0 4px 14px rgba(0, 0, 0, .3); }
+.haut[hidden] { display: none; }
 .tri-barre p { font-size: 1.1rem; }
 .tri-barre b { font-variant-numeric: tabular-nums; }
 .tri-barre button { font: inherit; font-weight: 700; min-height: 46px; padding: 6px 16px; border-radius: 10px; border: 2px solid #fff; background: #fff; color: var(--s-visiter); cursor: pointer; margin-left: auto; }
 
 /* ---------- Fiche d'une maison ---------- */
-.card { background: var(--papier); border: 1px solid var(--trait); border-radius: 14px; overflow: hidden; display: grid; scroll-margin-top: 16px; }
+.card { background: var(--papier); border: 1px solid var(--trait); border-radius: 14px; overflow: hidden; display: grid; scroll-margin-top: calc(var(--nav-h, 0px) + 16px); }
+.vue .carte { scroll-margin-top: calc(var(--nav-h, 0px) + 8px); }
+.groupe { scroll-margin-top: calc(var(--nav-h, 0px) + 8px); }
 .card.repere { outline: 4px solid var(--nouv); outline-offset: 3px; }
 .card.retiree { opacity: .82; }
 .illu { position: relative; }
@@ -352,6 +392,11 @@ th { font-size: .9rem; color: var(--gris); }
     </div>
   </div>
 
+  <nav class="nav-barre" id="nav-barre" aria-label="Sections de la page" hidden>
+    <div class="large gouttiere" id="nav-in"></div>
+  </nav>
+  <button type="button" class="haut" id="haut" aria-label="Revenir en haut de la page" hidden>↑ Haut</button>
+
   <main class="large gouttiere">
     <div class="tri-barre" id="tri-barre" hidden>
       <p id="tri-texte"></p>
@@ -416,12 +461,12 @@ const clesCrit = () => Array.isArray(D.cles_crit) ? D.cles_crit.filter(k => CRIT
 const SYM = { ok: ["✓", "conforme"], warn: ["!", "limite"], ko: ["✗", "ne va pas"], unk: ["?", "pas indiqué"] };
 const STATUTS = [["a_visiter", "À visiter"], ["visitee", "Visitée"], ["pas_interesses", "Pas intéressés"]];
 const GROUPES = [
-  { k: "top", titre: "À appeler en priorité", texte: "Tout correspond, ou presque, d'après l'annonce.", ouvert: true },
-  { k: "presque", titre: "À étudier de plus près", texte: "Intéressantes, mais un ou deux points demandent des travaux ou une vérification.", ouvert: true },
-  { k: "hors", titre: "Un seul critère ne va pas", texte: "Tout le reste correspond. À regarder seulement si ce point peut se discuter.", ouvert: false },
-  { k: "pas_interesses", titre: "Pas intéressés", texte: "Les maisons que vous avez écartées. Elles ne remontent plus en haut de la page.", ouvert: false },
-  { k: "retiree", titre: "Plus en vente", texte: "Annonces retirées depuis qu'elles ont été repérées.", ouvert: false },
-  { k: "ecartee", titre: "Écartées", texte: "Maisons qui ne remplissent pas les critères (pas de chambre au rez-de-chaussée, hors de la zone…). La raison est indiquée sur chaque fiche. Gardées ici pour mémoire.", ouvert: false }
+  { k: "top", court: "À appeler", titre: "À appeler en priorité", texte: "Tout correspond, ou presque, d'après l'annonce.", ouvert: true },
+  { k: "presque", court: "À étudier", titre: "À étudier de plus près", texte: "Intéressantes, mais un ou deux points demandent des travaux ou une vérification.", ouvert: true },
+  { k: "hors", court: "Un critère ne va pas", titre: "Un seul critère ne va pas", texte: "Tout le reste correspond. À regarder seulement si ce point peut se discuter.", ouvert: false },
+  { k: "pas_interesses", court: "Pas intéressés", titre: "Pas intéressés", texte: "Les maisons que vous avez écartées. Elles ne remontent plus en haut de la page.", ouvert: false },
+  { k: "retiree", court: "Plus en vente", titre: "Plus en vente", texte: "Annonces retirées depuis qu'elles ont été repérées.", ouvert: false },
+  { k: "ecartee", court: "Écartées", titre: "Écartées", texte: "Maisons qui ne remplissent pas les critères (pas de chambre au rez-de-chaussée, hors de la zone…). La raison est indiquée sur chaque fiche. Gardées ici pour mémoire.", ouvert: false }
 ];
 const ST = { ok: "Lu en entier", partiel: "Lu en partie", echec: "Échec", nt: "Pas encore lu" };
 // ---- Galerie de photos : flèches gauche / droite, glisser du doigt sur téléphone ----
@@ -836,7 +881,16 @@ async function remplirMarche() {
 }
 // ---- Carte d'ensemble : une plaque par maison en vente, de la couleur du choix de la famille ----
 let VUE = null, VUE_R = null, VUE_N = 0;
-function allerA(id) {
+// Affiche la fiche : change de groupe et de page si besoin, puis défile jusqu'à elle.
+function allerA(id, pousser = true) {
+  const b = D && D.biens.find(x => x.id === id);
+  const k = b && !TRI ? groupeDe(b) : null;
+  if (k) {
+    TAB = k; MENU = false;
+    PAGE = Math.floor(parGroupe(k).findIndex(x => x.id === id) / taillePage(colonnes())) + 1;
+    rendreListe();
+    if (pousser) history.pushState(null, "", urlEtat(id));
+  }
   const el = document.getElementById(id);
   if (!el) return;
   const det = el.closest("details"); if (det && !det.open) { det.open = true; preparerCartes(); }
@@ -918,9 +972,9 @@ document.getElementById("trouver").addEventListener("submit", async ev => {
     document.querySelectorAll("#onglets button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.r === cible.r)));
     await charger(cible.r);
   }
-  let el = document.getElementById(cible.id);
-  if (!el && TRI) { TRI = false; rendre(); el = document.getElementById(cible.id); }
-  if (!el) { msg.textContent = `La maison n° ${n} n'est plus dans la liste.`; return; }
+  const b = D.biens.find(x => x.id === cible.id);
+  if (!b || !groupeDe(b)) { msg.textContent = `La maison n° ${n} n'est plus dans la liste.`; return; }
+  if (TRI && !passeFiltre(b)) { TRI = false; rendre(); }
   allerA(cible.id);
 });
 
@@ -943,30 +997,114 @@ function phraseResume(parGroupe) {
   return (nNouv ? `<span class="nouv">${nNouv > 1 ? nNouv + " nouvelles maisons" : "Une nouvelle maison"} depuis votre dernière visite.</span>` : "") + fin.charAt(0).toUpperCase() + fin.slice(1) + ".";
 }
 
+// ---- Navigation : un groupe à la fois, découpé en pages de lignes pleines ----
+// L'adresse garde l'état : #top/2 (groupe et page) ou #<id d'une fiche>.
+let TAB = "top", PAGE = 1, COLS = 1, MENU = false;
+const trierBiens = (a, b) => (b.repere_le || "").localeCompare(a.repere_le || "") || (a.prix ?? 1e9) - (b.prix ?? 1e9);
+const parGroupe = k => D.biens.filter(b => groupeDe(b) === k).sort(k === "retiree" ? (a, b) => (b.retiree_le || "").localeCompare(a.retiree_le || "") : trierBiens);
+const defiler = el => { if (el) el.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" }); };
+// Colonnes de la grille .list : la règle du CSS (colonnes d'au moins 380 px, écart de 18 px).
+const colonnes = () => Math.max(1, Math.floor((document.getElementById("contenu").clientWidth + 18) / 398));
+// Trois lignes pleines par page (deux à partir de quatre colonnes) : seule la dernière page peut finir par une ligne incomplète.
+const taillePage = c => c === 1 ? 6 : c >= 4 ? c * 2 : c * 3;
+const urlEtat = h => location.pathname + location.search + "#" + h;
+function pagesHtml(page, pages) {
+  if (pages < 2) return "";
+  return `<nav class="pages" aria-label="Pages de ce groupe">
+    <button type="button" data-page="${page - 1}"${page < 2 ? " disabled" : ""}>‹ Précédent</button>
+    <span class="pos">Page ${page} sur ${pages}</span>
+    <button type="button" data-page="${page + 1}"${page >= pages ? " disabled" : ""}>Suivant ›</button>
+  </nav>`;
+}
+function navHtml() {
+  const barre = document.getElementById("nav-barre");
+  barre.hidden = TRI || !D;
+  if (barre.hidden) { document.documentElement.style.removeProperty("--nav-h"); return; }
+  const n = k => parGroupe(k).length;
+  const visibles = GROUPES.filter(g => g.ouvert || n(g.k) > 0 || g.k === TAB);
+  const bouton = (g, cls) => `<button type="button" class="${cls}" data-groupe="${g.k}" aria-pressed="${g.k === TAB}"><span>${g.court}</span><span class="nb">${n(g.k)}</span></button>`;
+  const suite = visibles.filter(g => !g.ouvert);
+  const autres = suite.length ? `<button type="button" class="nav-autres" id="nav-autres" aria-haspopup="true" aria-expanded="${MENU}" aria-pressed="${suite.some(g => g.k === TAB)}"><span>Autres ▾</span><span class="nb">${suite.reduce((s, g) => s + n(g.k), 0)}</span></button>` : "";
+  document.getElementById("nav-in").innerHTML =
+    `<button type="button" class="nav-carte" data-carte>Carte</button>`
+    + visibles.map(g => bouton(g, g.ouvert ? "" : "nav-suite")).join("")
+    + autres
+    + `<div class="nav-menu" id="nav-menu"${MENU ? "" : " hidden"}>${suite.map(g => bouton(g, "")).join("")}</div>`;
+  document.documentElement.style.setProperty("--nav-h", barre.offsetHeight + "px");
+}
+function rendreListe() {
+  COLS = colonnes();
+  const taille = taillePage(COLS);
+  let html;
+  if (TRI) {
+    html = GROUPES.map(g => {
+      const liste = parGroupe(g.k).filter(passeFiltre);
+      if (!liste.length) return "";
+      const nb = `<span class="nb">${liste.length} maison${liste.length > 1 ? "s" : ""}</span>`;
+      return `<section class="groupe" aria-labelledby="g-${g.k}"><header><h2 id="g-${g.k}">${g.titre} ${nb}</h2><p>${g.texte}</p></header><div class="list">${liste.map(carte).join("")}</div></section>`;
+    }).join("") || `<p class="vide-filtre">Vous avez donné votre avis sur toutes les maisons en vente. <a href="#" data-f-tout>Revenir à la page complète</a></p>`;
+  } else {
+    if (!GROUPES.some(g => g.k === TAB)) TAB = "top";
+    const g = GROUPES.find(x => x.k === TAB), liste = parGroupe(TAB);
+    const pages = Math.max(1, Math.ceil(liste.length / taille));
+    PAGE = Math.min(Math.max(1, PAGE), pages);
+    const nb = `<span class="nb">${liste.length} maison${liste.length > 1 ? "s" : ""}</span>`;
+    const corps = liste.length ? liste.slice((PAGE - 1) * taille, PAGE * taille).map(carte).join("") : `<p class="vide">Aucune maison pour l'instant.</p>`;
+    const pager = pagesHtml(PAGE, pages);
+    html = `<section class="groupe" id="s-${g.k}" aria-labelledby="g-${g.k}"><header><h2 id="g-${g.k}">${g.titre} ${nb}</h2><p>${g.texte}</p></header>${pager}<div class="list">${corps}</div>${pager}</section>`;
+  }
+  document.getElementById("contenu").innerHTML = html;
+  navHtml();
+  preparerCartes();
+}
+function allerAuGroupe(k, page, pousser) {
+  TAB = k; PAGE = page || 1; MENU = false;
+  rendreListe();
+  if (pousser) history.pushState(null, "", urlEtat(k + "/" + PAGE));
+  defiler(document.getElementById("s-" + TAB));
+}
+// Lit l'adresse : un groupe avec sa page, ou la fiche d'une maison. Rend faux si l'adresse ne désigne rien.
+function appliquerAdresse(defile) {
+  const h = decodeURIComponent(location.hash.slice(1));
+  const m = h.match(/^([a-z_]+)(?:\/(\d+))?$/);
+  if (m && GROUPES.some(g => g.k === m[1])) {
+    TAB = m[1]; PAGE = +m[2] || 1; MENU = false;
+    rendreListe();
+    if (defile) defiler(document.getElementById("s-" + TAB));
+    return true;
+  }
+  if (h && D && D.biens.some(b => b.id === h)) { allerA(h, false); return true; }
+  return false;
+}
+window.addEventListener("popstate", () => { if (D) appliquerAdresse(true); });
+document.addEventListener("click", ev => {
+  const p = ev.target.closest("[data-page]");
+  if (p && !p.disabled) { allerAuGroupe(TAB, +p.dataset.page, true); return; }
+  const g = ev.target.closest("[data-groupe]");
+  if (g) { allerAuGroupe(g.dataset.groupe, 1, true); return; }
+  if (ev.target.closest("[data-carte]")) { MENU = false; navHtml(); defiler(document.getElementById("vue-carte")); return; }
+  if (ev.target.closest("#nav-autres")) { MENU = !MENU; navHtml(); return; }
+  if (MENU && !ev.target.closest("#nav-menu")) { MENU = false; navHtml(); }
+});
+document.addEventListener("keydown", ev => { if (ev.key === "Escape" && MENU) { MENU = false; navHtml(); } });
+// Un changement de largeur change le nombre de colonnes, donc la taille des pages : la page garde sa première fiche.
+new ResizeObserver(() => {
+  if (!D || TRI || colonnes() === COLS) return;
+  PAGE = Math.floor((PAGE - 1) * taillePage(COLS) / taillePage(colonnes())) + 1;
+  rendreListe();
+}).observe(document.getElementById("contenu"));
+const hautBtn = document.getElementById("haut");
+addEventListener("scroll", () => { hautBtn.hidden = scrollY < 700; }, { passive: true });
+hautBtn.addEventListener("click", () => scrollTo({ top: 0, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }));
+
 function rendre() {
   document.getElementById("maj").textContent = "Mis à jour le " + jourLong(D.maj);
   document.getElementById("titre").textContent = D.titre || "Recherche de maison";
   document.title = D.titre || "Recherche de maison";
   document.getElementById("criteres").innerHTML = (D.criteres || []).map(c => `<li>${esc(c)}</li>`).join("");
-  const ouverts = new Set([...document.querySelectorAll("details.bloc[open]")].map(d => d.id));
-  const tri = (a, b) => (b.repere_le || "").localeCompare(a.repere_le || "") || (a.prix ?? 1e9) - (b.prix ?? 1e9);
-  const parGroupe = k => D.biens.filter(b => groupeDe(b) === k).sort(k === "retiree" ? (a, b) => (b.retiree_le || "").localeCompare(a.retiree_le || "") : tri);
   document.getElementById("resume").innerHTML = phraseResume(parGroupe);
   triHtml();
-  const filtrees = k => parGroupe(k).filter(passeFiltre);
-  const filtreActif = TRI;
-  const html = GROUPES.map(g => {
-    const liste = filtrees(g.k);
-    if (!liste.length && (!g.ouvert || filtreActif)) return "";
-    const nb = `<span class="nb">${liste.length} maison${liste.length > 1 ? "s" : ""}</span>`;
-    const corps = liste.length ? liste.map(carte).join("") : `<p class="vide">Aucune maison pour l'instant.</p>`;
-    return (g.ouvert || TRI)
-      ? `<section class="groupe" aria-labelledby="g-${g.k}"><header><h2 id="g-${g.k}">${g.titre} ${nb}</h2><p>${g.texte}</p></header><div class="list">${corps}</div></section>`
-      : `<details class="bloc groupe-replie" id="g-${g.k}"${ouverts.has("g-" + g.k) ? " open" : ""}><summary>${g.titre} ${nb}</summary><div><p class="aide">${g.texte}</p><div class="list">${corps}</div></div></details>`;
-  }).join("");
-  document.getElementById("contenu").innerHTML = html || (filtreActif
-    ? `<p class="vide-filtre">Vous avez donné votre avis sur toutes les maisons en vente. <a href="#" data-f-tout>Revenir à la page complète</a></p>`
-    : `<p class="vide">Aucune maison pour l'instant.</p>`);
+  rendreListe();
   const Sx = D.sources || [];
   const n = k => Sx.filter(s => s.statut === k).length;
   document.getElementById("src-resume").textContent = `Dernier passage le ${jour(D.maj)} : ${n("ok")} sites lus en entier, ${n("partiel")} en partie, ${n("echec")} en échec, ${n("nt")} pas encore lus.`;
@@ -1005,6 +1143,7 @@ document.addEventListener("click", async ev => {
 
 function charger(r) {
   R = r;
+  TAB = "top"; PAGE = 1;
   PMARCHE = null;
   try { localStorage.setItem("recherche", r); derniereVisite = localStorage.getItem("derniere-visite:" + r); } catch (e) { derniereVisite = null; }
   const u = new URL(location.href); u.searchParams.set("r", r); history.replaceState(null, "", u.pathname + u.search + location.hash);
@@ -1046,7 +1185,9 @@ function demarrer(email) {
     charger(b.dataset.r).catch(erreur);
   });
   return charger(r).then(() => {
-    if (location.hash) { const el = document.getElementById(location.hash.slice(1)); if (el) { const det = el.closest("details"); if (det) det.open = true; el.scrollIntoView(); } }
+    appliquerAdresse(false);
+    const fiche = location.hash && document.getElementById(decodeURIComponent(location.hash.slice(1)));
+    if (fiche) fiche.scrollIntoView();
   });
 }).catch(erreur);
 }
