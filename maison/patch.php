@@ -13,7 +13,7 @@
 //   {"op":"fusionner", "id":<bien gardé>, "avec":<doublon>}   (liens, prix, galerie et adresse réunis ; le numéro du doublon mène au bien gardé)
 //   {"op":"source", "nom":..., "statut":"ok|partiel|echec|nt", "note":..., "dernier_ok":"AAAA-MM-JJ"|null}
 // ajout et maj d'un bien actif sont refusés s'ils contredisent les règles de donnees_regles_bien (commune de la zone,
-// plafond de prix, chambre au rez-de-chaussée, verdict cohérent avec les critères « ko »).
+// plafond de prix, règles de la recherche dans regles.json, verdict cohérent avec les critères « ko »).
 //   {"op":"fin", "note_passage":...}   (maj = aujourd'hui, retrait des « vus » de plus de 90 jours)
 // Une opération refusée n'empêche pas les autres ; chaque refus est expliqué dans resultats.
 require_once __DIR__ . '/auth-lib.php';
@@ -90,7 +90,8 @@ $nouveaux = array();
 $fusions = array();
 $plafond = donnees_plafond($r);
 $communes = donnees_communes_zone($r);
-$res = donnees_modifier($r, function (&$d) use ($ops, &$resultats, &$nouveaux, &$fusions, $VERDICTS, $ETATS, $STATUTS, $CHAMPS, $CRIT_ETATS, $r, $plafond, $communes) {
+$regles = donnees_regles($r);
+$res = donnees_modifier($r, function (&$d) use ($ops, &$resultats, &$nouveaux, &$fusions, $VERDICTS, $ETATS, $STATUTS, $CHAMPS, $CRIT_ETATS, $r, $plafond, $communes, $regles) {
     $auj = donnees_aujourdhui();
     $ix = donnees_index($d);
     foreach ($ops as $n => $o) {
@@ -105,7 +106,7 @@ $res = donnees_modifier($r, function (&$d) use ($ops, &$resultats, &$nouveaux, &
             elseif (($x = p_liens_ok(isset($b['liens']) ? $b['liens'] : null)) !== true) $err = $x;
             elseif (($x = p_crit_ok(isset($b['crit']) ? $b['crit'] : null, $CRIT_ETATS)) !== true) $err = $x;
             elseif (isset($b['adresse']) && ($x = p_adresse_ok($b['adresse'])) !== true) $err = $x;
-            elseif (($x = donnees_regles_bien(array('commune' => isset($b['commune']) ? $b['commune'] : '', 'prix' => isset($b['prix']) ? donnees_entier($b['prix']) : null, 'crit' => $b['crit'], 'verdict' => $b['verdict']), $plafond, $communes)) !== true) $err = $x;
+            elseif (($x = donnees_regles_bien(array('commune' => isset($b['commune']) ? $b['commune'] : '', 'prix' => isset($b['prix']) ? donnees_entier($b['prix']) : null, 'crit' => $b['crit'], 'verdict' => $b['verdict']), $plafond, $communes, $regles)) !== true) $err = $x;
             elseif (isset($b['indices']) && ($x = p_indices_ok($b['indices'])) !== true) $err = $x;
             else {
                 foreach ($b['liens'] as $l) { $k = donnees_cle_url($l['url']); if (isset($ix[$k]) && $ix[$k]['type'] === 'bien') { $err = 'lien déjà suivi par ' . $d['biens'][$ix[$k]['i']]['id']; break; } }
@@ -166,7 +167,7 @@ $res = donnees_modifier($r, function (&$d) use ($ops, &$resultats, &$nouveaux, &
                 if (isset($ch['etat']) && $ch['etat'] === 'active') $b['retiree_le'] = null;
                 if (!empty($o['verifie'])) $b['verifie_le'] = $auj;
                 $touche = array_intersect(array_keys($ch), array('commune', 'verdict', 'crit', 'prix', 'etat'));
-                if ($touche && isset($b['etat']) && $b['etat'] === 'active' && ($x = donnees_regles_bien($b, $plafond, $communes)) !== true) $err = $x;
+                if ($touche && isset($b['etat']) && $b['etat'] === 'active' && ($x = donnees_regles_bien($b, $plafond, $communes, $regles)) !== true) $err = $x;
                 else $d['biens'][$i] = $b;
             }
         } elseif ($op === 'lien') {

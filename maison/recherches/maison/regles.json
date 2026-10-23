@@ -1,0 +1,6 @@
+{
+ "note": "Règles que patch.php applique aux biens actifs de cette recherche, en plus de la zone, du plafond et de la cohérence du verdict.",
+ "ko_refuses": {
+  "rdc": "aucune chambre au rez-de-chaussée : envoie une opération vu (motif « Pas de chambre au RDC »), ou etat « ecartee » pour un bien déjà suivi"
+ }
+}

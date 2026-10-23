@@ -18,6 +18,8 @@ $origine = __DIR__ . '/recherches/' . $r . '/data.json';
 $brut = file_get_contents(is_file($vivant) ? $vivant : $origine);
 $d = json_decode($brut, true);
 if (!is_array($d) || !isset($d['biens']) || !is_array($d['biens'])) { echo $brut; exit; }
+// Recherche dont la page prend le contour de la zone et le prix du marché (celle de zone.json « communes_de », sinon celle-ci).
+$d['zone_de'] = donnees_zone_source($r);
 // Lecture allégée pour la veille (data.php?r=…&leger=1) : sans les galeries de photos ni le registre des
 // annonces écartées (nouveautes.php fait ce tri) ; à peu près deux fois moins de texte à lire.
 if (isset($_GET['leger'])) {

@@ -35,12 +35,10 @@ if (is_array($in) && isset($in['of']) && is_string($in['of'])) {
         $in['annonces'][] = array('url' => 'https://www.ouestfrance-immo.com/immobilier/vente/' . $m[1] . '.htm', 'prix' => $m[2] === '' ? null : (int) $m[2]);
 }
 if (!is_array($in) || !isset($in['annonces']) || !is_array($in['annonces'])) { http_response_code(400); echo '{"erreur":"format attendu : {\"annonces\": [{\"url\":..., \"prix\":...}]} ou {\"of\": \"chemin:prix ...\"}"}'; exit; }
-$zone = json_decode((string) @file_get_contents(__DIR__ . '/recherches/' . $r . '/zone.json'), true);
-$communes = array(); $plafond = null;
-if (is_array($zone) && isset($zone['communes'])) {
-    foreach (array_merge($zone['communes'], isset($zone['bordure']) ? $zone['bordure'] : array()) as $c) $communes[$c] = 1;
-    $plafond = isset($zone['plafond_ouverture']) ? (int) $zone['plafond_ouverture'] : null;
-}
+$zone = donnees_zone($r);
+$communes = array();
+if ($zone !== null) foreach (array_merge($zone['communes'], $zone['bordure']) as $c) $communes[$c] = 1;
+$plafond = donnees_plafond($r);
 
 $autres = array();
 foreach (glob(__DIR__ . '/recherches/*', GLOB_ONLYDIR) as $dir) {

@@ -151,10 +151,32 @@ function donnees_ordre_sources($r, $d) {
 }
 
 
-// Plafond d'ouverture des annonces (recherches/<r>/zone.json), null s'il n'est pas fixé.
-function donnees_plafond($r) {
+// Contenu de recherches/<r>/zone.json, ou null s'il manque ou s'il est illisible.
+function donnees_lire_zone_json($r) {
     $z = json_decode((string) @file_get_contents(__DIR__ . '/recherches/' . $r . '/zone.json'), true);
-    return is_array($z) && isset($z['plafond_ouverture']) ? (int) $z['plafond_ouverture'] : null;
+    return is_array($z) ? $z : null;
+}
+
+// Recherche dont zone.json donne les communes : la recherche elle-même, ou celle que nomme « communes_de ».
+// Deux recherches qui partagent une zone la modifient en un seul endroit.
+function donnees_zone_source($r) {
+    $z = donnees_lire_zone_json($r);
+    $s = $z !== null && isset($z['communes_de']) && is_string($z['communes_de']) ? $z['communes_de'] : '';
+    return $s !== '' && $s !== $r && donnees_recherche_valide($s) ? $s : $r;
+}
+
+// Communes de la zone de $r : array('communes' => [...], 'bordure' => [...]), ou null sans liste.
+function donnees_zone($r) {
+    $z = donnees_lire_zone_json(donnees_zone_source($r));
+    if ($z === null || !isset($z['communes']) || !is_array($z['communes'])) return null;
+    return array('communes' => $z['communes'], 'bordure' => isset($z['bordure']) && is_array($z['bordure']) ? $z['bordure'] : array());
+}
+
+// Plafond d'ouverture des annonces (recherches/<r>/zone.json), null s'il n'est pas fixé.
+// Chaque recherche a le sien, même quand elle partage les communes d'une autre.
+function donnees_plafond($r) {
+    $z = donnees_lire_zone_json($r);
+    return $z !== null && isset($z['plafond_ouverture']) ? (int) $z['plafond_ouverture'] : null;
 }
 
 // Nom de commune écrit comme dans zone.json : minuscules, sans accents, mots reliés par des tirets.
@@ -167,13 +189,24 @@ function donnees_cle_commune($c) {
     return trim(preg_replace('/[^a-z0-9]+/', '-', strtolower($c)), '-');
 }
 
-// Communes admises pour un bien actif (zone.json : communes et bordure), indexées par donnees_cle_commune ; null sans liste.
+// Communes admises pour un bien actif (donnees_zone : communes et bordure), indexées par donnees_cle_commune ; null sans liste.
 function donnees_communes_zone($r) {
-    $z = json_decode((string) @file_get_contents(__DIR__ . '/recherches/' . $r . '/zone.json'), true);
-    if (!is_array($z) || !isset($z['communes']) || !is_array($z['communes'])) return null;
+    $z = donnees_zone($r);
+    if ($z === null) return null;
     $communes = array();
-    foreach (array_merge($z['communes'], isset($z['bordure']) && is_array($z['bordure']) ? $z['bordure'] : array()) as $c) $communes[donnees_cle_commune($c)] = 1;
+    foreach (array_merge($z['communes'], $z['bordure']) as $c) $communes[donnees_cle_commune($c)] = 1;
     return $communes;
+}
+
+// Règles propres à une recherche (recherches/<r>/regles.json) :
+//   ko_refuses     {critère: message} : un bien actif avec ce critère « ko » est refusé, avec ce message ;
+//   cles_interdites {critère: message} : un bien dont crit contient ce critère est refusé, avec ce message.
+// Sans fichier, aucune règle de ce genre.
+function donnees_regles($r) {
+    $j = json_decode((string) @file_get_contents(__DIR__ . '/recherches/' . $r . '/regles.json'), true);
+    $regles = array('ko_refuses' => array(), 'cles_interdites' => array());
+    foreach ($regles as $nom => $vide) if (is_array($j) && isset($j[$nom]) && is_array($j[$nom])) $regles[$nom] = $j[$nom];
+    return $regles;
 }
 
 /**
@@ -181,17 +214,19 @@ function donnees_communes_zone($r) {
  * Renvoie true, ou le message de refus à donner à la veille.
  * - commune absente de $communes (donnees_communes_zone), accents et majuscules ignorés : refusé ; $communes null : pas de contrôle ;
  * - prix au-dessus du plafond d'ouverture : refusé ;
- * - critère rdc « ko » (aucune chambre au rez-de-chaussée) : refusé ;
+ * - critère de $regles['cles_interdites'] présent, ou critère de $regles['ko_refuses'] « ko » (donnees_regles) : refusé ;
  * - verdict « top » avec un critère « ko », « hors » sans critère « ko », deux critères « ko » ou plus : refusé.
  */
-function donnees_regles_bien($b, $plafond, $communes = null) {
+function donnees_regles_bien($b, $plafond, $communes = null, $regles = null) {
     if ($communes !== null && !isset($communes[donnees_cle_commune(isset($b['commune']) ? $b['commune'] : '')]))
         return 'commune hors liste de zone : mettre une commune de la liste ; le doute va dans lieu, crit.zone et verifier';
     if ($plafond !== null && isset($b['prix']) && $b['prix'] !== null && (int) $b['prix'] > $plafond)
         return 'prix ' . $b['prix'] . ' € au-dessus du plafond de ' . $plafond . ' € : envoie une opération vu (motif « Au-dessus du budget »)';
     $crit = isset($b['crit']) && is_array($b['crit']) ? $b['crit'] : array();
-    if (isset($crit['rdc'][0]) && $crit['rdc'][0] === 'ko')
-        return 'aucune chambre au rez-de-chaussée : envoie une opération vu (motif « Pas de chambre au RDC »), ou etat « ecartee » pour un bien déjà suivi';
+    if ($regles !== null) {
+        foreach ($regles['cles_interdites'] as $cle => $message) if (isset($crit[$cle])) return $message;
+        foreach ($regles['ko_refuses'] as $cle => $message) if (isset($crit[$cle][0]) && $crit[$cle][0] === 'ko') return $message;
+    }
     $ko = 0; foreach ($crit as $c) if (is_array($c) && isset($c[0]) && $c[0] === 'ko') $ko++;
     $verdict = isset($b['verdict']) ? $b['verdict'] : '';
     if ($ko >= 2) return $ko . ' critères « ko » : le bien n\'est pas gardé, envoie une opération vu';
