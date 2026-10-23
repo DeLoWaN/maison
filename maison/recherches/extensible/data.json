@@ -1,0 +1,26 @@
+{
+ "titre": "Maisons à agrandir",
+ "criteres": [
+  "Pas de chambre au rez-de-chaussée (sinon la maison est dans la recherche « Maisons »), mais une extension possible de deux chambres en bas, d'environ 30 m²",
+  "Maison ancienne en pierre apparente",
+  "250 000 € maximum (jusqu'à 275 000 € si une négociation de 10 % ramène le prix dans le budget), pour laisser la place à l'extension et aux travaux",
+  "Autour de Vendes, Caen et Bayeux : à 15 minutes en voiture de Caen ou de Bayeux, à 16 minutes de Vendes, et à 30 minutes de Vendes au plus",
+  "80 à 130 m² habitables, avec 2 ou 3 chambres à l'étage",
+  "Terrain de 950 m² au moins, avec la place de construire à côté de la maison",
+  "Garage, atelier, dépendance, sous-sol ou cave d'au moins 30 m² (une dépendance transformée en chambres ne compte pas)",
+  "WC séparés"
+ ],
+ "libelles": {
+  "pierre": "Pierre apparente",
+  "extension": "Extension en bas",
+  "ch": "Chambres à l'étage",
+  "dep": "Garage, atelier, sous-sol"
+ },
+ "cles_crit": ["zone", "pierre", "extension", "ch", "terrain", "dep", "wc", "budget"],
+ "maj": "2026-10-23",
+ "lot_initial": "2026-10-23",
+ "biens": [],
+ "sources": [],
+ "note_passage": "Recherche créée le 23 octobre 2026. Le premier passage réévalue les maisons écartées de la recherche « Maisons » pour « pas de chambre au RDC ».",
+ "vus": []
+}

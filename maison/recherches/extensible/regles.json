@@ -1,0 +1,10 @@
+{
+ "note": "Règles que patch.php applique aux biens actifs de cette recherche, en plus de la zone, du plafond et de la cohérence du verdict. Une maison avec une chambre au rez-de-chaussée va dans la recherche « maison », jamais ici.",
+ "cles_interdites": {
+  "rdc": "chambre au rez-de-chaussée : cette maison va dans la recherche r=maison ; n'envoie pas de critère rdc dans r=extensible"
+ },
+ "ko_refuses": {
+  "pierre": "pas de pierre apparente : envoie une opération vu (motif « Pas de pierre apparente »), ou etat « ecartee » pour un bien déjà suivi",
+  "extension": "extension impossible : envoie une opération vu (motif « Extension impossible »), ou etat « ecartee » pour un bien déjà suivi"
+ }
+}

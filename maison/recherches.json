@@ -3,5 +3,10 @@
   "id": "maison",
   "nom": "Maisons",
   "sous": "Au moins une chambre au rez-de-chaussée, tout type de maison sauf le neuf"
+ },
+ {
+  "id": "extensible",
+  "nom": "Maisons à agrandir",
+  "sous": "Pas de chambre au rez-de-chaussée, mais extension possible de deux chambres. Pierre apparente, 250 000 € maximum."
  }
 ]

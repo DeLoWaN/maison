@@ -1,0 +1,5 @@
+{
+ "note": "Même zone que la recherche « maison » : les communes viennent de son zone.json. Seul le plafond d'ouverture est propre à cette recherche (250 000 € plus 10 % de négociation).",
+ "communes_de": "maison",
+ "plafond_ouverture": 275000
+}

@@ -410,7 +410,9 @@ th { font-size: .9rem; color: var(--gris); }
 </div>
 
 <script>
-const CRIT = { zone: "Lieu", pierre: "Caractère", rdc: "Chambre en bas", ch: "Chambres", terrain: "Terrain", dep: "Atelier, garage", wc: "WC séparés", budget: "Budget" };
+const CRIT = { zone: "Lieu", pierre: "Caractère", rdc: "Chambre en bas", extension: "Extension en bas", ch: "Chambres", terrain: "Terrain", dep: "Atelier, garage", wc: "WC séparés", budget: "Budget" };
+// Critères affichés sur une fiche : ceux de data.json (cles_crit), sinon tous sauf l'extension.
+const clesCrit = () => Array.isArray(D.cles_crit) ? D.cles_crit.filter(k => CRIT[k]) : Object.keys(CRIT).filter(k => k !== "extension");
 const SYM = { ok: ["✓", "conforme"], warn: ["!", "limite"], ko: ["✗", "ne va pas"], unk: ["?", "pas indiqué"] };
 const STATUTS = [["a_visiter", "À visiter"], ["visitee", "Visitée"], ["pas_interesses", "Pas intéressés"]];
 const GROUPES = [
@@ -648,7 +650,7 @@ function carte(b) {
       <div class="slot">${b.etat === "active" ? boutons(b) : ""}</div>
       <div class="slot">${b.etat === "active" ? avisHtml(b) : ""}</div>
       <div class="crit-zone"><ul class="crit">
-        ${Object.keys(CRIT).map(k => { const c = (b.crit || {})[k] || ["unk", "Non indiqué"]; const s = SYM[c[0]] || SYM.unk; return `<li class="c ${c[0]}"><span class="sym" aria-hidden="true">${s[0]}</span><span class="k">${esc((D.libelles || {})[k] || CRIT[k])}<span class="sr"> : ${s[1]}</span></span><span class="v">${esc(c[1])}</span></li>`; }).join("")}
+        ${clesCrit().map(k => { const c = (b.crit || {})[k] || ["unk", "Non indiqué"]; const s = SYM[c[0]] || SYM.unk; return `<li class="c ${c[0]}"><span class="sym" aria-hidden="true">${s[0]}</span><span class="k">${esc((D.libelles || {})[k] || CRIT[k])}<span class="sr"> : ${s[1]}</span></span><span class="v">${esc(c[1])}</span></li>`; }).join("")}
       </ul></div>
       <div class="slot">${blocAdresse(b)}</div>
       <details class="ou"><summary>Voir où elle se trouve</summary><div class="carte" data-carte="${esc(b.id)}"></div><p data-carte-note="${esc(b.id)}"></p></details>
@@ -847,7 +849,7 @@ function allerA(id) {
 function dessinerZone(groupe) {
   groupe.clearLayers();
   const bleu = couleurVar("--s-visiter") || "#1d4f9c";
-  fetch(`recherches/${encodeURIComponent(R)}/zone.geojson`, { cache: "no-store" }).then(r => r.ok ? r.json() : null).then(gj => {
+  fetch(`recherches/${encodeURIComponent(D.zone_de || R)}/zone.geojson`, { cache: "no-store" }).then(r => r.ok ? r.json() : null).then(gj => {
     if (!gj) return;
     L.geoJSON(gj, { interactive: false, style: f => f.properties.nom === "bordure"
       ? { color: bleu, weight: 2, dashArray: "2 6", fillOpacity: 0 }
@@ -1003,6 +1005,7 @@ document.addEventListener("click", async ev => {
 
 function charger(r) {
   R = r;
+  PMARCHE = null;
   try { localStorage.setItem("recherche", r); derniereVisite = localStorage.getItem("derniere-visite:" + r); } catch (e) { derniereVisite = null; }
   const u = new URL(location.href); u.searchParams.set("r", r); history.replaceState(null, "", u.pathname + u.search + location.hash);
   document.getElementById("maj").textContent = "Chargement…";
