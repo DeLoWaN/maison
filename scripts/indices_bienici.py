@@ -12,6 +12,7 @@ Usage:
     python3 scripts/indices_bienici.py                     # active houses of the site, nothing sent
     python3 scripts/indices_bienici.py --envoyer           # same, and sends the operations to patch.php
     python3 scripts/indices_bienici.py --ids a,b           # only these houses
+    python3 scripts/indices_bienici.py --recherche <id>    # the search to read and write (default: the first one)
     python3 scripts/indices_bienici.py --entree biens.json # reads {"biens": [...]} from a file instead of the site
 
 Reading and writing the site needs the script token in ~/.config/maison/token (see auth-lib.php).
@@ -34,7 +35,7 @@ import urllib.request
 
 # `python3 -I` does not put the script directory on the path.
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from adresse import JETON, ErreurSource, Site, date_fr, sans_accents  # noqa: E402
+from adresse import JETON, ErreurSource, Site, date_fr, option_recherche, sans_accents  # noqa: E402
 
 API = "https://www.bienici.com/realEstateAd.json?id="
 # Bien'ici answers 403 to the default urllib User-Agent.
@@ -160,6 +161,7 @@ def traiter(biens, bienici, pause=PAUSE_S):
 
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    option_recherche(p)
     p.add_argument("--entree", help='JSON file {"biens": [...]}; by default, the active houses of the site')
     p.add_argument("--ids", help="comma-separated house ids to process (default: all)")
     p.add_argument("--envoyer", action="store_true", help="send the operations to patch.php")
@@ -168,7 +170,7 @@ def main(argv=None):
     if not a.entree or a.envoyer:
         if not JETON.exists():
             p.error(f"{JETON} is missing: the site cannot be read or written without the script token")
-        site = Site(JETON.read_text().strip())
+        site = Site(JETON.read_text().strip(), a.recherche)
     try:
         biens = json.loads(pathlib.Path(a.entree).read_text())["biens"] if a.entree else site.biens_actifs()
         if a.ids:

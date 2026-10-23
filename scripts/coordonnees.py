@@ -6,6 +6,7 @@ Each coordinate comes from the Base Adresse Nationale (BAN), the same source as 
 Usage:
     python3 scripts/coordonnees.py             # prints the operations, sends nothing
     python3 scripts/coordonnees.py --envoyer   # sends them to patch.php
+    python3 scripts/coordonnees.py --recherche <id>   # the search to read and write (default: the first one)
 
 Output (stdout, JSON): {"ops": [maj operations], "sans_point": [{id, texte}], "refus"?: [...]}.
 Houses in sans_point have no BAN answer with a score above SCORE_MIN: give them a point by hand.
@@ -49,11 +50,12 @@ def traiter(biens, sources):
 
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    A.option_recherche(p)
     p.add_argument("--envoyer", action="store_true", help="send the operations to patch.php")
     a = p.parse_args(argv)
     if not A.JETON.exists():
         p.error(f"{A.JETON} is missing: the site cannot be read or written without the script token")
-    site = A.Site(A.JETON.read_text().strip())
+    site = A.Site(A.JETON.read_text().strip(), a.recherche)
     try:
         out = traiter(site.biens_actifs(), A.Sources())
         if a.envoyer:

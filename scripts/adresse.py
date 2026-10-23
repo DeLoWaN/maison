@@ -15,6 +15,7 @@ Usage:
     python3 scripts/adresse.py --envoyer           # same, and sends the operations to patch.php
     python3 scripts/adresse.py --ids a,b           # only these houses
     python3 scripts/adresse.py --entree biens.json # reads {"biens": [...]} from a file instead of the site
+    python3 scripts/adresse.py --recherche <id>    # the search to read and write (default: the first one)
 
 Reading and writing the site needs the script token in ~/.config/maison/token (see auth-lib.php).
 
@@ -486,10 +487,16 @@ def traiter(biens, recherche, aujourdhui):
 class Site:
     """Reads and writes the tracking site with the script token (header X-Maison-Jeton, see auth-lib.php)."""
 
-    def __init__(self, jeton):
-        self.jeton = jeton
+    def __init__(self, jeton, recherche=None):
+        """`recherche` is the search id sent as `r`; without it the site answers for its first search."""
+        self.jeton, self.recherche = jeton, recherche
 
     def _appel(self, page, corps=None):
+        if self.recherche:
+            page += ("&" if "?" in page else "?") + "r=" + urllib.parse.quote(self.recherche)
+            # photos.php reads the search id in the body, not in the URL.
+            if page.startswith("photos.php") and corps is not None:
+                corps = {**corps, "r": self.recherche}
         req = urllib.request.Request(SITE + page, data=None if corps is None else json.dumps(corps).encode(),
                                      headers={"X-Maison-Jeton": self.jeton, "Content-Type": "application/json"})
         try:
@@ -517,8 +524,14 @@ class Site:
         return refus
 
 
+def option_recherche(parser):
+    """Adds --recherche, the id of the search to read and write (default: the first search of the site)."""
+    parser.add_argument("--recherche", help="search id sent to the site as `r` (default: the first search of the site)")
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    option_recherche(p)
     p.add_argument("--entree", help='JSON file {"biens": [...]}; by default, the `adresse` list of the site')
     p.add_argument("--ids", help="comma-separated house ids to process (default: all)")
     p.add_argument("--envoyer", action="store_true", help="send the operations to patch.php")
@@ -527,7 +540,7 @@ def main(argv=None):
     if not a.entree or a.envoyer:
         if not JETON.exists():
             p.error(f"{JETON} is missing: the site cannot be read or written without the script token")
-        site = Site(JETON.read_text().strip())
+        site = Site(JETON.read_text().strip(), a.recherche)
     try:
         biens = json.loads(pathlib.Path(a.entree).read_text())["biens"] if a.entree else site.biens_a_traiter()
         if a.ids:

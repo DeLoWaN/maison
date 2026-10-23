@@ -9,6 +9,16 @@ Principe :
 
 Tous les appels à `data.php`, `nouveautes.php`, `suivi.php`, `patch.php` et `photo.php` se font avec javascript_tool depuis l'onglet du site (https://damien-gustave.fr/maison/), jamais depuis un onglet d'annonce. Les scripts de lecture se lancent avec javascript_tool sur l'onglet de la page d'annonces affichée : ils lisent la page sans rien charger.
 
+## 0. Les recherches
+
+Le site suit deux recherches : `maison` (au moins une chambre au rez-de-chaussée) et `extensible` (pas de chambre au rez-de-chaussée, mais une extension possible). Une maison va dans une seule des deux.
+
+- Chaque appel à `data.php`, `nouveautes.php`, `suivi.php`, `patch.php` et `api.php` donne la recherche dans l'adresse : `?r=maison` ou `?r=extensible` (avec `&` après un autre paramètre, par exemple `data.php?leger=1&r=extensible`).
+- `photos.php` lit `r` dans le corps JSON.
+- Les scripts Python prennent `--recherche <id>`.
+- Sans `r`, le serveur répond pour la première recherche, `maison`.
+- Les exemples de ce fichier n'écrivent pas `r` : ajoute-le à chaque appel.
+
 ## 1. Lire la liste actuelle (allégée)
 
 `await (await fetch('data.php?leger=1&x=' + Date.now())).json()`

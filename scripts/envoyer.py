@@ -7,6 +7,7 @@ Usage:
     python3 scripts/envoyer.py ops <ops.json>              # [operation, ...] -> patch.php, packets of 40
     python3 scripts/envoyer.py nouveautes <dossier>        # <dossier>/annonces_nouveautes.json -> nouveautes.php
     python3 scripts/envoyer.py photos <galeries.json>      # [{"id", "photos"}, ...] -> photos.php
+    Add --recherche <id> before the action to write to that search (default: the first search of the site).
 
 `nouveautes` reads [{url, prix}, ...] (or {"annonces": [...]}) and writes the merged answer of the server
 to <dossier>/reponse_nouveautes.json, so that the subagent can go on without calling the site itself.
@@ -25,7 +26,7 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from adresse import JETON, TAILLE_PAQUET, ErreurSource, Site  # noqa: E402
+from adresse import JETON, TAILLE_PAQUET, ErreurSource, Site, option_recherche  # noqa: E402
 
 # nouveautes.php answers slowly above a few hundred listings.
 TAILLE_NOUVEAUTES = 200
@@ -80,13 +81,14 @@ def lire_annonces(fichier):
 
 def main(argv=None, site=None):
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    option_recherche(p)
     p.add_argument("action", choices=["ops", "nouveautes", "photos"])
     p.add_argument("chemin", help="ops and photos: JSON file; nouveautes: folder holding annonces_nouveautes.json")
     a = p.parse_args(argv)
     if site is None:
         if not JETON.exists():
             p.error(f"{JETON} is missing: the site cannot be read or written without the script token")
-        site = Site(JETON.read_text().strip())
+        site = Site(JETON.read_text().strip(), a.recherche)
     try:
         if a.action == "ops":
             out = envoyer_ops(site, json.loads(pathlib.Path(a.chemin).read_text()))

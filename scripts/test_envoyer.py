@@ -7,6 +7,7 @@ import pathlib
 import sys
 import tempfile
 import unittest
+import unittest.mock
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import adresse as A  # noqa: E402
@@ -102,6 +103,32 @@ class EnvoyerPhotos(unittest.TestCase):
             f = pathlib.Path(d) / "g.json"
             f.write_text(json.dumps([{"id": "a", "photos": ["p"]}]))
             self.assertEqual(E.main(["photos", str(f)], site=site), 1)
+
+
+class EnvoyerRecherche(unittest.TestCase):
+    def lancer(self, extra):
+        crees = []
+
+        class SiteCree(FauxSite):
+            def __init__(self, jeton, recherche=None):
+                super().__init__(lambda page, corps: {"resultats": [{"n": 0, "ok": True}], "nums": {}})
+                crees.append((jeton, recherche))
+
+        with tempfile.TemporaryDirectory() as d:
+            jeton = pathlib.Path(d) / "token"
+            jeton.write_text("secret\n")
+            ops = pathlib.Path(d) / "ops.json"
+            ops.write_text(json.dumps([vu(1)]))
+            with unittest.mock.patch.object(E, "JETON", jeton), unittest.mock.patch.object(E, "Site", SiteCree):
+                E.main(extra + ["ops", str(ops)])
+        print("\n", crees)
+        return crees
+
+    def test_recherche_donnee_au_site(self):
+        self.assertEqual(self.lancer(["--recherche", "extensible"]), [("secret", "extensible")])
+
+    def test_sans_recherche_le_site_choisit(self):
+        self.assertEqual(self.lancer([]), [("secret", None)])
 
 
 if __name__ == "__main__":

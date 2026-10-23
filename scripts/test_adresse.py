@@ -3,9 +3,12 @@
 Run: python3 -m unittest scripts/test_adresse.py -v
 The DPE, communes and parcels below are invented.
 """
+import argparse
+import json
 import pathlib
 import sys
 import unittest
+import unittest.mock
 from datetime import date
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
@@ -332,6 +335,53 @@ class Site(unittest.TestCase):
         print("\n", [len(c["ops"]) for _, c in site.appels], refus)
         self.assertEqual([len(c["ops"]) for _, c in site.appels], [40, 40, 6])
         self.assertEqual(len(refus), 1)
+
+
+class SiteRecherche(unittest.TestCase):
+    """The search id reaches the site as `r`, in the URL, and in the body for photos.php."""
+
+    def appeler(self, recherche, page, corps=None):
+        vus = []
+
+        class Reponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+            def read(self):
+                return b"{}"
+
+        def faux_urlopen(req, timeout=None):
+            vus.append((req.full_url, None if req.data is None else json.loads(req.data), req.get_header("X-maison-jeton")))
+            return Reponse()
+
+        with unittest.mock.patch.object(A.urllib.request, "urlopen", faux_urlopen):
+            A.Site("jeton", recherche)._appel(page, corps)
+        print("\n", vus)
+        return vus[0]
+
+    def test_sans_recherche_aucun_parametre(self):
+        self.assertEqual(self.appeler(None, "patch.php", {"ops": []})[0], A.SITE + "patch.php")
+
+    def test_recherche_ajoutee_a_une_page_sans_parametre(self):
+        self.assertEqual(self.appeler("extensible", "suivi.php")[0], A.SITE + "suivi.php?r=extensible")
+
+    def test_recherche_ajoutee_apres_un_parametre_existant(self):
+        self.assertEqual(self.appeler("extensible", "data.php?leger=1")[0], A.SITE + "data.php?leger=1&r=extensible")
+
+    def test_recherche_dans_le_corps_de_photos(self):
+        url, corps, jeton = self.appeler("extensible", "photos.php", {"id": "a", "photos": ["https://p/1"]})
+        self.assertEqual((url, corps, jeton), (A.SITE + "photos.php?r=extensible", {"id": "a", "photos": ["https://p/1"], "r": "extensible"}, "jeton"))
+
+    def test_corps_des_autres_pages_inchange(self):
+        self.assertEqual(self.appeler("extensible", "patch.php", {"ops": [1]})[1], {"ops": [1]})
+
+    def test_option_recherche_de_la_ligne_de_commande(self):
+        p = argparse.ArgumentParser()
+        A.option_recherche(p)
+        self.assertEqual((p.parse_args([]).recherche, p.parse_args(["--recherche", "extensible"]).recherche), (None, "extensible"))
 
 
 if __name__ == "__main__":
