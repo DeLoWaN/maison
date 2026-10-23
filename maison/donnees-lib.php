@@ -96,13 +96,13 @@ function donnees_ecrire_json($f, $d) {
 
 // Adresse d'annonce comparable d'un passage à l'autre : sans « www. », sans ce qui suit ? ou #,
 // sans / final. Leboncoin : seul le numéro d'annonce compte (/vi/123.htm et /ad/…/123 sont la même annonce).
-// Les sites de DONNEES_ID_DANS_QUERY gardent le seul paramètre qui porte le numéro d'annonce.
-const DONNEES_ID_DANS_QUERY = array('ada-immo.com' => 'cle');
+// Les sites de $idDansQuery gardent le seul paramètre qui porte le numéro d'annonce.
 function donnees_cle_url($u) {
+    $idDansQuery = array('ada-immo.com' => 'cle');
     $u = trim((string) $u);
     if (preg_match('#leboncoin\.fr/.*?(\d{8,})#', $u, $m)) return 'leboncoin:' . $m[1];
     $hote = strtolower((string) parse_url($u, PHP_URL_HOST));
-    foreach (DONNEES_ID_DANS_QUERY as $site => $param) {
+    foreach ($idDansQuery as $site => $param) {
         if ($hote !== $site && substr($hote, -strlen($site) - 1) !== '.' . $site) continue;
         parse_str((string) parse_url($u, PHP_URL_QUERY), $q);
         if (isset($q[$param]) && is_string($q[$param]) && $q[$param] !== '') return $site . ':' . $q[$param];
