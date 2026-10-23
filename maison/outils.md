@@ -232,6 +232,7 @@ Sans jeton (401), saute ce script : les fiches lues pendant le passage remplisse
    ```
    Le script lit la liste `adresse` de `suivi.php`, interroge la base DPE, le cadastre et l'API geo (2 à 5 secondes par bien), puis envoie les `maj` du champ `adresse` à `patch.php`. Il s'authentifie avec le jeton de `~/.config/maison/token`.
 2. Il affiche `{"ops": [...], "a_escalader": [{id, raison}], "refus": [...]}`. `ops` contient les adresses trouvées, déjà enregistrées, à reprendre dans le message de fin. `refus` doit être vide.
+   Chaque adresse enregistrée porte `lat` et `lon` : le site ouvre Google Maps sur ces coordonnées. Pour une adresse que tu as écrite à la main, ajoute-les avec `python3 -I scripts/coordonnees.py --envoyer` (il complète toutes les adresses sans point).
 3. Traite chaque bien de `a_escalader` avec methode-adresse.md. La `raison` dit ce qui manque, par exemple « pas de DPE chiffré ni de terrain exact dans les indices ». Si tu trouves des chiffres sur une autre fiche, enregistre-les dans `indices` et relance la même commande avec `--ids <id> --envoyer`.
 
 Si le script répond 401 (jeton absent ou révoqué), prépare son entrée depuis l'onglet du site, puis lance-le avec `--entree <fichier>`, sans `--envoyer`, et envoie toi-même `ops` à `patch.php` (section 5) :

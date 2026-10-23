@@ -598,7 +598,7 @@ function blocAdresse(b) {
   const forte = a.confiance === "forte";
   return `<div class="adresse ${a.confiance}">
     <strong>Adresse retrouvée</strong>
-    <a class="txt" href="https://www.google.com/maps/search/?api=1&amp;query=${encodeURIComponent(a.texte)}" target="_blank" rel="noopener" title="Ouvrir dans Google Maps">${esc(a.texte)}</a>
+    <a class="txt" href="https://www.google.com/maps/search/?api=1&amp;query=${a.lat != null && a.lon != null ? a.lat + "," + a.lon : encodeURIComponent(a.texte)}" target="_blank" rel="noopener" title="Ouvrir dans Google Maps">${esc(a.texte)}</a>
     <span class="conf"><span class="jauge" aria-hidden="true">${forte ? "●●●" : "●●○"}</span>${forte ? "Confiance forte" : "Confiance moyenne"}</span>
     <p>${forte
       ? "Plusieurs indices publics concordent (diagnostic énergétique, surface, dépenses d'énergie). C'est très probablement elle, mais demandez confirmation à l'agence avant de vous déplacer."
@@ -683,6 +683,7 @@ function geoCalvados() {
 const GEOADR = {};
 async function situerPrecis(b, g) {
   if (b.adresse && b.adresse.texte && b.adresse.confiance !== "non_trouvee") {
+    if (b.adresse.lat != null && b.adresse.lon != null) return { ll: [b.adresse.lon, b.adresse.lat], nom: b.adresse.texte, precis: true, adresse: true };
     const q = b.adresse.texte;
     try {
       if (!GEOADR[q]) GEOADR[q] = fetch("https://api-adresse.data.gouv.fr/search/?limit=1&q=" + encodeURIComponent(q)).then(r => r.json());
