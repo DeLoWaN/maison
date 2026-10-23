@@ -157,14 +157,36 @@ function donnees_plafond($r) {
     return is_array($z) && isset($z['plafond_ouverture']) ? (int) $z['plafond_ouverture'] : null;
 }
 
+// Nom de commune écrit comme dans zone.json : minuscules, sans accents, mots reliés par des tirets.
+function donnees_cle_commune($c) {
+    $c = strtr((string) $c, array(
+        'à' => 'a', 'â' => 'a', 'ä' => 'a', 'À' => 'a', 'Â' => 'a', 'Ä' => 'a', 'ç' => 'c', 'Ç' => 'c',
+        'é' => 'e', 'è' => 'e', 'ê' => 'e', 'ë' => 'e', 'É' => 'e', 'È' => 'e', 'Ê' => 'e', 'Ë' => 'e',
+        'î' => 'i', 'ï' => 'i', 'Î' => 'i', 'Ï' => 'i', 'ô' => 'o', 'ö' => 'o', 'Ô' => 'o', 'Ö' => 'o',
+        'ù' => 'u', 'û' => 'u', 'ü' => 'u', 'Ù' => 'u', 'Û' => 'u', 'Ü' => 'u', 'ÿ' => 'y', 'œ' => 'oe', 'Œ' => 'oe'));
+    return trim(preg_replace('/[^a-z0-9]+/', '-', strtolower($c)), '-');
+}
+
+// Communes admises pour un bien actif (zone.json : communes et bordure), indexées par donnees_cle_commune ; null sans liste.
+function donnees_communes_zone($r) {
+    $z = json_decode((string) @file_get_contents(__DIR__ . '/recherches/' . $r . '/zone.json'), true);
+    if (!is_array($z) || !isset($z['communes']) || !is_array($z['communes'])) return null;
+    $communes = array();
+    foreach (array_merge($z['communes'], isset($z['bordure']) && is_array($z['bordure']) ? $z['bordure'] : array()) as $c) $communes[donnees_cle_commune($c)] = 1;
+    return $communes;
+}
+
 /**
  * Règles de la consigne contrôlées par le serveur sur un bien actif.
  * Renvoie true, ou le message de refus à donner à la veille.
+ * - commune absente de $communes (donnees_communes_zone), accents et majuscules ignorés : refusé ; $communes null : pas de contrôle ;
  * - prix au-dessus du plafond d'ouverture : refusé ;
  * - critère rdc « ko » (aucune chambre au rez-de-chaussée) : refusé ;
  * - verdict « top » avec un critère « ko », « hors » sans critère « ko », deux critères « ko » ou plus : refusé.
  */
-function donnees_regles_bien($b, $plafond) {
+function donnees_regles_bien($b, $plafond, $communes = null) {
+    if ($communes !== null && !isset($communes[donnees_cle_commune(isset($b['commune']) ? $b['commune'] : '')]))
+        return 'commune hors liste de zone : mettre une commune de la liste ; le doute va dans lieu, crit.zone et verifier';
     if ($plafond !== null && isset($b['prix']) && $b['prix'] !== null && (int) $b['prix'] > $plafond)
         return 'prix ' . $b['prix'] . ' € au-dessus du plafond de ' . $plafond . ' € : envoie une opération vu (motif « Au-dessus du budget »)';
     $crit = isset($b['crit']) && is_array($b['crit']) ? $b['crit'] : array();

@@ -263,7 +263,7 @@ Opérations possibles :
   - `"verifie": true` met verifie_le à aujourd'hui.
 - **Lien ajouté ou corrigé** : `{"op":"lien", "id":"tilly-310", "site":"Safti (agence)", "url":"https://…", "ok":true}`
 - **Doublon** (la même maison suivie deux fois) : `{"op":"fusionner", "id":"<bien gardé>", "avec":"<doublon>"}`. Le bien gardé reçoit les liens, l'historique des prix, la galerie et l'adresse la plus sûre ; le numéro du doublon mène ensuite au bien gardé.
-- **Règles contrôlées par le serveur** : un ajout ou une mise à jour d'un bien actif est refusé si le prix dépasse le plafond d'ouverture (385 000 €), si le critère rdc vaut « ko », si un verdict « top » a un critère « ko », si un verdict « hors » n'en a aucun, ou s'il y a deux critères « ko » ou plus. Le message de refus dit quoi faire.
+- **Règles contrôlées par le serveur** : un ajout ou une mise à jour d'un bien actif est refusé si sa commune n'est pas une commune de la zone ou de la bordure (accents et majuscules ignorés), si le prix dépasse le plafond d'ouverture (385 000 €), si le critère rdc vaut « ko », si un verdict « top » a un critère « ko », si un verdict « hors » n'en a aucun, ou s'il y a deux critères « ko » ou plus. Le message de refus dit quoi faire.
 - **Annonce écartée** : `{"op":"vu", "url":"https://…", "motif":"Construite en 1977", "prix":285000}`
   - Pour en retirer une : `{"op":"oublier_vu", "url":"https://…"}`.
 - **Source** : `{"op":"source", "nom":"Bien'ici", "statut":"ok|partiel|echec|nt", "note":"…", "dernier_ok":"2026-10-20"}`

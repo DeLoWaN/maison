@@ -1,5 +1,5 @@
 <?php
-// Tests de donnees_regles_bien et donnees_fusionner_biens. Lancement : php tests/regles-test.php
+// Tests de donnees_regles_bien, donnees_communes_zone et donnees_fusionner_biens. Lancement : php tests/regles-test.php
 if (php_sapi_name() !== 'cli') { http_response_code(404); exit; }
 require_once __DIR__ . '/../maison/donnees-lib.php';
 
@@ -31,6 +31,25 @@ verifier('hors sans ko refusé', true, $refuse(donnees_regles_bien(array('prix' 
 verifier('deux ko refusé', true, $refuse(donnees_regles_bien(array('prix' => 200000, 'verdict' => 'hors', 'crit' => crit(array('terrain', 'wc'))), 385000)));
 $msg = donnees_regles_bien(array('prix' => 200000, 'verdict' => 'hors', 'crit' => crit(array('rdc'))), 385000);
 verifier('le refus rdc dit quoi faire', true, strpos($msg, 'opération vu') !== false);
+
+// Commune.
+$zone = donnees_communes_zone('maison');
+$bien = function ($commune) { return array('commune' => $commune, 'prix' => 300000, 'verdict' => 'top', 'crit' => crit()); };
+verifier('liste de zone lue', true, is_array($zone) && count($zone) > 100);
+verifier('commune de la zone acceptée', true, donnees_regles_bien($bien('Bayeux'), 385000, $zone));
+verifier('commune de la bordure acceptée', true, donnees_regles_bien($bien('Amayé-sur-Orne'), 385000, $zone));
+verifier('ancienne commune fusionnée acceptée', true, donnees_regles_bien($bien('Bretteville-l\'Orgueilleuse'), 385000, $zone));
+verifier('accents et majuscules ignorés', true, donnees_regles_bien($bien('EVRECY'), 385000, $zone));
+verifier('accents ajoutés ignorés', true, donnees_regles_bien($bien('épinay sur odon'), 385000, $zone));
+verifier('espaces et apostrophe acceptés', true, donnees_regles_bien($bien('Val d\'Arry'), 385000, $zone));
+verifier('texte libre refusé', true, $refuse(donnees_regles_bien($bien('Secteur Bayeux (commune à confirmer)'), 385000, $zone)));
+verifier('Castillon refusé', true, $refuse(donnees_regles_bien($bien('Castillon'), 385000, $zone)));
+verifier('Surrain refusé', true, $refuse(donnees_regles_bien($bien('Surrain'), 385000, $zone)));
+verifier('commune vide refusée', true, $refuse(donnees_regles_bien($bien(''), 385000, $zone)));
+verifier('commune absente refusée', true, $refuse(donnees_regles_bien(array('prix' => 300000, 'verdict' => 'top', 'crit' => crit()), 385000, $zone)));
+verifier('sans liste, commune libre acceptée', true, donnees_regles_bien($bien('Castillon'), 385000, null));
+verifier('le refus commune dit quoi faire', 'commune hors liste de zone : mettre une commune de la liste ; le doute va dans lieu, crit.zone et verifier',
+    donnees_regles_bien($bien('Surrain'), 385000, $zone));
 
 // Fusion.
 $g = array('id' => 'a', 'num' => 79, 'verdict' => 'presque', 'titre' => 'Gardé', 'repere_le' => '2026-10-19', 'verifie_le' => '2026-10-20',
