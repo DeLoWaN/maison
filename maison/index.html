@@ -162,6 +162,16 @@ details.groupe-replie > summary .nb { font: 600 1.05rem/1 var(--f-texte); color:
 .tri-btn b { font-variant-numeric: tabular-nums; }
 .tri-btn:hover { border-color: var(--sur-ardoise); }
 .tri-barre { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; padding: 14px 18px; border-radius: 0 0 12px 12px; background: var(--s-visiter); color: #fff; margin-top: -28px; }
+/* Filtres par choix de la famille et par avis de Damien et Aurélia */
+.filtres { display: grid; gap: 8px; margin: 0 0 18px; padding: 12px 14px; border-radius: 12px; background: var(--lin); border: 1px solid var(--trait-fort); }
+.filtres[hidden] { display: none; }
+.filtres .ligne { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.filtres .lib { font-weight: 700; margin-right: 4px; }
+.filtres button { font: inherit; font-size: .92rem; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 4px 12px; border-radius: 999px; border: 2px solid var(--trait-fort); background: var(--papier); color: var(--encre); cursor: pointer; }
+.filtres button[aria-pressed="true"] { background: var(--c, var(--encre)); border-color: var(--c, var(--encre)); color: var(--papier); }
+.filtres .nb { font-weight: 600; font-variant-numeric: tabular-nums; }
+.filtres .f-bilan { color: var(--gris); }
+.filtres .f-bilan button { border-color: transparent; background: transparent; color: inherit; text-decoration: underline; min-height: 40px; padding: 4px 6px; }
 /* ---------- Barre de navigation : carte et groupes de maisons ---------- */
 .nav-barre { position: sticky; top: 0; z-index: 6; background: var(--ardoise-2); color: var(--sur-ardoise); border-bottom: 1px solid var(--ardoise); }
 .nav-barre[hidden] { display: none; }
@@ -198,8 +208,8 @@ details.groupe-replie > summary .nb { font: 600 1.05rem/1 var(--f-texte); color:
   .pages button { padding: 6px 8px; font-size: .9rem; white-space: nowrap; }
   .pages .pos { font-size: .9rem; white-space: nowrap; }
 }
-.haut { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(16px, env(safe-area-inset-bottom, 0px)); z-index: 6; min-width: 52px; min-height: 52px; border-radius: 26px; border: 2px solid var(--sur-ardoise); background: var(--ardoise); color: var(--sur-ardoise); font: 700 1rem/1 inherit; cursor: pointer; padding: 0 14px; box-shadow: 0 4px 14px rgba(0, 0, 0, .3); }
-.haut[hidden] { display: none; }
+.retour-haut { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(16px, env(safe-area-inset-bottom, 0px)); z-index: 6; min-width: 52px; min-height: 52px; border-radius: 26px; border: 2px solid var(--sur-ardoise); background: var(--ardoise); color: var(--sur-ardoise); font: 700 1rem/1 inherit; cursor: pointer; padding: 0 14px; box-shadow: 0 4px 14px rgba(0, 0, 0, .3); }
+.retour-haut[hidden] { display: none; }
 .tri-barre p { font-size: 1.1rem; }
 .tri-barre b { font-variant-numeric: tabular-nums; }
 .tri-barre button { font: inherit; font-weight: 700; min-height: 46px; padding: 6px 16px; border-radius: 10px; border: 2px solid #fff; background: #fff; color: var(--s-visiter); cursor: pointer; margin-left: auto; }
@@ -395,7 +405,7 @@ th { font-size: .9rem; color: var(--gris); }
   <nav class="nav-barre" id="nav-barre" aria-label="Sections de la page" hidden>
     <div class="large gouttiere" id="nav-in"></div>
   </nav>
-  <button type="button" class="haut" id="haut" aria-label="Revenir en haut de la page" hidden>↑ Haut</button>
+  <button type="button" class="retour-haut" id="haut" aria-label="Revenir en haut de la page" hidden>↑ Haut</button>
 
   <main class="large gouttiere">
     <div class="tri-barre" id="tri-barre" hidden>
@@ -440,6 +450,7 @@ th { font-size: .9rem; color: var(--gris); }
       </section>
     </div>
 
+    <div class="filtres" id="filtres" hidden></div>
     <div id="contenu"></div>
 
     <details class="bloc" id="d-sources">
@@ -884,10 +895,12 @@ let VUE = null, VUE_R = null, VUE_N = 0;
 // Affiche la fiche : change de groupe et de page si besoin, puis défile jusqu'à elle.
 function allerA(id, pousser = true) {
   const b = D && D.biens.find(x => x.id === id);
+  if (b && filtreActif() && !passeFiltres(b)) viderFiltres();
   const k = b && !TRI ? groupeDe(b) : null;
   if (k) {
-    TAB = k; MENU = false;
-    PAGE = Math.floor(parGroupe(k).findIndex(x => x.id === id) / taillePage(colonnes())) + 1;
+    MENU = false;
+    if (filtreActif()) PAGE = Math.floor(listeFiltree().findIndex(x => x.id === id) / taillePage(colonnes())) + 1;
+    else { TAB = k; PAGE = Math.floor(parGroupe(k).findIndex(x => x.id === id) / taillePage(colonnes())) + 1; }
     rendreListe();
     if (pousser) history.pushState(null, "", urlEtat(id));
   }
@@ -1016,15 +1029,48 @@ function pagesHtml(page, pages) {
     <button type="button" data-page="${page + 1}"${page >= pages ? " disabled" : ""}>Suivant ›</button>
   </nav>`;
 }
+// ---- Filtres ----
+// Plusieurs choix dans une même ligne s'additionnent (« À visiter » ou « Visitée ») ; les deux lignes se croisent.
+// Un filtre actif montre toutes les maisons en vente concernées, tous groupes confondus.
+const FILT = { s: new Set(), a: new Set() };
+const FILTRES = [
+  { cle: "s", lib: "Notre choix", opts: STATUTS.map(([k, l]) => [k, l, `var(--s-${k === "a_visiter" ? "visiter" : k === "visitee" ? "visitee" : "non"})`]), de: b => statutDe(b) },
+  { cle: "a", lib: "Avis de Damien et Aurélia", opts: [["pour", "On aime", "var(--ok)"], ["neutre", "Sans avis", "var(--unk)"], ["contre", "Pas pour nous", "var(--ko)"]], de: b => (A[b.id] || {}).avis || "" }
+];
+const filtreActif = () => FILT.s.size > 0 || FILT.a.size > 0;
+const passeFiltres = b => b.etat === "active" && FILTRES.every(f => !FILT[f.cle].size || FILT[f.cle].has(f.de(b)));
+const ordreGroupes = k => GROUPES.findIndex(g => g.k === k);
+const listeFiltree = () => D.biens.filter(passeFiltres).sort((a, b) => ordreGroupes(groupeDe(a)) - ordreGroupes(groupeDe(b)) || trierBiens(a, b));
+function filtresHtml() {
+  const zone = document.getElementById("filtres");
+  zone.hidden = TRI || !D;
+  if (zone.hidden) return;
+  const actives = D.biens.filter(b => b.etat === "active");
+  const ligne = f => `<div class="ligne" role="group" aria-label="${esc(f.lib)}"><span class="lib">${esc(f.lib)}</span>${f.opts.map(([k, l, c]) =>
+    `<button type="button" data-filtre="${f.cle}" data-v="${k}" style="--c:${c}" aria-pressed="${FILT[f.cle].has(k)}"><span>${l}</span><span class="nb">${actives.filter(b => f.de(b) === k).length}</span></button>`).join("")}</div>`;
+  const n = filtreActif() ? listeFiltree().length : 0;
+  zone.innerHTML = FILTRES.map(ligne).join("")
+    + (filtreActif() ? `<div class="ligne f-bilan" aria-live="polite"><span>${n} maison${n > 1 ? "s" : ""} correspondent</span><button type="button" data-filtre-raz>Tout afficher</button></div>` : "");
+}
+function viderFiltres() { FILT.s.clear(); FILT.a.clear(); }
+document.addEventListener("click", ev => {
+  const raz = ev.target.closest("[data-filtre-raz]");
+  const b = ev.target.closest("[data-filtre]");
+  if (!raz && !b) return;
+  if (raz) viderFiltres();
+  else { const set = FILT[b.dataset.filtre]; set.has(b.dataset.v) ? set.delete(b.dataset.v) : set.add(b.dataset.v); }
+  PAGE = 1; MENU = false;
+  rendreListe();
+});
 function navHtml() {
   const barre = document.getElementById("nav-barre");
   barre.hidden = TRI || !D;
   if (barre.hidden) { document.documentElement.style.removeProperty("--nav-h"); return; }
   const n = k => parGroupe(k).length;
   const visibles = GROUPES.filter(g => g.ouvert || n(g.k) > 0 || g.k === TAB);
-  const bouton = (g, cls) => `<button type="button" class="${cls}" data-groupe="${g.k}" aria-pressed="${g.k === TAB}"><span>${g.court}</span><span class="nb">${n(g.k)}</span></button>`;
+  const bouton = (g, cls) => `<button type="button" class="${cls}" data-groupe="${g.k}" aria-pressed="${!filtreActif() && g.k === TAB}"><span>${g.court}</span><span class="nb">${n(g.k)}</span></button>`;
   const suite = visibles.filter(g => !g.ouvert);
-  const autres = suite.length ? `<button type="button" class="nav-autres" id="nav-autres" aria-haspopup="true" aria-expanded="${MENU}" aria-pressed="${suite.some(g => g.k === TAB)}"><span>Autres ▾</span><span class="nb">${suite.reduce((s, g) => s + n(g.k), 0)}</span></button>` : "";
+  const autres = suite.length ? `<button type="button" class="nav-autres" id="nav-autres" aria-haspopup="true" aria-expanded="${MENU}" aria-pressed="${!filtreActif() && suite.some(g => g.k === TAB)}"><span>Autres ▾</span><span class="nb">${suite.reduce((s, g) => s + n(g.k), 0)}</span></button>` : "";
   document.getElementById("nav-in").innerHTML =
     `<button type="button" class="nav-carte" data-carte>Carte</button>`
     + visibles.map(g => bouton(g, g.ouvert ? "" : "nav-suite")).join("")
@@ -1043,6 +1089,14 @@ function rendreListe() {
       const nb = `<span class="nb">${liste.length} maison${liste.length > 1 ? "s" : ""}</span>`;
       return `<section class="groupe" aria-labelledby="g-${g.k}"><header><h2 id="g-${g.k}">${g.titre} ${nb}</h2><p>${g.texte}</p></header><div class="list">${liste.map(carte).join("")}</div></section>`;
     }).join("") || `<p class="vide-filtre">Vous avez donné votre avis sur toutes les maisons en vente. <a href="#" data-f-tout>Revenir à la page complète</a></p>`;
+  } else if (filtreActif()) {
+    const liste = listeFiltree();
+    const pages = Math.max(1, Math.ceil(liste.length / taille));
+    PAGE = Math.min(Math.max(1, PAGE), pages);
+    const nb = `<span class="nb">${liste.length} maison${liste.length > 1 ? "s" : ""}</span>`;
+    const corps = liste.length ? liste.slice((PAGE - 1) * taille, PAGE * taille).map(carte).join("") : `<p class="vide-filtre">Aucune maison ne correspond à ces filtres.</p>`;
+    const pager = pagesHtml(PAGE, pages);
+    html = `<section class="groupe" id="s-filtre" aria-labelledby="g-filtre"><header><h2 id="g-filtre">Maisons filtrées ${nb}</h2></header>${pager}<div class="list">${corps}</div>${pager}</section>`;
   } else {
     if (!GROUPES.some(g => g.k === TAB)) TAB = "top";
     const g = GROUPES.find(x => x.k === TAB), liste = parGroupe(TAB);
@@ -1054,10 +1108,12 @@ function rendreListe() {
     html = `<section class="groupe" id="s-${g.k}" aria-labelledby="g-${g.k}"><header><h2 id="g-${g.k}">${g.titre} ${nb}</h2><p>${g.texte}</p></header>${pager}<div class="list">${corps}</div>${pager}</section>`;
   }
   document.getElementById("contenu").innerHTML = html;
+  filtresHtml();
   navHtml();
   preparerCartes();
 }
 function allerAuGroupe(k, page, pousser) {
+  viderFiltres();
   TAB = k; PAGE = page || 1; MENU = false;
   rendreListe();
   if (pousser) history.pushState(null, "", urlEtat(k + "/" + PAGE));
@@ -1068,6 +1124,7 @@ function appliquerAdresse(defile) {
   const h = decodeURIComponent(location.hash.slice(1));
   const m = h.match(/^([a-z_]+)(?:\/(\d+))?$/);
   if (m && GROUPES.some(g => g.k === m[1])) {
+    viderFiltres();
     TAB = m[1]; PAGE = +m[2] || 1; MENU = false;
     rendreListe();
     if (defile) defiler(document.getElementById("s-" + TAB));
@@ -1079,7 +1136,10 @@ function appliquerAdresse(defile) {
 window.addEventListener("popstate", () => { if (D) appliquerAdresse(true); });
 document.addEventListener("click", ev => {
   const p = ev.target.closest("[data-page]");
-  if (p && !p.disabled) { allerAuGroupe(TAB, +p.dataset.page, true); return; }
+  if (p && !p.disabled) {
+    if (filtreActif()) { PAGE = +p.dataset.page; rendreListe(); defiler(document.getElementById("s-filtre")); } else allerAuGroupe(TAB, +p.dataset.page, true);
+    return;
+  }
   const g = ev.target.closest("[data-groupe]");
   if (g) { allerAuGroupe(g.dataset.groupe, 1, true); return; }
   if (ev.target.closest("[data-carte]")) { MENU = false; navHtml(); defiler(document.getElementById("vue-carte")); return; }
