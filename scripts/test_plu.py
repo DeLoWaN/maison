@@ -90,6 +90,28 @@ class Analyser(unittest.TestCase):
         with self.assertRaises(A.ErreurSource):
             P.analyser(bien(), FausseApi(parcelles=[]))
 
+    def test_point_sur_la_route_prend_la_parcelle_la_plus_proche(self):
+        def carre(lon, lat, contenance):
+            d = 0.0001
+            anneau = [[lon - d, lat - d], [lon + d, lat - d], [lon + d, lat + d], [lon - d, lat + d], [lon - d, lat - d]]
+            return {"geometry": {"type": "Polygon", "coordinates": [anneau]}, "properties": {"contenance": contenance}}
+
+        class SurLaRoute(FausseApi):
+            def parcelle(self, geom):
+                self.recus.append(("parcelle", geom))
+                if geom["type"] == "Point":
+                    return []
+                return [carre(-0.6, 49.1003, 400), carre(-0.6, 49.1001, 1500)]
+
+        api = SurLaRoute(zones=[zone()])
+        out = P.analyser(bien(lon=-0.6, lat=49.1), api)
+        print("\n", out, api.recus[1])
+        self.assertEqual((out["parcelle_m2"], out["parcelle_proche"]), (1500, True))
+        self.assertEqual(api.recus[1][1]["type"], "Polygon")
+
+    def test_parcelle_sous_le_point_n_est_pas_proche(self):
+        self.assertFalse(P.analyser(bien(), FausseApi(zones=[zone()]))["parcelle_proche"])
+
     def test_reglement_absent_si_le_document_n_a_pas_de_fichier(self):
         self.assertIsNone(P.url_reglement({"properties": {"partition": "DU_1", "gpu_doc_id": "abc"}}))
 
