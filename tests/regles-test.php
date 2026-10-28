@@ -1,5 +1,5 @@
 <?php
-// Tests de donnees_regles_bien, donnees_regles, donnees_zone, donnees_communes_zone et donnees_fusionner_biens. Lancement : php tests/regles-test.php
+// Tests de donnees_regles_bien, donnees_regles, donnees_zone, donnees_communes_zone, donnees_fusionner_biens et donnees_ecrire_json. Lancement : php tests/regles-test.php
 if (php_sapi_name() !== 'cli') { http_response_code(404); exit; }
 require_once __DIR__ . '/../maison/donnees-lib.php';
 
@@ -93,14 +93,14 @@ $g = array('id' => 'a', 'num' => 79, 'verdict' => 'presque', 'titre' => 'Gardé'
 $a = array('id' => 'b', 'num' => 114, 'verdict' => 'top', 'titre' => 'Doublon', 'repere_le' => '2026-10-18', 'verifie_le' => '2026-10-22', 'surface' => 133,
     'liens' => array(array('site' => 'SeLoger', 'url' => 'https://www.seloger.com/y', 'ok' => true), array('site' => 'OF bis', 'url' => 'https://ouestfrance-immo.com/x/1.htm?ref=2', 'ok' => true)),
     'prix_hist' => array(array('d' => '2026-10-18', 'p' => 345000), array('d' => '2026-10-19', 'p' => 339000)),
-    'photos' => array('https://p/1', 'https://p/2'), 'photo_url' => 'https://p/1', 'adresse' => array('confiance' => 'forte', 'texte' => 'X'),
+    'photo_url' => 'https://p/1', 'adresse' => array('confiance' => 'forte', 'texte' => 'X'),
     'indices' => array('kwh' => '230', 'depense' => 'entre 1 960 € et 2 710 €'));
 $f = donnees_fusionner_biens($g, $a);
 verifier('fusion : id, numéro, verdict et titre du bien gardé', array('a', 79, 'presque', 'Gardé'), array($f['id'], $f['num'], $f['verdict'], $f['titre']));
 verifier('fusion : liens réunis sans doublon d\'adresse', 2, count($f['liens']));
 verifier('fusion : historique des prix réuni et trié', array('2026-10-18', '2026-10-19'), array($f['prix_hist'][0]['d'], $f['prix_hist'][1]['d']));
 verifier('fusion : repéré au plus tôt, vérifié au plus tard', array('2026-10-18', '2026-10-22'), array($f['repere_le'], $f['verifie_le']));
-verifier('fusion : galerie et photo du doublon reprises', array(2, 'https://p/1'), array(count($f['photos']), $f['photo_url']));
+verifier('fusion : photo du doublon reprise', 'https://p/1', $f['photo_url']);
 verifier('fusion : adresse la plus sûre', 'forte', $f['adresse']['confiance']);
 verifier('fusion : surface reprise si absente', 133, $f['surface']);
 verifier('fusion : indices du bien gardé complétés par ceux du doublon', array('229', '1 000', 'entre 1 960 € et 2 710 €'), array($f['indices']['kwh'], $f['indices']['terrain'], $f['indices']['depense']));
@@ -116,6 +116,17 @@ verifier('clé : paramètres de suivi seloger ignorés', 'seloger.com/annonces/a
     donnees_cle_url('https://www.seloger.com/annonces/achat/maison/x/123.htm?projects=2&tracking=abc'));
 verifier('clé : leboncoin par numéro d\'annonce', donnees_cle_url('https://www.leboncoin.fr/vi/2876543210.htm'),
     donnees_cle_url('https://www.leboncoin.fr/ad/ventes_immobilieres/2876543210?utm=x'));
+
+// Écriture de la liste : une seule photo par bien, le champ photos n'est pas enregistré.
+$fichierEssai = tempnam(sys_get_temp_dir(), 'regles');
+$ecrit = donnees_ecrire_json($fichierEssai, array('biens' => array(
+    array('id' => 'a', 'photo_url' => 'https://p/1', 'photos' => array('https://p/1', 'https://p/2')),
+    array('id' => 'b'))));
+$relu = json_decode((string) file_get_contents($fichierEssai), true);
+@unlink($fichierEssai);
+verifier('écriture : réussie', true, $ecrit);
+verifier('écriture : photos retiré, photo_url gardé', array(false, 'https://p/1', 'b'),
+    array(isset($relu['biens'][0]['photos']), $relu['biens'][0]['photo_url'], $relu['biens'][1]['id']));
 
 echo $echecs ?"\n$echecs échec(s)\n" : "\nTous les tests passent.\n";
 exit($echecs ? 1 : 0);

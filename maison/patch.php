@@ -10,7 +10,7 @@
 //                                                                     etat "ecartee" avec ecartee_motif : ne remplit plus les critères)
 //   {"op":"lien", "id":..., "site":..., "url":..., "ok":true}
 //   {"op":"vu", "url":..., "motif":..., "prix":...}       {"op":"oublier_vu", "url":...}
-//   {"op":"fusionner", "id":<bien gardé>, "avec":<doublon>}   (liens, prix, galerie et adresse réunis ; le numéro du doublon mène au bien gardé)
+//   {"op":"fusionner", "id":<bien gardé>, "avec":<doublon>}   (liens, prix, photo et adresse réunis ; le numéro du doublon mène au bien gardé)
 //   {"op":"source", "nom":..., "statut":"ok|partiel|echec|nt", "note":..., "dernier_ok":"AAAA-MM-JJ"|null}
 // ajout et maj d'un bien actif sont refusés s'ils contredisent les règles de donnees_regles_bien (commune de la zone,
 // plafond de prix, règles de la recherche dans regles.json, verdict cohérent avec les critères « ko »).

@@ -12,8 +12,6 @@ Pour les deux recherches, il n'y a plus de fichier data.json local ni de renvoi 
 
 Tout est décrit dans outils.md. L'onglet du site ne sert qu'au site : les annonces s'ouvrent dans un autre onglet. Envoie une première fois dès la première source terminée, puis au fil du passage : un passage interrompu ne perd ainsi presque rien.
 
-Galeries en attente (bien nouveau dont la galerie est relevée avant son ajout) : envoie-les à `photos.php` juste après l'opération ajout.
-
 ## Lire les sites d'annonces
 
 ### Bien'ici
@@ -45,7 +43,7 @@ window.__go = async (pg) => {
 ```
 
   Puis garde les cartes utiles : `window.__all.filter(x => /calvados-14|-14\//.test(x.u) && !/seloger-construire|selogerneuf/.test(x.u) && x.p <= 385000 && (x.ter === 0 || x.ter >= 900))`, sans doublon d'adresse.
-- Sur une fiche, attends 3 secondes ; la description commence après « Calculer un temps de trajet ». La photo est le og:image (mms.seloger.com). SeLoger ne donne pas de galerie.
+- Sur une fiche, attends 3 secondes ; la description commence après « Calculer un temps de trajet ». La photo est le og:image (mms.seloger.com).
 
 ### Etreproprio
 - Une page de commune (`immobilier-vente-<commune>-v14XXX/maison`, liens sur https://www.etreproprio.com/maison-a-vendre/14) affiche 60 annonces au plus, même après « Voir plus ». Lis donc la recherche de la commune. La page de commune n'a pas de lien vers elle : ouvre `https://www.etreproprio.com/annonces/th.lc<code INSEE>-r0.odd` (tri « Date : plus récentes »), puis passe d'une page à l'autre avec le bouton « Page suivante ». Elle donne 20 annonces par page, triées par date : arrête-toi à la première page sans nouvelle.
@@ -88,64 +86,9 @@ Chaque bien a un champ `surface` : la surface habitable en m², nombre entier (e
 - Si les sites d'un même bien donnent des surfaces différentes, garde celle de la fiche la plus détaillée et signale l'écart dans verifier.
 - Bien nouveau : renseigne-la. Bien déjà suivi sans surface : renseigne-la à l'étape 3. Ne la change pas ensuite sauf erreur manifeste.
 
-## Galerie de photos de chaque maison
+## Une seule photo par maison
 
-La page affiche toutes les photos d'une annonce, avec des flèches pour passer de l'une à l'autre. Le champ `photos` d'un bien est rempli par le serveur. Ne l'envoie jamais toi-même dans une opération : il s'enregistre uniquement avec photos.php.
-
-Quand le faire : à l'étape 3, pour chaque bien de la liste `galerie` de suivi.php, et pour chaque bien ajouté ce jour avec le verdict top ou presque. Pas de galerie pour un bien « hors ».
-
-N'injecte aucun script extérieur dans une page d'annonce et ne fais pas changer de page à la fiche : le contrôle de sécurité le refuse (« Code from External », « Browser JS Exfil »). L'ancienne méthode (galerie.js, recevoir.html) est supprimée. La méthode ci-dessous lit la fiche puis envoie le résultat depuis l'onglet du site.
-
-1. Ouvre la fiche du bien dans ton onglet d'annonces. Prends de préférence le lien Bien'ici, sinon Ouest-France Immo, puis Etreproprio, FNAIM ou iad. Attends que la page soit affichée (environ 4 secondes pour Bien'ici).
-2. Avec javascript_tool sur l'onglet de la fiche, lance exactement ce script de lecture. Il ne charge rien et ne change pas de page :
-
-```js
-(() => {
-  const og = document.querySelector('meta[property="og:image"]')?.content || "";
-  let html = document.documentElement.innerHTML.replace(/&amp;/g, "&").replace(/\\u002F/g, "/").replace(/\\\//g, "/");
-  const coupe = html.search(/annonces similaires|biens similaires|autres biens|autres annonces|vous aimerez aussi|dans le m[eê]me secteur|ces biens pourraient/i);
-  if (coupe > html.length * 0.3) html = html.slice(0, coupe);
-  const urls = (html.match(/https?:\/\/[^"'\s<>()\\,]+/gi) || []).filter(u => /\.(?:jpe?g|png|webp)(?:[_?#]|$)/i.test(u) && !/logo|avatar|favicon|icon|sprite|agence|agent|realtor|client\/|picto|banner|placeholder/i.test(u));
-  const w = u => { const m = u.match(/(\d{3,4})[-x](\d{3,4})/) || u.match(/width=(\d{3,4})/); return m ? +m[1] : 0; };
-  const sc = u => { const x = w(u); return x >= 600 && x <= 1100 ? 2000 + x : x === 0 ? 1000 : x; };
-  const grouper = l => { const G = new Map(); l.forEach(u => { const k = u.replace(/\?.*$/, "").replace(/_rcrop_\d+-\d+_/, "").replace(/[-_]\d{2,4}x\d{2,4}/, ""); const g = G.get(k); if (!g || sc(u) > sc(g)) G.set(k, u); }); return [...G.values()]; };
-  const toks = [];
-  location.pathname.split(/[\/.]/).forEach(t => { (t.match(/\d{6,}/g) || []).forEach(n => toks.push(n)); if (t.length >= 8 && !/^(annonce|annonces|vente|maison|maisons|immobilier|achat|acheter)$/i.test(t)) toks.push(t); });
-  let P = [];
-  for (const t of toks) { if (P.length >= 2) break; P = grouper(urls.filter(u => u.includes(t))); }
-  if (P.length < 2) {
-    const dossier = u => { try { const x = new URL(u); return x.host + x.pathname.split("/").slice(0, -1).slice(0, 4).join("/"); } catch (e) { return ""; } };
-    let ref = og ? dossier(og) : "";
-    if (!ref) { const n = {}; urls.forEach(u => { const d = dossier(u); n[d] = (n[d] || 0) + 1; }); ref = Object.keys(n).sort((a, b) => n[b] - n[a])[0] || ""; }
-    P = ref ? grouper(urls.filter(u => dossier(u) === ref)) : [];
-  }
-  P = P.map(u => /file\.bienici\.com/.test(u) ? u.replace(/\?.*$/, "") + "?width=1000&height=750&fit=cover" : u).slice(0, 25);
-  let p = P[0] || "", s = P[0] || "";
-  for (const u of P) { while (!u.startsWith(p)) p = p.slice(0, -1); while (!u.endsWith(s)) s = s.slice(1); }
-  const m = Math.min(...P.map(u => u.length));
-  if (p.length + s.length > m) s = s.slice(p.length + s.length - m);
-  const t = JSON.stringify(P); let h = 0; for (const c of t) h = (h * 31 + c.codePointAt(0)) >>> 0;
-  return { n: P.length, L: t.length, h, p, s, f: P.map(u => u.slice(p.length, u.length - s.length)) };
-})()
-```
-
-   Le résultat est compact : `p` est le début commun des adresses, `s` la fin commune, `f` la partie qui change pour chaque photo, `L` et `h` la longueur et l'empreinte de la liste complète. Si `n` vaut moins de 2, la page ne donne pas sa galerie : essaie un autre lien du bien, sinon laisse tomber. Ce n'est pas une erreur à signaler. C'est le cas de SeLoger et des Clefs de chez moi, et Square Habitat bloque les scripts.
-3. Sur l'onglet https://damien-gustave.fr/maison/ , recopie exactement `p`, `s`, `f`, `L` et `h` dans ce script, avec le bon id, puis lance-le :
-
-```js
-const g = { id: "<id>", L: <L>, h: <h>, p: "<p>", s: "<s>", f: [ /* recopie f */ ] };
-const photos = g.f.map(x => g.p + x + g.s);
-const t = JSON.stringify(photos); let h = 0; for (const c of t) h = (h * 31 + c.codePointAt(0)) >>> 0;
-let out;
-if (t.length !== g.L || h !== g.h) out = { erreur: "empreinte différente : rien envoyé", L: t.length, h };
-else { const r = await fetch('photos.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: g.id, photos }) }); out = { s: r.status, t: await r.text() }; }
-out
-```
-
-   « empreinte différente » : une partie a été mal recopiée et rien n'a été envoyé. Recopie de nouveau à partir du résultat de l'étape 2. La réponse attendue est `{"ok":true, ... "photos": N}` avec N égal à `n`. Si la même maison est suivie dans les deux recherches, relance le script avec l'autre recherche et l'autre id.
-4. Un bien à la fois : relis une fiche, envoie sa galerie, puis passe au bien suivant.
-
-Ce relevé lit seulement la page affichée : il ne fait aucun appel à l'API du site d'annonces.
+La page montre une seule photo par maison : celle de `photo_url`. Un clic sur la photo ouvre l'annonce sur le site de l'agence. La famille regarde les autres photos sur ce site. Ne relève pas les autres photos d'une annonce.
 
 ## Photo principale venant d'Ouest-France Immo
 
@@ -186,7 +129,6 @@ Quand le faire : à l'étape 4, à la place de toute liste Leboncoin.
    - Note la source « partiel ». Tu peux chercher la même maison sur les autres sites (commune, surface, prix).
 6. Photos :
    - Prends le og:image de la fiche. Sinon, prends l'adresse de la photo du courriel (https://img.leboncoin.fr/api/v1/…jpg?rule=ad-image), copiée du code HTML : get_thread au format FULL_CONTENT.
-   - Ne relève pas la galerie sur une fiche Leboncoin, car la méthode n'est pas encore éprouvée sur ce site. Si le bien a un autre lien, relève la galerie sur cet autre site.
 7. Source « Leboncoin » :
    - Statut « ok » quand toutes les annonces des courriels ont été traitées ; dernier_ok prend alors la date du jour.
    - Note : le nombre de courriels et d'annonces lus, d'annonces écartées d'emblée et de fiches ouvertes.

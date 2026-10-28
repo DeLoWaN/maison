@@ -494,9 +494,6 @@ class Site:
     def _appel(self, page, corps=None):
         if self.recherche:
             page += ("&" if "?" in page else "?") + "r=" + urllib.parse.quote(self.recherche)
-            # photos.php reads the search id in the body, not in the URL.
-            if page.startswith("photos.php") and corps is not None:
-                corps = {**corps, "r": self.recherche}
         req = urllib.request.Request(SITE + page, data=None if corps is None else json.dumps(corps).encode(),
                                      headers={"X-Maison-Jeton": self.jeton, "Content-Type": "application/json"})
         try:

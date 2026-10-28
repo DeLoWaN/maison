@@ -3,9 +3,8 @@
 // GET suivi.php[?r=<recherche>][&jours=3]
 //   a_verifier : biens actifs à rouvrir. Un bien vu dans une liste de résultats aujourd'hui ou récemment
 //                (nouveautes.php) ou vérifié il y a moins de `jours` jours n'a pas besoin d'être rouvert.
-//   galerie    : biens actifs top ou presque sans galerie de photos (moins de 2 photos)
 //   adresse    : tous les biens actifs top ou presque à traiter à l'étape 6 bis, dans l'ordre de la consigne.
-//                Les biens « hors » ne sont pas proposés : chercher leur adresse ou leur galerie ne sert pas aux parents.
+//                Les biens « hors » ne sont pas proposés : chercher leur adresse ne sert pas aux parents.
 //   sans_photo : biens actifs sans photo_url
 require_once __DIR__ . '/auth-lib.php';
 auth_exiger();
@@ -22,7 +21,7 @@ $court = function ($b) {
     $liens = array(); if (isset($b['liens']) && is_array($b['liens'])) foreach ($b['liens'] as $l) if (isset($l['url'])) $liens[] = array('site' => isset($l['site']) ? $l['site'] : '', 'url' => $l['url']);
     return array('id' => $b['id'], 'num' => isset($b['num']) ? $b['num'] : null, 'commune' => isset($b['commune']) ? $b['commune'] : '', 'prix' => isset($b['prix']) ? $b['prix'] : null, 'liens' => $liens);
 };
-$out = array('a_verifier' => array(), 'galerie' => array(), 'adresse' => array(), 'sans_photo' => array(), 'jours' => $jours);
+$out = array('a_verifier' => array(), 'adresse' => array(), 'sans_photo' => array(), 'jours' => $jours);
 $adr = array(array(), array(), array(), array());
 $rang = array('top' => 0, 'presque' => 1, 'hors' => 2);
 foreach ($d['biens'] as $b) {
@@ -33,7 +32,6 @@ foreach ($d['biens'] as $b) {
     if ($dernier === '' || $dernier < $limite) { $x = $court($b); $x['dernier'] = $dernier ?: null; $out['a_verifier'][] = $x; }
     if (empty($b['photo_url'])) $out['sans_photo'][] = $court($b);
     if (isset($b['verdict']) && $b['verdict'] === 'hors') continue;
-    if (!isset($b['photos']) || !is_array($b['photos']) || count($b['photos']) < 2) $out['galerie'][] = $court($b);
     $a = isset($b['adresse']) && is_array($b['adresse']) ? $b['adresse'] : null;
     $agence = false; if (isset($b['liens']) && is_array($b['liens'])) foreach ($b['liens'] as $li) if (isset($li['site']) && preg_match('/\(agence\)\s*$/', $li['site'])) $agence = true;
     if (isset($b['repere_le']) && $b['repere_le'] === $auj && !$a) { $adr[0][] = $court($b); }

@@ -338,7 +338,7 @@ class Site(unittest.TestCase):
 
 
 class SiteRecherche(unittest.TestCase):
-    """The search id reaches the site as `r`, in the URL, and in the body for photos.php."""
+    """The search id reaches the site as `r`, in the URL."""
 
     def appeler(self, recherche, page, corps=None):
         vus = []
@@ -371,12 +371,9 @@ class SiteRecherche(unittest.TestCase):
     def test_recherche_ajoutee_apres_un_parametre_existant(self):
         self.assertEqual(self.appeler("extensible", "data.php?leger=1")[0], A.SITE + "data.php?leger=1&r=extensible")
 
-    def test_recherche_dans_le_corps_de_photos(self):
-        url, corps, jeton = self.appeler("extensible", "photos.php", {"id": "a", "photos": ["https://p/1"]})
-        self.assertEqual((url, corps, jeton), (A.SITE + "photos.php?r=extensible", {"id": "a", "photos": ["https://p/1"], "r": "extensible"}, "jeton"))
-
-    def test_corps_des_autres_pages_inchange(self):
-        self.assertEqual(self.appeler("extensible", "patch.php", {"ops": [1]})[1], {"ops": [1]})
+    def test_corps_inchange_et_jeton_envoye(self):
+        url, corps, jeton = self.appeler("extensible", "patch.php", {"ops": [1]})
+        self.assertEqual((url, corps, jeton), (A.SITE + "patch.php?r=extensible", {"ops": [1]}, "jeton"))
 
     def test_option_recherche_de_la_ligne_de_commande(self):
         p = argparse.ArgumentParser()

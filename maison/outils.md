@@ -14,7 +14,6 @@ Tous les appels à `data.php`, `nouveautes.php`, `suivi.php`, `patch.php` et `ph
 Le site suit deux recherches : `maison` (au moins une chambre au rez-de-chaussée) et `extensible` (pas de chambre au rez-de-chaussée, mais une extension possible). Une maison va dans une seule des deux.
 
 - Chaque appel à `data.php`, `nouveautes.php`, `suivi.php`, `patch.php` et `api.php` donne la recherche dans l'adresse : `?r=maison` ou `?r=extensible` (avec `&` après un autre paramètre, par exemple `data.php?leger=1&r=extensible`).
-- `photos.php` lit `r` dans le corps JSON.
 - Les scripts Python prennent `--recherche <id>`.
 - Sans `r`, le serveur répond pour la première recherche, `maison`.
 - Les exemples de ce fichier n'écrivent pas `r` : ajoute-le à chaque appel.
@@ -23,7 +22,7 @@ Le site suit deux recherches : `maison` (au moins une chambre au rez-de-chaussé
 
 `await (await fetch('data.php?leger=1&x=' + Date.now())).json()`
 
-Cette lecture ne contient ni les galeries de photos (seulement `nb_photos`) ni le registre des annonces écartées (seulement `vus_nb`) : c'est le serveur qui fait ce tri. Garde-la en mémoire pour juger, ne la renvoie jamais.
+Cette lecture ne contient pas le registre des annonces écartées (seulement `vus_nb`) : c'est le serveur qui fait ce tri. Garde-la en mémoire pour juger, ne la renvoie jamais.
 
 ## 2. Lire une page de résultats
 
@@ -214,7 +213,6 @@ Garde les valeurs du DPE dans le champ `indices` du bien, telles que le script l
 
 À appeler APRÈS avoir parcouru les listes de résultats (étape 4 de la tâche), car les annonces vues dans les listes du jour comptent comme vérifiées.
 - `a_verifier` : biens actifs qui n'ont été ni vus dans une liste ni vérifiés depuis 3 jours. Ouvre au moins un lien de chacun : s'il est toujours en ligne, opération `maj` avec `"verifie": true` (et le prix s'il a changé) ; si la fiche a disparu sur tous les liens, `maj` avec `"etat": "retiree"`.
-- `galerie` : biens sans galerie de photos (voir « Galerie de photos » dans consignes.md).
 - `sans_photo` : biens sans photo_url. Prends le champ `photo` du script de fiche.
 - `adresse` : biens à traiter à l'étape 6 bis, déjà dans l'ordre de la consigne (tous, sans limite de nombre). Lance d'abord les deux scripts ci-dessous, dans l'ordre : le premier complète les indices depuis Bien'ici, le second traite seul les biens dont le champ `indices` suffit. Pour les biens qu'il renvoie dans `a_escalader`, suis methode-adresse.md. Quand un de ces biens porte `a_faire`, commence par ce qui y est écrit : cherche l'annonce d'origine (site de l'agence, ou immobilier.notaires.fr pour un notaire) avant toute autre recherche. Si tu ne la trouves pas, ajoute « annonce d'origine introuvable » à adresse.preuves.
 
@@ -272,7 +270,7 @@ Opérations possibles :
   - Un prix différent est ajouté à l'historique automatiquement. `"etat":"retiree"` date le retrait au jour même.
   - `"verifie": true` met verifie_le à aujourd'hui.
 - **Lien ajouté ou corrigé** : `{"op":"lien", "id":"tilly-310", "site":"Safti (agence)", "url":"https://…", "ok":true}`
-- **Doublon** (la même maison suivie deux fois) : `{"op":"fusionner", "id":"<bien gardé>", "avec":"<doublon>"}`. Le bien gardé reçoit les liens, l'historique des prix, la galerie et l'adresse la plus sûre ; le numéro du doublon mène ensuite au bien gardé.
+- **Doublon** (la même maison suivie deux fois) : `{"op":"fusionner", "id":"<bien gardé>", "avec":"<doublon>"}`. Le bien gardé reçoit les liens, l'historique des prix, la photo et l'adresse la plus sûre ; le numéro du doublon mène ensuite au bien gardé.
 - **Règles contrôlées par le serveur** : un ajout ou une mise à jour d'un bien actif est refusé si sa commune n'est pas une commune de la zone ou de la bordure (accents et majuscules ignorés), si le prix dépasse le plafond d'ouverture (385 000 €), si le critère rdc vaut « ko », si un verdict « top » a un critère « ko », si un verdict « hors » n'en a aucun, ou s'il y a deux critères « ko » ou plus. Le message de refus dit quoi faire.
 - **Annonce écartée** : `{"op":"vu", "url":"https://…", "motif":"Construite en 1977", "prix":285000}`
   - Pour en retirer une : `{"op":"oublier_vu", "url":"https://…"}`.
@@ -295,7 +293,6 @@ d=$(mktemp -d) && git -C ~/git_perso/maison fetch -q origin && git -C ~/git_pers
 ```
 - `ops <fichier.json>` : tableau d'opérations → patch.php.
 - `nouveautes <dossier>` : `<dossier>/annonces_nouveautes.json` → nouveautes.php ; la réponse va dans `<dossier>/reponse_nouveautes.json`.
-- `photos <fichier.json>` : `[{"id", "photos"}]` → photos.php.
 
 Termine toujours par un envoi à part, qui ne contient que les opérations `source` (une par site, y compris ceux en échec) et l'opération `fin`, et vérifie que la réponse dit `"ok": true`.
 

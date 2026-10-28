@@ -43,7 +43,7 @@ function donnees_lire($r) {
     return $d;
 }
 
-// Modification sous verrou (même verrou que photos.php) : $fn reçoit la liste et la renvoie modifiée.
+// Modification sous verrou : $fn reçoit la liste et la renvoie modifiée.
 // Copie datée de la version précédente (compressée, 30 dernières), au plus une toutes les 10 minutes :
 // le 20 octobre, une copie complète à chaque envoi (près de 200 copies de 700 ko) a rempli l'hébergement.
 // $copie = false : pas de copie (simple marquage, comme vu_en_liste_le dans nouveautes.php).
@@ -82,6 +82,8 @@ function donnees_copie_datee($f) {
 
 // Écriture atomique (fichier .tmp puis renommage). Renvoie true ou un message d'erreur en clair.
 function donnees_ecrire_json($f, $d) {
+    // Un bien n'a qu'une photo (photo_url) : un champ photos n'est pas enregistré.
+    if (isset($d['biens']) && is_array($d['biens'])) foreach ($d['biens'] as $i => $b) if (is_array($b)) unset($d['biens'][$i]['photos']);
     $json = json_encode($d, JSON_UNESCAPED_UNICODE);
     if ($json === false || $json === '') return 'écriture impossible : données non encodables';
     $tmp = $f . '.tmp';
@@ -244,7 +246,7 @@ function donnees_rang_adresse($a) {
 /**
  * Fusionne le bien $a (doublon) dans le bien $g (gardé) et renvoie le bien gardé complété :
  * liens et historique des prix réunis, repéré au plus tôt, vérifié et vu en liste au plus tard,
- * galerie la plus longue, adresse la plus sûre. Le reste (id, num, verdict, crit, titre) vient de $g.
+ * photo du doublon si le bien gardé n'en a pas, adresse la plus sûre. Le reste (id, num, verdict, crit, titre) vient de $g.
  */
 function donnees_fusionner_biens($g, $a) {
     $liens = array(); $cles = array();
@@ -264,8 +266,6 @@ function donnees_fusionner_biens($g, $a) {
     $g['prix_hist'] = $hist;
     if (isset($a['repere_le']) && (!isset($g['repere_le']) || $a['repere_le'] < $g['repere_le'])) $g['repere_le'] = $a['repere_le'];
     foreach (array('verifie_le', 'vu_en_liste_le') as $c) if (isset($a[$c]) && (!isset($g[$c]) || $a[$c] > $g[$c])) $g[$c] = $a[$c];
-    $ng = isset($g['photos']) && is_array($g['photos']) ? count($g['photos']) : 0;
-    if (isset($a['photos']) && is_array($a['photos']) && count($a['photos']) > $ng) $g['photos'] = $a['photos'];
     if (empty($g['photo_url']) && !empty($a['photo_url'])) $g['photo_url'] = $a['photo_url'];
     if (donnees_rang_adresse(isset($a['adresse']) ? $a['adresse'] : null) > donnees_rang_adresse(isset($g['adresse']) ? $g['adresse'] : null)) $g['adresse'] = $a['adresse'];
     if (empty($g['surface']) && !empty($a['surface'])) $g['surface'] = $a['surface'];

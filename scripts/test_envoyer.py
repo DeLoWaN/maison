@@ -82,29 +82,6 @@ class EnvoyerNouveautes(unittest.TestCase):
         self.assertEqual(rep["ecartees"], 1)
 
 
-class EnvoyerPhotos(unittest.TestCase):
-    def test_refus_et_erreur_reseau_sont_rapportes(self):
-        def rep(page, corps):
-            if corps["id"] == "panne":
-                raise A.ErreurSource("photos.php: HTTP Error 500")
-            if corps["id"] == "refuse":
-                return {"ok": False, "erreur": "id inconnu"}
-            return {"ok": True, "photos": len(corps["photos"])}
-        site = FauxSite(rep)
-        out = E.envoyer_photos(site, [{"id": "bon", "photos": ["a", "b"]}, {"id": "refuse", "photos": ["a"]},
-                                      {"id": "panne", "photos": ["a"]}])
-        print("photos:", out)
-        self.assertEqual(out["envoyees"], {"bon": 2})
-        self.assertEqual([r["id"] for r in out["refus"]], ["refuse", "panne"])
-
-    def test_main_rend_1_sur_refus(self):
-        site = FauxSite(lambda page, corps: {"ok": False, "erreur": "x"})
-        with tempfile.TemporaryDirectory() as d:
-            f = pathlib.Path(d) / "g.json"
-            f.write_text(json.dumps([{"id": "a", "photos": ["p"]}]))
-            self.assertEqual(E.main(["photos", str(f)], site=site), 1)
-
-
 class EnvoyerRecherche(unittest.TestCase):
     def lancer(self, extra):
         crees = []

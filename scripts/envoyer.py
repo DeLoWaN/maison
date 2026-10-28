@@ -6,7 +6,6 @@ hundreds of operations into a javascript_tool call.
 Usage:
     python3 scripts/envoyer.py ops <ops.json>              # [operation, ...] -> patch.php, packets of 40
     python3 scripts/envoyer.py nouveautes <dossier>        # <dossier>/annonces_nouveautes.json -> nouveautes.php
-    python3 scripts/envoyer.py photos <galeries.json>      # [{"id", "photos"}, ...] -> photos.php
     Add --recherche <id> before the action to write to that search (default: the first search of the site).
 
 `nouveautes` reads [{url, prix}, ...] (or {"annonces": [...]}) and writes the merged answer of the server
@@ -17,8 +16,7 @@ Reading and writing the site needs the script token in ~/.config/maison/token (s
 Output (stdout, JSON):
     ops        {"nums": {id: num}, "refus": [{n, op, erreur, op_detail}]}
     nouveautes {"annonces", "nouvelles", "a_rouvrir", "suivies", "ecartees"} (counts)
-    photos     {"envoyees": {id: number of photos}, "refus": [{id, erreur}]}
-Exit status 1 when the site refuses an operation or a gallery.
+Exit status 1 when the site refuses an operation.
 """
 import argparse
 import json
@@ -57,22 +55,6 @@ def envoyer_nouveautes(site, annonces):
     return out
 
 
-def envoyer_photos(site, galeries):
-    """Sends each gallery to photos.php. Returns the number of photos kept per house and the refusals."""
-    envoyees, refus = {}, []
-    for g in galeries:
-        try:
-            res = site._appel("photos.php", {"id": g["id"], "photos": g["photos"]})
-        except ErreurSource as e:
-            refus.append({"id": g["id"], "erreur": str(e)})
-            continue
-        if res.get("ok"):
-            envoyees[g["id"]] = res.get("photos")
-        else:
-            refus.append({"id": g["id"], "erreur": res.get("erreur") or json.dumps(res, ensure_ascii=False)})
-    return {"envoyees": envoyees, "refus": refus}
-
-
 def lire_annonces(fichier):
     """Reads [{url, prix}, ...] or {"annonces": [...]}."""
     data = json.loads(pathlib.Path(fichier).read_text())
@@ -82,8 +64,8 @@ def lire_annonces(fichier):
 def main(argv=None, site=None):
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     option_recherche(p)
-    p.add_argument("action", choices=["ops", "nouveautes", "photos"])
-    p.add_argument("chemin", help="ops and photos: JSON file; nouveautes: folder holding annonces_nouveautes.json")
+    p.add_argument("action", choices=["ops", "nouveautes"])
+    p.add_argument("chemin", help="ops: JSON file; nouveautes: folder holding annonces_nouveautes.json")
     a = p.parse_args(argv)
     if site is None:
         if not JETON.exists():
@@ -92,8 +74,6 @@ def main(argv=None, site=None):
     try:
         if a.action == "ops":
             out = envoyer_ops(site, json.loads(pathlib.Path(a.chemin).read_text()))
-        elif a.action == "photos":
-            out = envoyer_photos(site, json.loads(pathlib.Path(a.chemin).read_text()))
         else:
             dossier = pathlib.Path(a.chemin)
             annonces = lire_annonces(dossier / "annonces_nouveautes.json")
