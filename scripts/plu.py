@@ -19,14 +19,17 @@ Usage:
 
 Reading the site needs the script token in ~/.config/maison/token (see auth-lib.php).
 
-Output (stdout, JSON): {"biens": [{id, parcelle_m2, regime, zone, abf, reglement_url}],
+Output (stdout, JSON): {"biens": [{id, parcelle_m2, parcelle_proche, regime, zone, abf, reglement_url}],
                         "sans_point": [id], "erreurs": [{id, raison}]}
 regime is "plu" when a zone covers the parcel, "sans_plu" otherwise (national urban planning rules or
 communal map: an existing house can be extended outside the built-up area).
 zone is {libelle, libelong, type, document}, or null without a PLU.
+parcelle_proche is true when the address point is outside every parcel: the facts then come from the nearest
+parcel within RAYON_PROCHE_M, which may be a neighbour of the house.
 """
 import argparse
 import json
+import math
 import pathlib
 import sys
 import time
@@ -35,9 +38,11 @@ import urllib.parse
 import urllib.request
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from adresse import ESSAIS_RESEAU, JETON, ErreurSource, Site, option_recherche  # noqa: E402
+from adresse import ESSAIS_RESEAU, JETON, ErreurSource, Site, centre, distance_m, option_recherche  # noqa: E402
 
 APICARTO = "https://apicarto.ign.fr/api"
+# Search distance for the nearest parcel when the address point is outside every parcel.
+RAYON_PROCHE_M = 30
 GPU_ANNEXES = "https://data.geopf.fr/annexes/gpu/documents"
 # Protection type of the abords of a historic monument.
 SUP_ABORDS = "ac1"
@@ -72,6 +77,32 @@ def point(lon, lat):
     return {"type": "Point", "coordinates": [lon, lat]}
 
 
+def carre(lon, lat, cote_m):
+    """Square polygon of side 2 × cote_m metres centred on the point."""
+    dx = cote_m / (111320 * math.cos(math.radians(lat)))
+    dy = cote_m / 110540
+    anneau = [[lon - dx, lat - dy], [lon + dx, lat - dy], [lon + dx, lat + dy], [lon - dx, lat + dy], [lon - dx, lat - dy]]
+    return {"type": "Polygon", "coordinates": [anneau]}
+
+
+def anneau_exterieur(geom):
+    return geom["coordinates"][0] if geom["type"] == "Polygon" else max((p[0] for p in geom["coordinates"]), key=len)
+
+
+def parcelle_de(api, lon, lat):
+    """Returns (parcel feature, True when it is only the nearest parcel) for the address point.
+
+    The address point of the national address base often sits on the road, outside every parcel.
+    """
+    parcelles = api.parcelle(point(lon, lat))
+    if parcelles:
+        return parcelles[0], False
+    voisines = api.parcelle(carre(lon, lat, RAYON_PROCHE_M))
+    if not voisines:
+        raise ErreurSource(f"aucune parcelle cadastrale à moins de {RAYON_PROCHE_M} m du point de l'adresse")
+    return min(voisines, key=lambda f: distance_m(centre(anneau_exterieur(f["geometry"])), (lon, lat))), True
+
+
 def url_reglement(zone):
     """Link to the written regulation of the plan that holds `zone` (a zone-urba feature), or None."""
     p = zone["properties"]
@@ -83,10 +114,7 @@ def url_reglement(zone):
 def analyser(bien, api):
     """Returns the planning facts of one house whose address has coordinates."""
     adr = bien["adresse"]
-    parcelles = api.parcelle(point(adr["lon"], adr["lat"]))
-    if not parcelles:
-        raise ErreurSource("aucune parcelle cadastrale sous le point de l'adresse")
-    parcelle = parcelles[0]
+    parcelle, proche = parcelle_de(api, adr["lon"], adr["lat"])
     geom = parcelle["geometry"]
     zones = api.zones(geom)
     # A parcel can cover several zones: the first zone of the answer is reported, the labels of the others are listed.
@@ -95,6 +123,7 @@ def analyser(bien, api):
     out = {
         "id": bien["id"],
         "parcelle_m2": parcelle["properties"].get("contenance"),
+        "parcelle_proche": proche,
         "regime": "plu" if zone else "sans_plu",
         "zone": None,
         "abf": abf,
