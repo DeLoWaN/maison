@@ -311,7 +311,9 @@ details.groupe-replie > summary .nb { font: 600 1.05rem/1 var(--f-texte); color:
 .adresse.forte { border-left-color: var(--ok); background: var(--ok-bg); }
 .adresse.probable { border-left-color: var(--warn); background: var(--warn-bg); }
 .adresse strong { display: block; }
-.adresse .txt { font-size: 1.2rem; font-weight: 700; color: inherit; text-underline-offset: 3px; }
+.adresse .txt { font-size: 1.2rem; font-weight: 700; }
+.adresse .plans { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.adresse .plans a { font-weight: 700; text-underline-offset: 3px; }
 .adresse .conf { justify-self: start; display: inline-flex; align-items: center; gap: 8px; font-weight: 700; padding: 3px 12px; border-radius: 999px; color: var(--papier); background: var(--unk); }
 .adresse.forte .conf { background: var(--ok); }
 .adresse.probable .conf { background: var(--warn); }
@@ -645,6 +647,10 @@ document.getElementById("tri-sortir").addEventListener("click", () => basculerTr
 
 // Adresse retrouvée par recoupement de données publiques : la confiance doit se voir d'un coup d'œil.
 const adresseConnue = b => !!(b.adresse && b.adresse.texte && (b.adresse.confiance === "forte" || b.adresse.confiance === "probable"));
+const pointOuTexte = (lat, lon, texte) => lat != null && lon != null ? lat + "," + lon : encodeURIComponent(texte);
+const lienGoogleMaps = (lat, lon, texte) => `https://www.google.com/maps/search/?api=1&amp;query=${pointOuTexte(lat, lon, texte)}`;
+// t=k : Apple Maps s'ouvre directement en vue satellite.
+const lienAppleMaps = (lat, lon, texte) => `https://maps.apple.com/?${lat != null && lon != null ? "ll=" + lat + "," + lon + "&amp;" : ""}q=${encodeURIComponent(texte)}&amp;t=k`;
 function blocAdresse(b) {
   const a = b.adresse;
   if (!a) return "";
@@ -656,7 +662,8 @@ function blocAdresse(b) {
   const forte = a.confiance === "forte";
   return `<div class="adresse ${a.confiance}">
     <strong>Adresse retrouvée</strong>
-    <a class="txt" href="https://www.google.com/maps/search/?api=1&amp;query=${a.lat != null && a.lon != null ? a.lat + "," + a.lon : encodeURIComponent(a.texte)}" target="_blank" rel="noopener" title="Ouvrir dans Google Maps">${esc(a.texte)}</a>
+    <span class="txt">${esc(a.texte)}</span>
+    <span class="plans"><a href="${lienGoogleMaps(a.lat, a.lon, a.texte)}" target="_blank" rel="noopener">Google Maps</a><a href="${lienAppleMaps(a.lat, a.lon, a.texte)}" target="_blank" rel="noopener">Apple Maps (vue satellite)</a></span>
     <span class="conf"><span class="jauge" aria-hidden="true">${forte ? "●●●" : "●●○"}</span>${forte ? "Confiance forte" : "Confiance moyenne"}</span>
     <p>${forte
       ? "Plusieurs indices publics concordent (diagnostic énergétique, surface, dépenses d'énergie). C'est très probablement elle, mais demandez confirmation à l'agence avant de vous déplacer."
@@ -816,10 +823,9 @@ function dessinerCarte(el) {
     const bouton = (txt, f) => { const x = document.createElement("button"); x.type = "button"; x.textContent = txt; x.onclick = f; outils.append(x); };
     if (exact) bouton("Voir la maison de près", prochePlan);
     if (vv) bouton("Voir aussi chez Damien et Aurélia", avecVendes);
-    const a = document.createElement("a");
-    a.href = `https://www.google.com/maps/search/?api=1&query=${ici[0]},${ici[1]}`; a.target = "_blank"; a.rel = "noopener";
-    a.textContent = "Ouvrir dans Google Maps";
-    outils.append(a);
+    const lien = (txt, href) => { const a = document.createElement("a"); a.href = href; a.target = "_blank"; a.rel = "noopener"; a.textContent = txt; outils.append(a); };
+    lien("Ouvrir dans Google Maps", `https://www.google.com/maps/search/?api=1&query=${ici[0]},${ici[1]}`);
+    lien("Ouvrir dans Apple Maps", `https://maps.apple.com/?ll=${ici[0]},${ici[1]}&q=${encodeURIComponent(p.nom || "Maison")}&t=k`);
     note.after(outils);
   }).catch(() => { el.dataset.fait = ""; el.innerHTML = `<div class="vide">Carte indisponible pour le moment</div>`; });
 }
