@@ -48,7 +48,7 @@ window.__go = async (pg) => {
 - Sur une fiche, attends 3 secondes ; la description commence après « Calculer un temps de trajet ». La photo est le og:image (mms.seloger.com). SeLoger ne donne pas de galerie.
 
 ### Etreproprio
-- Une page de commune (`immobilier-vente-<commune>-v14XXX/maison`, liens sur https://www.etreproprio.com/maison-a-vendre/14) affiche 60 annonces au plus, même après « Voir plus ». Lis donc la recherche de la commune : le bouton « Préciser ma recherche » de la page de commune y mène (`annonces/th.lc<code INSEE>`, puis `-r0.g2`, `-r0.g3`…). Elle donne 20 annonces par page, triées par date : arrête-toi à la première page sans nouvelle.
+- Une page de commune (`immobilier-vente-<commune>-v14XXX/maison`, liens sur https://www.etreproprio.com/maison-a-vendre/14) affiche 60 annonces au plus, même après « Voir plus ». Lis donc la recherche de la commune. La page de commune n'a pas de lien vers elle : ouvre `https://www.etreproprio.com/annonces/th.lc<code INSEE>-r0.odd` (tri « Date : plus récentes »), puis passe d'une page à l'autre avec le bouton « Page suivante ». Elle donne 20 annonces par page, triées par date : arrête-toi à la première page sans nouvelle.
 - La lecture directe répond 403 (Cloudflare) : passe par le navigateur.
 - Lis chaque page avec ce script : il garde le lien complet de chaque fiche (ne reconstruis jamais un lien à partir du seul numéro : la page répond « introuvable »).
 
