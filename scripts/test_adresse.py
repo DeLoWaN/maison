@@ -39,8 +39,9 @@ def carre(lon, lat, cote=0.0004):
 class FausseSource:
     """Applies the Data Fair filters of adresse.py to an in-memory list of DPE."""
 
-    def __init__(self, dpes, parcelles=None, panne=False):
+    def __init__(self, dpes, parcelles=None, panne=False, adresses=None):
         self.dpes, self.parc, self.panne, self.requetes = dpes, parcelles or {}, panne, []
+        self.adresses = adresses or {}
 
     def dpe(self, filtres):
         if self.panne:
@@ -77,6 +78,9 @@ class FausseSource:
 
     def parcelles(self, insee):
         return self.parc.get(insee, [])
+
+    def geocoder(self, adresse, code_postal):
+        return self.adresses.get((adresse, code_postal))
 
 
 def chercher(bien, dpes, parcelles=None):
@@ -219,6 +223,120 @@ class Recherche(unittest.TestCase):
         self.assertIn("aucun DPE concordant", raison)
 
 
+class Recalcul2026(unittest.TestCase):
+    # Values of a real DPE of 2025, recalculated in 2026: 165.2 kWh in the base, 189 in the listing.
+    BIEN = {"id": "alpha-273", "commune": "Alpha", "surface": 218,
+            "indices": {"kwh": "189", "co2": "6", "depense": "entre 3 000 € et 4 400 €"}}
+
+    @staticmethod
+    def recalcule(jour="2025-03-19", type_n1="Électricité"):
+        d = dpe("A1", "2 Chemin Un 14999 Alpha", "14001", 165.2, 6.1, 3712, 218, jour=jour)
+        d.update(conso_5_usages_ef_energie_n1=12587.1, type_energie_n1=type_n1, conso_5_usages_ef_energie_n2=11253.9,
+                 type_energie_n2="Bois – Granulés (pellets) ou briquettes", conso_auxiliaires_ef=454.6)
+        return d
+
+    def test_ancienne_consommation_recalculee(self):
+        self.assertAlmostEqual(A.kwh_avant_2026(self.recalcule()), 189.1, places=1)
+
+    def test_dpe_d_avant_2026_recalcule_compte(self):
+        confiance, res = chercher(self.BIEN, [self.recalcule()])
+        print("\n", res)
+        self.assertEqual(confiance, "forte", res)
+        self.assertIn("soit 189.1 avant le recalcul de 2026", res["preuves"])
+
+    def test_dpe_de_2026_n_est_pas_recalcule(self):
+        self.assertIsNone(A.kwh_avant_2026(self.recalcule(jour="2026-03-10")))
+
+    def test_sans_electricite_pas_de_recalcul(self):
+        self.assertIsNone(A.kwh_avant_2026(self.recalcule(type_n1="Gaz naturel")))
+
+    def test_consommation_plus_basse_sans_electricite_ne_compte_pas(self):
+        # 165.2 for 189 announced, but no electricity: another house, even with the same CO2.
+        bien = dict(self.BIEN, indices={"kwh": "189", "co2": "6"})
+        confiance, res = chercher(bien, [self.recalcule(type_n1="Gaz naturel")])
+        self.assertIsNone(confiance, res)
+
+    def test_concordance_directe_prioritaire(self):
+        direct = dpe("A2", "3 Chemin Un 14999 Alpha", "14001", 189, 6, 3712, 218, jour="2025-05-02")
+        confiance, res = chercher(self.BIEN, [self.recalcule(), direct])
+        self.assertEqual((confiance, res["texte"]), ("forte", "3 Chemin Un 14999 Alpha"), res)
+
+    def test_dpe_geocode_moins_prioritaire(self):
+        # Same figures in Alpha and in a DPE without normalised address: the normalised one wins.
+        bien = dict(self.BIEN, indices={"kwh": "117", "co2": "4"}, surface=148)
+        brut = dpe("V1", None, None, 118, 4, 1, 148)
+        brut.update(adresse_brut="13 Impasse Deux", code_postal_brut=14999, _geopoint=None)
+        adresses = {("13 Impasse Deux", "14999"): {"label": "13 Impasse Deux 14999 Beta", "citycode": "14002", "score": 0.95, "lon": -0.4, "lat": 49.0}}
+        src = FausseSource([dpe("A1", "1 Allée Une 14999 Alpha", "14001", 117, 4, 1, 148), brut], adresses=adresses)
+        confiance, res = A.Recherche(src).chercher(bien)
+        self.assertEqual((confiance, res["texte"]), ("probable", "1 Allée Une 14999 Alpha"), res)
+
+    def test_meme_chiffres_dans_deux_communes_du_code_postal_escalade(self):
+        bien = dict(self.BIEN, indices={"kwh": "117", "co2": "4"}, surface=148)
+        dpes = [dpe("A1", "1 Allée Une 14999 Alpha", "14001", 117, 4, 1, 148),
+                dpe("B1", "2 Allée Deux 14999 Beta", "14002", 118, 4, 1, 148)]
+        confiance, res = chercher(bien, dpes)
+        self.assertIsNone(confiance, res)
+
+    def test_lettres_ignorees_quand_l_annonce_donne_des_chiffres(self):
+        bien = {"id": "x", "commune": "Alpha", "surface": 86, "indices": {"kwh": "252", "co2": "78", "dpe": "F", "ges": "F"}}
+        dpes = [dpe("A1", "13 Rue des Écoles 14999 Alpha", "14001", 252, 78, 1, 86, lettres=("F", "F")),
+                dpe("B1", "1 Chemin Deux 14999 Beta", "14002", 220, 70, 1, 84, lettres=("F", "F"))]
+        confiance, res = chercher(bien, dpes)
+        self.assertEqual((confiance, res["texte"]), ("probable", "13 Rue des Écoles 14999 Alpha"), res)
+
+    def test_requete_elargie_vers_le_bas(self):
+        f = A.Recherche.requetes(A.lire_indices(self.BIEN), False)[0]
+        self.assertEqual((f["conso_5_usages_par_m2_ep_gte"], f["conso_5_usages_par_m2_ep_lte"]), (153.1, 192))
+
+
+class DpeSansAdresseNormalisee(unittest.TestCase):
+    BIEN = {"id": "alpha-300", "commune": "Alpha", "surface": 92,
+            "indices": {"kwh": "287", "co2": "29", "depense": "entre 2 700 € et 3 690 €"}}
+
+    def brut(self):
+        d = dpe("V1", None, None, 287, 29, 3199, 92, jour="2026-10-07")
+        d.update(adresse_brut="11 rue du 13 août 1944", code_postal_brut=14999, _geopoint=None)
+        return d
+
+    def test_dpe_brut_geocode_au_plus_probable(self):
+        adresses = {("11 rue du 13 août 1944", "14999"): {"label": "11 Rue du 13 Juin 1944 14999 Alpha", "citycode": "14001",
+                                                          "score": 0.54, "lon": -0.43, "lat": 49.11}}
+        src = FausseSource([self.brut()], adresses=adresses)
+        confiance, res = A.Recherche(src).chercher(self.BIEN)
+        print("\n", res)
+        self.assertEqual((confiance, res["texte"]), ("probable", "11 Rue du 13 Juin 1944 14999 Alpha"), res)
+        self.assertEqual((res["lon"], res["lat"]), (-0.43, 49.11))
+        self.assertIn("géocodée par le script (score 0.54)", res["preuves"])
+        self.assertIn({"code_postal_brut_in": "14999"}, [{k: v for k, v in r.items() if k == "code_postal_brut_in"} for r in src.requetes])
+
+    def test_dpe_brut_introuvable_a_la_ban_est_ignore(self):
+        confiance, res = A.Recherche(FausseSource([self.brut()])).chercher(self.BIEN)
+        self.assertIsNone(confiance, res)
+
+
+class BaseDesLogementsNeufs(unittest.TestCase):
+    def test_sources_interroge_les_deux_bases(self):
+        appels = []
+
+        def faux_json(url, params=None):
+            appels.append(url)
+            return {"results": [{"numero_dpe": url.split("/")[-2]}]}
+        src = A.Sources()
+        with unittest.mock.patch.object(src, "_json", side_effect=faux_json):
+            res = src.dpe({"code_insee_ban_eq": "14001"})
+        self.assertEqual([d["_base"] for d in res], ["dpe03existant", "dpe02neuf"])
+        self.assertTrue(appels[1].endswith("/dpe02neuf/lines"), appels)
+
+    def test_lien_et_preuves_d_un_dpe_neuf(self):
+        d = dpe("N1", "16 Rue des Lilas 14999 Alpha", "14001", 201, 7, 2310, 150)
+        d["_base"] = "dpe02neuf"
+        confiance, res = chercher(Recherche.BIEN, [d])
+        self.assertEqual(confiance, "forte", res)
+        self.assertIn("/datasets/dpe02neuf/", res["lien"])
+        self.assertIn("base des logements neufs", res["preuves"])
+
+
 class FichierCadastre(unittest.TestCase):
     def test_parcelles_sans_surface_ou_multipolygones(self):
         geo = {"features": [
@@ -238,7 +356,8 @@ class Cadastre(unittest.TestCase):
             "indices": {"kwh": "229", "co2": "7", "depense": "entre 1 960 € et 2 710 €", "terrain": "6 862"}}
 
     def dpes(self):
-        return [dpe("B1", "4 Route du Pré 14999 Beta", "14002", 206, 7, 2333, 184, pt=(-0.5, 49.0)),
+        # Dated 2026, B1 cannot be a DPE recalculated with the 2026 electricity factor.
+        return [dpe("B1", "4 Route du Pré 14999 Beta", "14002", 206, 7, 2333, 184, jour="2026-03-10", pt=(-0.5, 49.0)),
                 dpe("B2", "8 Route du Pré 14999 Beta", "14002", 150, 7, 2340, 180, pt=(-0.49, 49.0))]
 
     def test_parcelle_exacte_pres_du_dpe_donne_forte(self):
@@ -297,6 +416,17 @@ class Traitement(unittest.TestCase):
         adr = out["ops"][0]["champs"]["adresse"]
         self.assertEqual((adr["essais"], adr["le"], adr["confiance"]), (2, "2026-10-22", "forte"))
         self.assertEqual([e["id"] for e in out["a_escalader"]], ["vide"])
+        self.assertEqual(out["communes_differentes"], [])
+        self.assertNotIn("_insee", adr)
+
+    def test_adresse_dans_une_autre_commune_signalee(self):
+        bien = {"id": "x", "commune": "Alpha", "surface": 150,
+                "indices": {"kwh": "200", "co2": "7", "depense": "entre 2 000 € et 2 600 €"}}
+        src = FausseSource([dpe("B1", "1 Rue Deux 14999 Beta", "14002", 201, 7, 2310, 150)])
+        out = A.traiter([bien], A.Recherche(src), "2026-10-29")
+        print("\n", out)
+        self.assertEqual(len(out["ops"]), 1)
+        self.assertEqual(out["communes_differentes"], [{"id": "x", "commune": "Alpha", "trouvee": "1 Rue Deux 14999 Beta"}])
 
     def test_service_en_panne_escalade_sans_planter(self):
         bien = {"id": "x", "commune": "Alpha", "indices": {"kwh": "200"}}

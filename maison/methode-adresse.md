@@ -124,6 +124,9 @@ Pièges vus :
 - Garde le lien de la vue filtrée (filteredViewUrl) comme preuve.
 - Date du DPE connue mais rien dans le code postal : refais la recherche sur tout le Calvados (`code_departement_ban_eq=14`, date ±3 jours, consommation ±10). Les agences de la Suisse normande ou de Bayeux mettent souvent le nom de la ville du bureau.
 - Quelques DPE de 2023 annoncés sur Bien'ici sont absents de la base, même sans filtre de département : dans ce cas, conclure « non trouvée » plutôt que forcer un candidat.
+- Depuis 2026, la base compte l'électricité avec un coefficient de 1,9 au lieu de 2,3, et elle a recalculé les DPE plus anciens. L'annonce garde l'ancienne consommation, plus haute (189 annoncés, 165,2 dans la base). Pour retrouver l'ancienne valeur : ajoute à `conso_5_usages_par_m2_ep` 0,4 fois l'énergie finale électrique (`conso_5_usages_ef_energie_nX` des énergies « Électricité », plus `conso_auxiliaires_ef`), divisée par la surface. Les émissions de CO2 et la dépense ne changent pas.
+- Une maison construite après 2021 a son DPE dans la base des logements neufs : `https://data.ademe.fr/data-fair/api/v1/datasets/dpe02neuf/lines`, avec les mêmes champs.
+- Certains DPE n'ont pas d'adresse normalisée (`adresse_ban` et `code_insee_ban` vides) : les filtres sur `code_insee_ban` ne les trouvent pas. Cherche-les avec `code_postal_brut_eq`, puis géocode `adresse_brut` avec la Base Adresse Nationale. Le nom de rue saisi peut être faux (« 13 août 1944 » pour la rue du 13 Juin 1944) : confirme avec la parcelle.
 - Résultats du 19 octobre 2026 sur 86 maisons : la recherche « date du DPE » (Bien'ici) a donné une adresse forte presque à chaque fois ; consommation et émissions identiques (Ouest-France) suffisent souvent quand un seul DPE de la commune a la bonne surface.
 
 ## Étape 3 : cadastre

@@ -73,6 +73,9 @@ document.querySelectorAll('a[href*="/immobilier-"][href*="vente-maison"]').forEa
 - Le site de Safti donne le DPE chiffré, la fourchette de dépense et l'état de la vente. La liste d'une commune est https://www.safti.fr/annonces/achat/maison/<commune>-<code postal> (ex. `mouen-14790`) ; elle inclut les communes voisines. Repère la fiche par la surface, le terrain et le prix.
 - Une annonce Safti absente de cette liste alors qu'elle est encore sur un agrégateur est peut-être vendue : signale-le dans verifier.
 
+### Laforêt
+- La fiche Laforêt n'écrit pas le DPE dans son texte : il est dans l'image SVG `/ajax/properties/<numéro de l'annonce>/dpe`. Les libellés de cette image peuvent être inversés (vu le 29/10/2026 : 44 marqué « consommation » et 192 marqué « énergie finale », pour un DPE de 192 kWh et 44 kg CO2). La consommation en kWh/m²/an est toujours le plus grand des deux nombres.
+
 ## Vérifier qu'une annonce est toujours en vente
 
 Sur Ouest-France Immo, ne cherche pas le mot « vendu » dans la page : il apparaît dans les avis clients de l'agence. Une annonce retirée affiche en haut de page « Ce bien n'est plus disponible sur ouestfrance-immo.com ». Regarde seulement les 600 premiers caractères du texte, et le prix de la ligne « Prix : ».
