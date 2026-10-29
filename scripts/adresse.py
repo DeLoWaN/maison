@@ -19,7 +19,9 @@ Usage:
 
 Reading and writing the site needs the script token in ~/.config/maison/token (see auth-lib.php).
 
-Output (stdout, JSON): {"ops": [maj operations for patch.php], "a_escalader": [{id, raison}], "refus"?: [...]}.
+Output (stdout, JSON): {"ops": [maj operations for patch.php], "a_escalader": [{id, raison}],
+"communes_differentes": [{id, commune, trouvee}], "refus"?: [...]}.
+communes_differentes lists the houses whose address lies in another commune than the announced one.
 Houses in a_escalader need step 1 bis of the method (listing on the agency site), done by a model.
 Exit status 1 when patch.php refuses an operation.
 """
@@ -38,9 +40,12 @@ import urllib.parse
 import urllib.request
 from datetime import date, timedelta
 
-ADEME = "https://data.ademe.fr/data-fair/api/v1/datasets/dpe03existant/lines"
-ADEME_VUE = "https://data.ademe.fr/datasets/dpe03existant/full?adresse_ban_eq="
+ADEME = "https://data.ademe.fr/data-fair/api/v1/datasets/{base}/lines"
+ADEME_VUE = "https://data.ademe.fr/datasets/{base}/full?adresse_ban_eq="
+# A house built after 2021 has its DPE in the base of new dwellings, not in the base of existing ones.
+BASES_DPE = ("dpe03existant", "dpe02neuf")
 GEO = "https://geo.api.gouv.fr"
+BAN = "https://api-adresse.data.gouv.fr/search/"
 CADASTRE = "https://cadastre.data.gouv.fr/bundler/cadastre-etalab/communes/{insee}/geojson/parcelles"
 CACHE = pathlib.Path(tempfile.gettempdir()) / "maison-cadastre"
 SITE = "https://damien-gustave.fr/maison/"
@@ -52,9 +57,13 @@ DEPARTEMENT = "14"
 ZONE_DEPARTEMENT = "le département"
 ZONE_CODE_POSTAL = "le code postal"
 ZONE_PARCELLE = "la parcelle exacte"
-AUTRES_COMMUNES = (ZONE_CODE_POSTAL, ZONE_DEPARTEMENT)
+ZONE_SANS_BAN = "les DPE sans adresse normalisée du code postal"
+AUTRES_COMMUNES = (ZONE_SANS_BAN, ZONE_CODE_POSTAL, ZONE_DEPARTEMENT)
 CHAMPS_DPE = ",".join((
     "numero_dpe", "adresse_ban", "code_insee_ban", "code_postal_ban", "surface_habitable_logement",
+    "adresse_brut", "code_postal_brut", "nom_commune_brut", "conso_auxiliaires_ef",
+    "conso_5_usages_ef_energie_n1", "conso_5_usages_ef_energie_n2", "conso_5_usages_ef_energie_n3",
+    "type_energie_n1", "type_energie_n2", "type_energie_n3",
     "conso_5_usages_par_m2_ep", "emission_ges_5_usages_par_m2", "etiquette_dpe", "etiquette_ges",
     "cout_total_5_usages", "date_etablissement_dpe", "periode_construction", "nombre_niveau_logement", "_geopoint",
 ))
@@ -65,6 +74,12 @@ ECART_KWH = 3
 ECART_CO2 = 2
 ECART_DEPENSE = 0.02
 ECART_SURFACE = 0.08
+# Since 2026, the DPE base counts electricity with a factor of 1.9 instead of 2.3 and recalculates older DPE.
+# A listing keeps the old primary energy: up to 2.3 / 1.9 times the base value for an all-electric house.
+COEF_ELEC_AVANT_2026 = 2.3
+COEF_ELEC_2026 = 1.9
+RATIO_RECALCUL_2026 = COEF_ELEC_2026 / COEF_ELEC_AVANT_2026
+DEBUT_RECALCUL_2026 = date(2026, 1, 1)
 # Beyond this gap, the listing consumption contradicts the DPE (252 announced for 242.7 is still a match).
 ECART_KWH_CONTRADICTION = 0.20
 ECART_SURFACE_CONTRADICTION = 0.30
@@ -174,9 +189,20 @@ class Sources:
             raise ErreurSource(f"{url}: invalid JSON") from e
 
     def dpe(self, filtres):
-        """Returns up to 500 DPE of houses that match the Data Fair filters."""
+        """Returns up to 500 DPE of houses per base that match the Data Fair filters, each tagged with its base."""
         params = {"size": 500, "select": CHAMPS_DPE, "type_batiment_eq": "maison", **filtres}
-        return self._json(ADEME, params).get("results", [])
+        out = []
+        for base in BASES_DPE:
+            out += [{**d, "_base": base} for d in self._json(ADEME.format(base=base), params).get("results", [])]
+        return out
+
+    def geocoder(self, adresse, code_postal):
+        """Returns the best Base Adresse Nationale answer {label, citycode, score, lon, lat}, or None."""
+        res = self._json(BAN, {"q": adresse, "postcode": code_postal, "limit": 1}).get("features", [])
+        if not res:
+            return None
+        p, (lon, lat) = res[0]["properties"], res[0]["geometry"]["coordinates"]
+        return {"label": p["label"], "citycode": p["citycode"], "score": p["score"], "lon": lon, "lat": lat}
 
     def commune(self, nom):
         """Returns {code, codesPostaux} of a commune of the department, or of the new commune of a former one."""
@@ -255,6 +281,8 @@ class Recherche:
             return [(ZONE_DEPARTEMENT, {"code_departement_ban_eq": DEPARTEMENT})]
         codes = sorted({x for cp in c.get("codesPostaux", []) for x in self.s.communes_du_code_postal(cp)} - {c["code"]})
         zones = [(c["nom"], {"code_insee_ban_eq": c["code"]})]
+        if c.get("codesPostaux"):
+            zones.append((ZONE_SANS_BAN, {"code_postal_brut_in": ",".join(c["codesPostaux"])}))
         if codes:
             zones.append((ZONE_CODE_POSTAL, {"code_insee_ban_in": ",".join(codes)}))
         zones.append((ZONE_DEPARTEMENT, {"code_departement_ban_eq": DEPARTEMENT}))
@@ -272,7 +300,8 @@ class Recherche:
                 f.update(conso_5_usages_par_m2_ep_gte=ind["kwh"] - 10, conso_5_usages_par_m2_ep_lte=ind["kwh"] + 10)
             q.append(f)
         if "kwh" in ind:
-            f = {"conso_5_usages_par_m2_ep_gte": ind["kwh"] - ECART_KWH, "conso_5_usages_par_m2_ep_lte": ind["kwh"] + ECART_KWH}
+            f = {"conso_5_usages_par_m2_ep_gte": round(ind["kwh"] * RATIO_RECALCUL_2026 - ECART_KWH, 1),
+                 "conso_5_usages_par_m2_ep_lte": ind["kwh"] + ECART_KWH}
             if large and "co2" in ind:
                 f.update(emission_ges_5_usages_par_m2_gte=ind["co2"] - ECART_CO2, emission_ges_5_usages_par_m2_lte=ind["co2"] + ECART_CO2)
             q.append(f)
@@ -306,6 +335,8 @@ class Recherche:
             for f in self.requetes(ind, large):
                 for d in self.s.dpe({**zone, **f}):
                     vus.setdefault(d["numero_dpe"], d)
+            if nom == ZONE_SANS_BAN:
+                vus = {k: g for k, d in vus.items() if not d.get("adresse_ban") and (g := self.geocoder_dpe(d))}
             notes = [n for n in (noter(d, ind, nom) for d in dedoublonner(vus.values())) if n["indices"]]
             # In the whole department, values or the date alone matched houses 30 and 60 km away.
             # Keep only a DPE with both, and drop any contradiction: it means another house.
@@ -316,6 +347,14 @@ class Recherche:
                 return notes
             toutes += [n for n in notes if n["dpe"]["numero_dpe"] not in {t["dpe"]["numero_dpe"] for t in toutes}]
         return toutes
+
+    def geocoder_dpe(self, d):
+        """Adds the Base Adresse Nationale fields to a DPE that has only its raw address. None if not found."""
+        g = self.s.geocoder(d.get("adresse_brut") or "", str(d.get("code_postal_brut") or ""))
+        if not g:
+            return None
+        return {**d, "adresse_ban": g["label"], "code_insee_ban": g["citycode"], "_geopoint": f"{g['lat']},{g['lon']}",
+                "_geocode": f"adresse du DPE « {d.get('adresse_brut')} » géocodée par le script (score {g['score']:.2f})"}
 
     def confirmer_terrain(self, cand, ind):
         """Step 3, point 2: a parcel at the DPE address whose area equals the exact land area, or None."""
@@ -396,7 +435,7 @@ def dedoublonner(dpes):
 
 def noter(d, ind, zone):
     """Lists the independent clues that a DPE matches, and the contradictions. `zone` names the scope."""
-    indices, contradictions = [], []
+    indices, contradictions, recalcul = [], [], False
     s = d.get("surface_habitable_logement")
     # A DPE can count an outbuilding (183.6 m² for 110 m² announced): a large gap only prevents "forte".
     if s and "surface" in ind and abs(s - ind["surface"]) > ind["surface"] * ECART_SURFACE_CONTRADICTION:
@@ -412,7 +451,11 @@ def noter(d, ind, zone):
         co2_ok = "co2" not in ind or (co2 is not None and abs(co2 - ind["co2"]) <= ECART_CO2)
         if abs(conso - ind["kwh"]) <= ECART_KWH and co2_ok:
             indices.append(("valeurs", f"{conso:g} kWh" + (f", {co2:g} kg CO2" if co2 is not None else "")))
-        elif abs(conso - ind["kwh"]) > ind["kwh"] * ECART_KWH_CONTRADICTION:
+        elif (ancien := kwh_avant_2026(d)) is not None and abs(ancien - ind["kwh"]) <= ECART_KWH and co2_ok:
+            indices.append(("valeurs", f"{conso:g} kWh, soit {ancien:.1f} avant le recalcul de 2026" + (f", {co2:g} kg CO2" if co2 is not None else "")))
+            recalcul = True
+        elif abs(conso - ind["kwh"]) > ind["kwh"] * ECART_KWH_CONTRADICTION and \
+                (ancien is None or abs(ancien - ind["kwh"]) > ind["kwh"] * ECART_KWH_CONTRADICTION):
             contradictions.append(f"{conso:g} kWh au DPE contre {ind['kwh']:g} dans l'annonce")
     elif "co2" in ind and co2 is not None and abs(co2 - ind["co2"]) > ECART_CO2 * 2:
         contradictions.append(f"{co2:g} kg CO2 au DPE contre {ind['co2']:g} dans l'annonce")
@@ -423,22 +466,46 @@ def noter(d, ind, zone):
     for cle, champ in (("dpe", "etiquette_dpe"), ("ges", "etiquette_ges")):
         if cle in ind and d.get(champ) and d[champ] != ind[cle]:
             contradictions.append(f"étiquette {d[champ]} au DPE contre {ind[cle]} dans l'annonce")
-    if not indices and {"dpe", "ges", "surface"} <= ind.keys() and not contradictions:
+    # Letters are a clue only when the listing gives no figure: otherwise they tie with a DPE whose figures match.
+    if not indices and {"dpe", "ges", "surface"} <= ind.keys() and not contradictions and not {"kwh", "depense"} & ind.keys():
         if s and abs(s - ind["surface"]) <= ind["surface"] * ECART_SURFACE:
             indices.append(("lettres", f"{d['etiquette_dpe']}/{d['etiquette_ges']}, {s:g} m²"))
-    return {"dpe": d, "indices": indices, "contradictions": contradictions, "zone": zone}
+    return {"dpe": d, "indices": indices, "contradictions": contradictions, "zone": zone, "recalcul": recalcul}
+
+
+def kwh_avant_2026(d):
+    """Returns the kWh/m²/year of a DPE made before 2026 with the old electricity factor, or None.
+
+    Electricity is the final energy of each energy marked "Électricité", plus the auxiliaries.
+    Returns None for a DPE of 2026 or later, or without the electricity or surface fields.
+    """
+    jour = date_fr(d.get("date_etablissement_dpe"))
+    surface, conso = d.get("surface_habitable_logement"), d.get("conso_5_usages_par_m2_ep")
+    if jour is None or jour >= DEBUT_RECALCUL_2026 or not surface or conso is None:
+        return None
+    elec = [d.get(f"conso_5_usages_ef_energie_n{i}") for i in (1, 2, 3)
+            if str(d.get(f"type_energie_n{i}") or "").lower().startswith("électricité")]
+    if not elec or any(x is None for x in elec):
+        return None
+    ef_elec = sum(elec) + (d.get("conso_auxiliaires_ef") or 0)
+    return conso + ef_elec * (COEF_ELEC_AVANT_2026 - COEF_ELEC_2026) / surface
 
 
 def conclure(notes, ind):
     """Step 5. Strong: two independent clues, no contradiction, and no other DPE as good. Probable: one solid clue."""
     if not notes:
         return None, "aucun DPE concordant (commune, code postal, département)" + ("" if ind.get("terrain_exact") else ", terrain arrondi")
-    notes.sort(key=lambda n: (bool(n["contradictions"]), -poids(n)))
+    # At equal clues, a DPE that matches the listing kWh directly beats one that matches only after the
+    # 2026 recalculation, and a DPE with a normalised address beats one geocoded by the script.
+    def rang(n):
+        return n.get("recalcul", False), n["zone"] == ZONE_SANS_BAN
+    notes.sort(key=lambda n: (bool(n["contradictions"]), -poids(n), rang(n)))
     meilleur = notes[0]
     p = poids(meilleur)
-    egaux = [n for n in notes[1:] if poids(n) == p and not n["contradictions"]]
+    egaux = [n for n in notes[1:] if poids(n) == p and not n["contradictions"] and rang(n) == rang(meilleur)]
     # Letters and surface alone match many houses: they are never enough.
-    if solide(meilleur) and not egaux:
+    # A raw DPE address geocoded by the script can name the wrong street: it is never more than probable.
+    if solide(meilleur) and not egaux and "_geocode" not in meilleur["dpe"]:
         confiance = "forte"
     # One clue against a contradiction, or two contradictions, point to another dwelling:
     # tests found a DPE of the same day with three gaps, and a 53 m² flat for a 117 m² house.
@@ -454,21 +521,26 @@ def conclure(notes, ind):
         return None, f"un seul indice, pour un DPE ({meilleur['dpe']['numero_dpe']}) dans une autre commune que celle de l'annonce"
     d = meilleur["dpe"]
     morceaux = [t for _, t in meilleur["indices"]]
-    morceaux.append(f"DPE {d['numero_dpe']}, {d.get('surface_habitable_logement', '?')} m², {d.get('etiquette_dpe', '?')}/{d.get('etiquette_ges', '?')}, trouvé dans {meilleur['zone']}")
+    base = d.get("_base", BASES_DPE[0])
+    morceaux.append(f"DPE {d['numero_dpe']}, {d.get('surface_habitable_logement', '?')} m², {d.get('etiquette_dpe', '?')}/{d.get('etiquette_ges', '?')}, trouvé dans {meilleur['zone']}"
+                    + (" (base des logements neufs)" if base != BASES_DPE[0] else ""))
+    if "_geocode" in d:
+        morceaux.append(d["_geocode"])
     if meilleur["contradictions"]:
         morceaux.append("écarts : " + " ; ".join(meilleur["contradictions"]))
     lon, lat = point_dpe(d)
     return confiance, {
         "texte": d["adresse_ban"], "lat": lat, "lon": lon, "confiance": confiance,
         "preuves": " ; ".join(morceaux) + " (recherche automatique, scripts/adresse.py)",
-        "lien": ADEME_VUE + urllib.parse.quote(d["adresse_ban"]),
+        "lien": ADEME_VUE.format(base=base) + urllib.parse.quote(d["adresse_ban"]),
+        "_insee": d.get("code_insee_ban"),
     }
 
 
 # ---------------------------------------------------------------- command line
 
 def traiter(biens, recherche, aujourdhui):
-    ops, escalade = [], []
+    ops, escalade, ailleurs = [], [], []
     for b in biens:
         essais = int((b.get("adresse") or {}).get("essais") or 0) + 1
         try:
@@ -477,11 +549,15 @@ def traiter(biens, recherche, aujourdhui):
             escalade.append({"id": b["id"], "raison": f"service indisponible : {e}"})
             continue
         if confiance:
+            insee = res.pop("_insee")
             res.update(le=aujourdhui, essais=essais)
             ops.append({"op": "maj", "id": b["id"], "champs": {"adresse": res}})
+            annoncee = recherche.s.commune(b["commune"]) if b.get("commune") else None
+            if annoncee and insee and insee != annoncee["code"]:
+                ailleurs.append({"id": b["id"], "commune": b["commune"], "trouvee": res["texte"]})
         else:
             escalade.append({"id": b["id"], "raison": res})
-    return {"ops": ops, "a_escalader": escalade}
+    return {"ops": ops, "a_escalader": escalade, "communes_differentes": ailleurs}
 
 
 class Site:

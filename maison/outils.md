@@ -239,7 +239,8 @@ Sans jeton (401), saute ce script : les fiches lues pendant le passage remplisse
    git -C ~/git_perso/maison fetch -q origin && git -C ~/git_perso/maison show origin/main:scripts/adresse.py | python3 -I - --envoyer
    ```
    Le script lit la liste `adresse` de `suivi.php`, interroge la base DPE, le cadastre et l'API geo (2 à 5 secondes par bien), puis envoie les `maj` du champ `adresse` à `patch.php`. Il s'authentifie avec le jeton de `~/.config/maison/token`.
-2. Il affiche `{"ops": [...], "a_escalader": [{id, raison}], "refus": [...]}`. `ops` contient les adresses trouvées, déjà enregistrées, à reprendre dans le message de fin. `refus` doit être vide.
+2. Il affiche `{"ops": [...], "a_escalader": [{id, raison}], "communes_differentes": [{id, commune, trouvee}], "refus": [...]}`. `ops` contient les adresses trouvées, déjà enregistrées, à reprendre dans le message de fin. `refus` doit être vide.
+   `communes_differentes` liste les biens dont l'adresse trouvée est dans une autre commune que celle de l'annonce. Si cette commune n'est pas dans la zone, signale le bien dans la section « À vérifier » du message de fin.
    Chaque adresse enregistrée porte `lat` et `lon` : le site ouvre Google Maps sur ces coordonnées. Pour une adresse que tu as écrite à la main, ajoute-les avec `python3 -I scripts/coordonnees.py --envoyer` (il complète toutes les adresses sans point).
 3. Traite chaque bien de `a_escalader` avec methode-adresse.md. La `raison` dit ce qui manque, par exemple « pas de DPE chiffré ni de terrain exact dans les indices ». Si tu trouves des chiffres sur une autre fiche, enregistre-les dans `indices` et relance la même commande avec `--ids <id> --envoyer`.
 
