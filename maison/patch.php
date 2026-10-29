@@ -168,7 +168,11 @@ $res = donnees_modifier($r, function (&$d) use ($ops, &$resultats, &$nouveaux, &
                 if (!empty($o['verifie'])) $b['verifie_le'] = $auj;
                 $touche = array_intersect(array_keys($ch), array('commune', 'verdict', 'crit', 'prix', 'etat'));
                 if ($touche && isset($b['etat']) && $b['etat'] === 'active' && ($x = donnees_regles_bien($b, $plafond, $communes, $regles)) !== true) $err = $x;
-                else $d['biens'][$i] = $b;
+                else {
+                    $d['biens'][$i] = $b;
+                    // Un ajout ou un vu du même envoi peut reprendre un lien retiré ici.
+                    if (isset($ch['liens'])) $ix = donnees_index($d);
+                }
             }
         } elseif ($op === 'lien') {
             $id = isset($o['id']) ? (string) $o['id'] : '';
