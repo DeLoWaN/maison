@@ -3,8 +3,7 @@
 // GET suivi.php[?r=<recherche>][&jours=3]
 //   a_verifier : biens actifs à rouvrir. Un bien vu dans une liste de résultats aujourd'hui ou récemment
 //                (nouveautes.php) ou vérifié il y a moins de `jours` jours n'a pas besoin d'être rouvert.
-//   adresse    : tous les biens actifs top ou presque à traiter à l'étape 6 bis, dans l'ordre de la consigne.
-//                Les biens « hors » ne sont pas proposés : chercher leur adresse ne sert pas aux parents.
+//   adresse    : tous les biens actifs à traiter à l'étape 6 bis, dans l'ordre de la consigne (top, puis presque, puis hors).
 //   sans_photo : biens actifs sans photo_url
 require_once __DIR__ . '/auth-lib.php';
 auth_exiger();
@@ -31,7 +30,6 @@ foreach ($d['biens'] as $b) {
     $dernier = $v > $l ? $v : $l;
     if ($dernier === '' || $dernier < $limite) { $x = $court($b); $x['dernier'] = $dernier ?: null; $out['a_verifier'][] = $x; }
     if (empty($b['photo_url'])) $out['sans_photo'][] = $court($b);
-    if (isset($b['verdict']) && $b['verdict'] === 'hors') continue;
     $a = isset($b['adresse']) && is_array($b['adresse']) ? $b['adresse'] : null;
     $agence = false; if (isset($b['liens']) && is_array($b['liens'])) foreach ($b['liens'] as $li) if (isset($li['site']) && preg_match('/\(agence\)\s*$/', $li['site'])) $agence = true;
     if (isset($b['repere_le']) && $b['repere_le'] === $auj && !$a) { $adr[0][] = $court($b); }
