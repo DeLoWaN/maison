@@ -58,11 +58,13 @@ document.querySelectorAll('a[href*="/immobilier-"][href*="vente-maison"]').forEa
   let c = a; for (let i = 0; i < 8 && c.parentElement && !/€/.test(c.innerText); i++) c = c.parentElement;
   const t = c.innerText.replace(/\s+/g, ' ');
   const p = +((t.match(/([\d ]{5,}) €/) || [])[1] || '0').replace(/\D/g, '');
-  if (p > 385000 || /neuve? à construire|VEFA/i.test(t)) return;
+  if (p > 385000 || /neuve? à construire|VEFA/i.test(t)) { out.push(a.href + ' | ' + p + ' | HORS'); return; }
   out.push(a.href + ' | ' + p + ' | ' + (/plain|RDC|rez-de-chauss/i.test(t) ? 'PP ' : '') + t.slice(0, 110));
 });
 ({ titre: document.title, annonces: vu.size, out })
 ```
+
+- Envoie à nouveautes.php toutes les lignes de `out`, celles marquées `HORS` comprises (plus de 385 000 €, ou neuf). Pour une nouvelle marquée `HORS`, envoie une opération vu sans ouvrir la fiche. Sans cela, ces annonces restent « nouvelles » à chaque passage et la lecture d'une commune ne s'arrête jamais avant la dernière page.
 
 - Sur une fiche, `document.body.innerText` à partir de « Surface » donne la surface, le terrain exact et la description. Etreproprio n'affiche que les lettres du DPE.
 - Les prix d'Etreproprio sont parfois périmés (329 000 € affichés pour 299 000 € chez l'agence, 326 500 € pour 305 500 €). Pour un bien nouveau trouvé sur Etreproprio, vérifie toujours le prix sur le site de l'agence (« Proposé par … ») et retiens celui-là. Signale l'écart dans verifier.
