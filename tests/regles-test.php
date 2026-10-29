@@ -117,6 +117,13 @@ verifier('clé : paramètres de suivi seloger ignorés', 'seloger.com/annonces/a
 verifier('clé : leboncoin par numéro d\'annonce', donnees_cle_url('https://www.leboncoin.fr/vi/2876543210.htm'),
     donnees_cle_url('https://www.leboncoin.fr/ad/ventes_immobilieres/2876543210?utm=x'));
 
+// Index des adresses d'annonce après une maj de liens.
+$dIx = array('biens' => array(array('id' => 'a', 'liens' => array(array('url' => 'https://www.safti.fr/1'), array('url' => 'https://www.seloger.com/2')))), 'vus' => array());
+$dIx['biens'][0]['liens'] = array(array('url' => 'https://www.seloger.com/2'));
+$ixApres = donnees_index($dIx);
+verifier('index : un lien retiré d\'un bien n\'y est plus', array(false, true),
+    array(isset($ixApres[donnees_cle_url('https://www.safti.fr/1')]), isset($ixApres[donnees_cle_url('https://www.seloger.com/2')])));
+
 // Écriture de la liste : une seule photo par bien, le champ photos n'est pas enregistré.
 $fichierEssai = tempnam(sys_get_temp_dir(), 'regles');
 $ecrit = donnees_ecrire_json($fichierEssai, array('biens' => array(
