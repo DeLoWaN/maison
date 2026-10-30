@@ -212,7 +212,7 @@ Garde les valeurs du DPE dans le champ `indices` du bien, telles que le script l
 `await (await fetch('suivi.php?x=' + Date.now())).json()`
 
 À appeler APRÈS avoir parcouru les listes de résultats (étape 4 de la tâche), car les annonces vues dans les listes du jour comptent comme vérifiées.
-- `a_verifier` : biens actifs qui n'ont été ni vus dans une liste ni vérifiés depuis 3 jours. Ouvre au moins un lien de chacun : s'il est toujours en ligne, opération `maj` avec `"verifie": true` (et le prix s'il a changé) ; si la fiche a disparu sur tous les liens, `maj` avec `"etat": "retiree"`.
+- `a_verifier` : biens actifs qui n'ont été ni vus dans une liste ni vérifiés depuis 3 jours. Ouvre au moins un lien de chacun : s'il est toujours en ligne, opération `maj` avec `"verifie": true` (et le prix s'il a changé) ; si la fiche a disparu sur tous les liens, `maj` avec `"etat": "retiree"`. Si une agence ou un site marque la maison « Vendu » (ou « Vendue »), `maj` avec `"etat": "retiree", "vendue": true`.
 - `sans_photo` : biens sans photo_url. Prends le champ `photo` du script de fiche.
 - `adresse` : biens à traiter à l'étape 6 bis, déjà dans l'ordre de la consigne (tous, sans limite de nombre). Lance d'abord les deux scripts ci-dessous, dans l'ordre : le premier complète les indices depuis Bien'ici, le second traite seul les biens dont le champ `indices` suffit. Pour les biens qu'il renvoie dans `a_escalader`, suis methode-adresse.md. Quand un de ces biens porte `a_faire`, commence par ce qui y est écrit : cherche l'annonce d'origine (site de l'agence, ou immobilier.notaires.fr pour un notaire) avant toute autre recherche. Si tu ne la trouves pas, ajoute « annonce d'origine introuvable » à adresse.preuves.
 
@@ -267,8 +267,8 @@ Opérations possibles :
   - Les annonces de ses liens sont retirées des écartées.
   - Ajoute `"adresse":{…}` si elle est déjà trouvée.
 - **Bien suivi modifié** : `{"op":"maj", "id":"tilly-310", "champs":{"prix":299000}, "verifie":true}`
-  - Champs modifiables : titre, commune, lieu, prix, verdict, crit, verifier, photo_url, surface, adresse, etat, retiree_le, liens.
-  - Un prix différent est ajouté à l'historique automatiquement. `"etat":"retiree"` date le retrait au jour même.
+  - Champs modifiables : titre, commune, lieu, prix, verdict, crit, verifier, photo_url, surface, adresse, etat, retiree_le, liens, vendue.
+  - Un prix différent est ajouté à l'historique automatiquement. `"etat":"retiree"` date le retrait au jour même. `"vendue": true` (seulement avec `"etat":"retiree"`) affiche « Vendue le … » au lieu de « Retirée le … ».
   - `"verifie": true` met verifie_le à aujourd'hui.
 - **Lien ajouté ou corrigé** : `{"op":"lien", "id":"tilly-310", "site":"Safti (agence)", "url":"https://…", "ok":true}`
 - **Doublon** (la même maison suivie deux fois) : `{"op":"fusionner", "id":"<bien gardé>", "avec":"<doublon>"}`. Le bien gardé reçoit les liens, l'historique des prix, la photo et l'adresse la plus sûre ; le numéro du doublon mène ensuite au bien gardé.

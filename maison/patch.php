@@ -7,7 +7,8 @@
 //   indices : valeurs brutes du script de fiche (outils.md, section 3) que lit scripts/adresse.py :
 //             {kwh, co2, depense, date_dpe, terrain, terrain_exact?, dpe?, ges?}
 //   {"op":"maj", "id":..., "champs":{...}, "verifie":true}   (prix modifié : ajouté à prix_hist ; etat "retiree" : retiree_le = aujourd'hui ;
-//                                                                     etat "ecartee" avec ecartee_motif : ne remplit plus les critères)
+//                                                                     etat "ecartee" avec ecartee_motif : ne remplit plus les critères ;
+//                                                                     etat "retiree" avec vendue true : l'agence annonce la maison vendue)
 //   {"op":"lien", "id":..., "site":..., "url":..., "ok":true}
 //   {"op":"vu", "url":..., "motif":..., "prix":...}       {"op":"oublier_vu", "url":...}
 //   {"op":"fusionner", "id":<bien gardé>, "avec":<doublon>}   (liens, prix, photo et adresse réunis ; le numéro du doublon mène au bien gardé)
@@ -36,7 +37,7 @@ $VERDICTS = array('top', 'presque', 'hors');
 // ecartee : bien qui ne remplit plus les critères (motif dans ecartee_motif), gardé pour l'historique de la famille.
 $ETATS = array('active', 'retiree', 'ecartee');
 $STATUTS = array('ok', 'partiel', 'echec', 'nt');
-$CHAMPS = array('titre', 'commune', 'lieu', 'prix', 'verdict', 'crit', 'verifier', 'liens', 'photo_url', 'surface', 'adresse', 'etat', 'retiree_le', 'geo', 'note', 'verifie_le', 'ecartee_motif', 'indices');
+$CHAMPS = array('titre', 'commune', 'lieu', 'prix', 'verdict', 'crit', 'verifier', 'liens', 'photo_url', 'surface', 'adresse', 'etat', 'retiree_le', 'geo', 'note', 'verifie_le', 'ecartee_motif', 'indices', 'vendue');
 $CRIT_ETATS = array('ok', 'warn', 'ko', 'unk');
 
 function p_date($s) { return is_string($s) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $s); }
@@ -142,6 +143,7 @@ $res = donnees_modifier($r, function (&$d) use ($ops, &$resultats, &$nouveaux, &
                     if (!in_array($k, $CHAMPS, true)) { $err = 'champ non modifiable : ' . $k; break; }
                     if ($k === 'verdict' && !in_array($v, $VERDICTS, true)) { $err = 'verdict : top|presque|hors'; break; }
                     if ($k === 'etat' && !in_array($v, $ETATS, true)) { $err = 'etat : active|retiree|ecartee'; break; }
+                    if ($k === 'vendue' && !is_bool($v)) { $err = 'vendue : true ou false'; break; }
                     if ($k === 'liens' && ($x = p_liens_ok($v)) !== true) { $err = $x; break; }
                     if ($k === 'crit' && ($x = p_crit_ok($v, $CRIT_ETATS)) !== true) { $err = $x; break; }
                     if ($k === 'adresse' && ($x = p_adresse_ok($v)) !== true) { $err = $x; break; }
@@ -164,10 +166,12 @@ $res = donnees_modifier($r, function (&$d) use ($ops, &$resultats, &$nouveaux, &
                     else $b[$k] = $v;
                 }
                 if (isset($ch['etat']) && $ch['etat'] === 'retiree' && empty($b['retiree_le'])) $b['retiree_le'] = $auj;
-                if (isset($ch['etat']) && $ch['etat'] === 'active') $b['retiree_le'] = null;
+                if (isset($ch['etat']) && $ch['etat'] === 'active') { $b['retiree_le'] = null; unset($b['vendue']); }
+                if (!empty($b['vendue']) && (!isset($b['etat']) || $b['etat'] !== 'retiree')) $err = 'vendue : seulement avec etat "retiree"';
                 if (!empty($o['verifie'])) $b['verifie_le'] = $auj;
                 $touche = array_intersect(array_keys($ch), array('commune', 'verdict', 'crit', 'prix', 'etat'));
-                if ($touche && isset($b['etat']) && $b['etat'] === 'active' && ($x = donnees_regles_bien($b, $plafond, $communes, $regles)) !== true) $err = $x;
+                if ($err) { /* vendue sans etat "retiree" : rien n'est gardé */ }
+                elseif ($touche && isset($b['etat']) && $b['etat'] === 'active' && ($x = donnees_regles_bien($b, $plafond, $communes, $regles)) !== true) $err = $x;
                 else {
                     $d['biens'][$i] = $b;
                     // Un ajout ou un vu du même envoi peut reprendre un lien retiré ici.

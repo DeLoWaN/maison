@@ -80,6 +80,12 @@ document.querySelectorAll('a[href*="/immobilier-"]').forEach(a => {
 
 Sur Ouest-France Immo, ne cherche pas le mot « vendu » dans la page : il apparaît dans les avis clients de l'agence. Une annonce retirée affiche en haut de page « Ce bien n'est plus disponible sur ouestfrance-immo.com ». Regarde seulement les 600 premiers caractères du texte, et le prix de la ligne « Prix : ».
 
+### Maison marquée « Vendu »
+
+Une agence ou un site qui marque une maison suivie « Vendu », « Vendue » ou « Ce bien n'est plus disponible » avec la mention vendu (par exemple UNI Immobilier : « ARCHIVÉ » ou « VENDU » dans la liste, « Vendu – … » sur la fiche) : opération `maj` avec `"etat": "retiree", "vendue": true`, même si l'annonce reste en ligne sur un autre site. Fais-le aussi pour un bien marqué « a_visiter », « visitee » ou « pas_interesses » par la famille.
+- « Sous compromis », « Sous offre » : la maison n'est pas vendue. Laisse-la active et signale-le dans verifier.
+- Cite la maison dans la section « Vendues » du message de fin (numéro, commune, site qui la donne vendue).
+
 ## Doublons à prix différents
 
 Une même maison peut être proposée à des prix différents selon l'agence ou le site. Traite-la comme un seul bien quand la commune, la surface (à 3 % près), le terrain (à 2 % près) et la description concordent : ajoute le lien au bien existant, garde son prix, et écris l'écart dans verifier (« Une autre agence la propose à … : quel est le bon prix ? »). Si un seul de ces points diffère, crée un bien séparé.
