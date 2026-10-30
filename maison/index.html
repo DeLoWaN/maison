@@ -473,7 +473,7 @@ const GROUPES = [
   { k: "presque", court: "À étudier", titre: "À étudier de plus près", texte: "Intéressantes, mais un ou deux points demandent des travaux ou une vérification.", ouvert: true },
   { k: "hors", court: "Un critère ne va pas", titre: "Un seul critère ne va pas", texte: "Tout le reste correspond. À regarder seulement si ce point peut se discuter.", ouvert: false },
   { k: "pas_interesses", court: "Pas intéressés", titre: "Pas intéressés", texte: "Les maisons que vous avez écartées. Elles ne remontent plus en haut de la page.", ouvert: false },
-  { k: "retiree", court: "Plus en vente", titre: "Plus en vente", texte: "Annonces retirées depuis qu'elles ont été repérées.", ouvert: false },
+  { k: "retiree", court: "Plus en vente", titre: "Plus en vente", texte: "Annonces retirées ou vendues depuis qu'elles ont été repérées.", ouvert: false },
   { k: "ecartee", court: "Écartées", titre: "Écartées", texte: "Maisons qui ne remplissent pas les critères (pas de chambre au rez-de-chaussée, hors de la zone…). La raison est indiquée sur chaque fiche. Gardées ici pour mémoire.", ouvert: false }
 ];
 const ST = { ok: "Lu en entier", partiel: "Lu en partie", echec: "Échec", nt: "Pas encore lu" };
@@ -634,7 +634,7 @@ function carte(b) {
   const badges = [
     estNouveau(b) ? `<span class="badge nouv">Nouvelle</span>` : "",
     baisse ? `<span class="badge baisse">Prix baissé de ${(premier - b.prix).toLocaleString("fr-FR")} €</span>` : "",
-    b.etat === "retiree" ? `<span class="badge retr">Retirée le ${jour(b.retiree_le)}</span>` : "",
+    b.etat === "retiree" ? `<span class="badge retr">${b.vendue ? "Vendue" : "Retirée"} le ${jour(b.retiree_le)}</span>` : "",
     b.etat === "ecartee" ? `<span class="badge retr">Écartée : ${esc(b.ecartee_motif || "ne remplit plus les critères")}</span>` : "",
     adresseConnue(b) ? `<span class="badge adr-${b.adresse.confiance}">${b.adresse.confiance === "forte" ? "Adresse retrouvée" : "Adresse probable"}</span>` : ""
   ].join("");
