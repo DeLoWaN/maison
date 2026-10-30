@@ -2,12 +2,14 @@
 
 Run: python3 -m unittest scripts/test_envoyer.py -v
 """
+import io
 import json
 import pathlib
 import sys
 import tempfile
 import unittest
 import unittest.mock
+import urllib.error
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import adresse as A  # noqa: E402
@@ -106,6 +108,37 @@ class EnvoyerRecherche(unittest.TestCase):
 
     def test_sans_recherche_le_site_choisit(self):
         self.assertEqual(self.lancer([]), [("secret", None)])
+
+
+class Reessai400(unittest.TestCase):
+    """Site._appel retries once a request that the site answered with HTTP 400."""
+
+    def reponses(self, *codes):
+        suite = list(codes)
+
+        def ouvrir(req, timeout):
+            code = suite.pop(0)
+            if code != 200:
+                raise urllib.error.HTTPError(req.full_url, code, "Bad Request", {}, io.BytesIO(b""))
+            return io.BytesIO(b'{"ok": true}')
+        return ouvrir
+
+    def appeler(self, *codes):
+        ouvrir = self.reponses(*codes)
+        with unittest.mock.patch.object(A.urllib.request, "urlopen", ouvrir), \
+                unittest.mock.patch.object(A, "ATTENTE_REESSAI", 0):
+            return A.Site("jeton", "maison")._appel("patch.php", {"ops": []})
+
+    def test_un_400_puis_succes(self):
+        self.assertEqual(self.appeler(400, 200), {"ok": True})
+
+    def test_deux_400_levent_erreur(self):
+        with self.assertRaises(A.ErreurSource):
+            self.appeler(400, 400)
+
+    def test_autre_code_sans_reessai(self):
+        with self.assertRaises(A.ErreurSource):
+            self.appeler(500, 200)
 
 
 if __name__ == "__main__":

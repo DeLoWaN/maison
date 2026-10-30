@@ -560,6 +560,10 @@ def traiter(biens, recherche, aujourdhui):
     return {"ops": ops, "a_escalader": escalade, "communes_differentes": ailleurs}
 
 
+# Seconds before the single retry of a request that the site answered with HTTP 400.
+ATTENTE_REESSAI = 5
+
+
 class Site:
     """Reads and writes the tracking site with the script token (header X-Maison-Jeton, see auth-lib.php)."""
 
@@ -572,11 +576,17 @@ class Site:
             page += ("&" if "?" in page else "?") + "r=" + urllib.parse.quote(self.recherche)
         req = urllib.request.Request(SITE + page, data=None if corps is None else json.dumps(corps).encode(),
                                      headers={"X-Maison-Jeton": self.jeton, "Content-Type": "application/json"})
-        try:
-            with urllib.request.urlopen(req, timeout=60) as r:
-                return json.loads(r.read())
-        except OSError as e:
-            raise ErreurSource(f"{SITE}{page}: {e}") from e
+        for essai in range(2):
+            try:
+                with urllib.request.urlopen(req, timeout=60) as r:
+                    return json.loads(r.read())
+            except urllib.error.HTTPError as e:
+                # The host sometimes answers 400 to a valid request; the same request passes a few seconds later.
+                if e.code != 400 or essai:
+                    raise ErreurSource(f"{SITE}{page}: {e}") from e
+                time.sleep(ATTENTE_REESSAI)
+            except OSError as e:
+                raise ErreurSource(f"{SITE}{page}: {e}") from e
 
     def biens_a_traiter(self):
         """Returns the houses of the `adresse` list of suivi.php, in its order."""
