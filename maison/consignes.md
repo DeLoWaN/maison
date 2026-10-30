@@ -53,8 +53,8 @@ window.__go = async (pg) => {
 ```js
 for (let k = 0; k < 10; k++) { const b = [...document.querySelectorAll('a,button')].find(e => /^\s*Voir plus/i.test(e.textContent) && e.offsetParent); if (!b) break; b.click(); await new Promise(r => setTimeout(r, 2000)); }
 const vu = new Set(), out = [];
-document.querySelectorAll('a[href*="/immobilier-"][href*="vente-maison"]').forEach(a => {
-  const m = a.href.match(/immobilier-(\d+)-/); if (!m || vu.has(m[1])) return; vu.add(m[1]);
+document.querySelectorAll('a[href*="/immobilier-"]').forEach(a => {
+  const m = a.href.match(/\/immobilier-(\d+)-/); if (!m || vu.has(m[1])) return; vu.add(m[1]);
   let c = a; for (let i = 0; i < 8 && c.parentElement && !/€/.test(c.innerText); i++) c = c.parentElement;
   const t = c.innerText.replace(/\s+/g, ' ');
   const p = +((t.match(/([\d ]{5,}) €/) || [])[1] || '0').replace(/\D/g, '');
