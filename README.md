@@ -3,7 +3,7 @@
 Page de suivi de la recherche de maison, déployée sur l'hébergement OVH (intégration Git).
 
 - maison/ : la page de suivi (sélecteur de recherche), api.php (statuts partagés, stockés dans ~/maison-data/<recherche>/), photo.php.
-- maison/recapitulatif.php : le Récapitulatif, courriel envoyé à la famille après chaque passage (Nouvelles maisons, Baisses de prix, maisons vendues ou retirées, jamais envoyées auparavant). Le site prépare le courriel ; sur l'ordre de la veille, il l'envoie lui-même (mail() d'OVH, expéditeur maison@damien-gustave.fr), aux seuls comptes de la famille. Ce qui a déjà été envoyé est gardé dans ~/maison-data/recapitulatif/. Tests : `php tests/recapitulatif-test.php`.
+- maison/recapitulatif.php : le Récapitulatif, courriel envoyé à la famille après chaque passage (Nouvelles maisons, Baisses de prix, maisons vendues ou retirées, jamais envoyées auparavant). Le site prépare le courriel ; sur l'ordre de la veille, il l'envoie lui-même, aux seuls comptes de la famille. L'envoi passe par SMTP (`maison/smtp-lib.php`), depuis la boîte MX Plan maison@damien-gustave.fr, qu'OVH signe avec DKIM. Son mot de passe est dans ~/maison-data/recapitulatif/smtp.json, jamais dans le dépôt. Ce qui a déjà été envoyé est gardé dans ~/maison-data/recapitulatif/. Tests : `php tests/recapitulatif-test.php` et `php tests/smtp-test.php`.
 - maison/recherches.json : liste des recherches.
 - maison/recherches/<id>/data.json et photos/ : mis à jour chaque matin de semaine par la veille automatique.
 - maison/recherches/<id>/regles.json : règles propres à la recherche que patch.php applique (critères refusés quand ils valent « ko », critères interdits).

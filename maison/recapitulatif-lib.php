@@ -253,8 +253,16 @@ function recap_objet($nb, $jour) {
     return 'Maisons : ' . recap_resume_nb($nb) . ' — ' . recap_jour($jour);
 }
 
-// Adresse d'expédition : le SPF de damien-gustave.fr autorise les serveurs d'OVH. Le domaine n'a pas de boîte, d'où Reply-To.
+// Boîte MX Plan d'OVH qui envoie le Récapitulatif ; OVH signe ses courriels avec DKIM. Personne ne lit cette boîte, d'où Reply-To.
 define('RECAP_EXPEDITEUR', 'maison@damien-gustave.fr');
+define('RECAP_SMTP', 'ssl://smtp.mail.ovh.net:465');
+
+/** Identifiants SMTP de RECAP_EXPEDITEUR, posés par Damien dans <home>/maison-data/recapitulatif/smtp.json : {utilisateur, mot_de_passe}. Lève RuntimeException si le fichier manque ou est incomplet. */
+function recap_smtp_identifiants() {
+    $x = json_decode((string) @file_get_contents(recap_dossier() . '/smtp.json'), true);
+    if (!is_array($x) || empty($x['utilisateur']) || empty($x['mot_de_passe'])) throw new RuntimeException('identifiants SMTP absents ou incomplets (maison-data/recapitulatif/smtp.json)');
+    return $x;
+}
 
 function recap_entete_utf8($s) { return '=?UTF-8?B?' . base64_encode($s) . '?='; }
 
@@ -268,8 +276,8 @@ function recap_texte($html, $urlPage) {
 }
 
 /**
- * Courriel du Récapitulatif pour mail() : {a, objet, entetes, corps}, en texte brut et en HTML, encodé en UTF-8.
- * $a : destinataires, tous dans « À » ; $repondreA : adresse des réponses.
+ * Courriel du Récapitulatif pour smtp_envoyer() : {destinataires, message}, en texte brut et en HTML, encodé en UTF-8.
+ * $a : destinataires, tous dans « À » ; $repondreA : adresse des réponses. message : en-têtes et corps, lignes en CRLF.
  * Lève InvalidArgumentException si un destinataire ou $repondreA n'est pas un compte de la famille ($autorise, auth_autorise par défaut).
  */
 function recap_courriel($objet, $html, $urlPage, $a, $repondreA, $autorise = 'auth_autorise') {
@@ -280,6 +288,8 @@ function recap_courriel($objet, $html, $urlPage, $a, $repondreA, $autorise = 'au
     $frontiere = 'recap-' . md5($objet . $html);
     // Gmail refuse un courriel sans Message-ID ; le serveur d'envoi d'OVH n'en ajoute pas toujours.
     $entetes = implode("\r\n", array(
+        'To: ' . implode(', ', $a),
+        'Subject: ' . recap_entete_utf8($objet),
         'Date: ' . date('r'),
         'Message-ID: <' . date('YmdHis') . '.' . bin2hex(openssl_random_pseudo_bytes(8)) . '@damien-gustave.fr>',
         'From: ' . recap_entete_utf8('Recherche de maison') . ' <' . RECAP_EXPEDITEUR . '>',
@@ -293,7 +303,7 @@ function recap_courriel($objet, $html, $urlPage, $a, $repondreA, $autorise = 'au
     $corps = $partie('text/plain', recap_texte($html, $urlPage))
         . $partie('text/html', '<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body style="margin:0">' . $html . '</body></html>')
         . '--' . $frontiere . "--\r\n";
-    return array('a' => implode(', ', $a), 'objet' => recap_entete_utf8($objet), 'entetes' => $entetes, 'corps' => $corps);
+    return array('destinataires' => array_values($a), 'message' => $entetes . "\r\n\r\n" . $corps);
 }
 
 // Recherches actives (non archivées) avec leurs données et les statuts posés par la famille.

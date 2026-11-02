@@ -4,7 +4,7 @@
 //                                      ou {"envoyer": true, "id", "objet", "html", "octets", "nb", "page"}
 //      Prépare le Récapitulatif des changements jamais envoyés et le garde sous son id ; ne marque rien.
 // POST recapitulatif.php {"id", "a": [adresses], "repondre_a"} -> {"ok": true, "envoye_a"}
-//      Envoie le courriel de ce Récapitulatif par le serveur, puis marque ses changements : ils ne seront plus jamais renvoyés.
+//      Envoie le courriel de ce Récapitulatif par SMTP, depuis la boîte RECAP_EXPEDITEUR, puis marque ses changements : ils ne seront plus jamais renvoyés.
 //      Seuls les comptes de la famille (auth_autorise) sont acceptés. Un id déjà envoyé n'est pas renvoyé : {"ok": true, "deja": true}.
 //      Échec de l'envoi : 502, rien n'est marqué.
 //      Avec "essai": true, envoie le courriel de n'importe quel id, objet précédé de « [Essai] », sans rien marquer.
@@ -12,6 +12,7 @@
 //      Sans connexion : renvoie vers la page de connexion du site, qui ramène ici.
 require_once __DIR__ . '/auth-lib.php';
 require_once __DIR__ . '/recapitulatif-lib.php';
+require_once __DIR__ . '/smtp-lib.php';
 $base = 'https://' . $_SERVER['HTTP_HOST'] . rtrim(dirname($_SERVER['SCRIPT_NAME']), '/') . '/';
 $id = isset($_GET['id']) ? (string) $_GET['id'] : '';
 
@@ -50,9 +51,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } catch (InvalidArgumentException $e) {
         http_response_code(400); echo json_encode(array('erreur' => $e->getMessage()), JSON_UNESCAPED_UNICODE); exit;
     }
-    // Sans -f : OVH garde son adresse de retour, et les refus vont à l'adresse « rapports d'erreur » de Scripts e-mail.
-    if (!mail($m['a'], $m['objet'], $m['corps'], $m['entetes'])) {
-        http_response_code(502); echo '{"erreur":"le serveur n\'a pas accepté le courriel (mail)"}'; exit;
+    try {
+        $smtp = recap_smtp_identifiants();
+        smtp_envoyer(smtp_ouvrir(RECAP_SMTP), $smtp['utilisateur'], $smtp['mot_de_passe'], RECAP_EXPEDITEUR, $m['destinataires'], $m['message']);
+    } catch (RuntimeException $e) {
+        http_response_code(502); echo json_encode(array('erreur' => 'courriel non envoyé : ' . $e->getMessage()), JSON_UNESCAPED_UNICODE); exit;
     }
     if ($essai) { echo json_encode(array('ok' => true, 'essai' => true, 'envoye_a' => $in['a']), JSON_UNESCAPED_UNICODE); exit; }
     $etat = recap_modifier_etat(function ($etat) use ($p) { return recap_marquer($etat, $p['calc']['marques']); });
