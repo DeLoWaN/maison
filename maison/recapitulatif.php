@@ -7,6 +7,7 @@
 //      Envoie le courriel de ce Récapitulatif par le serveur, puis marque ses changements : ils ne seront plus jamais renvoyés.
 //      Seuls les comptes de la famille (auth_autorise) sont acceptés. Un id déjà envoyé n'est pas renvoyé : {"ok": true, "deja": true}.
 //      Échec de l'envoi : 502, rien n'est marqué.
+//      Avec "essai": true, envoie le courriel de n'importe quel id, objet précédé de « [Essai] », sans rien marquer.
 // GET  recapitulatif.php?id=<id>    -> page HTML du Récapitulatif complet, sans limite de fiches.
 //      Sans connexion : renvoie vers la page de connexion du site, qui ramène ici.
 require_once __DIR__ . '/auth-lib.php';
@@ -40,10 +41,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $f = recap_fichier($id);
     $p = recap_id_valide($id) ? json_decode((string) @file_get_contents($f), true) : null;
     if (!is_array($p)) { http_response_code(404); echo '{"erreur":"récapitulatif inconnu"}'; exit; }
-    if (isset($p['envoye_le'])) { echo json_encode(array('ok' => true, 'deja' => true, 'envoye_le' => $p['envoye_le']), JSON_UNESCAPED_UNICODE); exit; }
+    $essai = !empty($in['essai']);
+    if (!$essai && isset($p['envoye_le'])) { echo json_encode(array('ok' => true, 'deja' => true, 'envoye_le' => $p['envoye_le']), JSON_UNESCAPED_UNICODE); exit; }
     $page = $base . 'recapitulatif.php?id=' . $id;
     try {
-        $m = recap_courriel($p['objet'], recap_html($p['calc'], $base, RECAP_FICHES_MAX, $page), $page,
+        $m = recap_courriel(($essai ? '[Essai] ' : '') . $p['objet'], recap_html($p['calc'], $base, RECAP_FICHES_MAX, $page), $page,
             isset($in['a']) ? $in['a'] : null, isset($in['repondre_a']) ? $in['repondre_a'] : null);
     } catch (InvalidArgumentException $e) {
         http_response_code(400); echo json_encode(array('erreur' => $e->getMessage()), JSON_UNESCAPED_UNICODE); exit;
@@ -51,6 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!mail($m['a'], $m['objet'], $m['corps'], $m['entetes'], '-f' . RECAP_EXPEDITEUR)) {
         http_response_code(502); echo '{"erreur":"le serveur n\'a pas accepté le courriel (mail)"}'; exit;
     }
+    if ($essai) { echo json_encode(array('ok' => true, 'essai' => true, 'envoye_a' => $in['a']), JSON_UNESCAPED_UNICODE); exit; }
     $etat = recap_modifier_etat(function ($etat) use ($p) { return recap_marquer($etat, $p['calc']['marques']); });
     $p['envoye_le'] = date('Y-m-d H:i'); $p['envoye_a'] = $in['a'];
     @file_put_contents($f, json_encode($p, JSON_UNESCAPED_UNICODE));

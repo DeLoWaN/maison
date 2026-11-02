@@ -278,7 +278,10 @@ function recap_courriel($objet, $html, $urlPage, $a, $repondreA, $autorise = 'au
         if (!is_string($x) || !filter_var($x, FILTER_VALIDATE_EMAIL) || !call_user_func($autorise, $x)) throw new InvalidArgumentException('adresse hors de la famille : ' . (is_string($x) ? $x : gettype($x)));
     }
     $frontiere = 'recap-' . md5($objet . $html);
+    // Gmail refuse un courriel sans Message-ID ; le serveur d'envoi d'OVH n'en ajoute pas toujours.
     $entetes = implode("\r\n", array(
+        'Date: ' . date('r'),
+        'Message-ID: <' . date('YmdHis') . '.' . bin2hex(openssl_random_pseudo_bytes(8)) . '@damien-gustave.fr>',
         'From: ' . recap_entete_utf8('Recherche de maison') . ' <' . RECAP_EXPEDITEUR . '>',
         'Reply-To: ' . $repondreA,
         'MIME-Version: 1.0',

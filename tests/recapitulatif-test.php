@@ -106,6 +106,7 @@ $famille = function ($x) { return in_array($x, array('a@exemple.fr', 'b@exemple.
 $m = recap_courriel('Maisons : 1 nouvelle — 02/11', $html, $base . 'recapitulatif.php?id=20261103-093000', array('a@exemple.fr', 'b@exemple.fr'), 'a@exemple.fr', $famille);
 verifier('tous les destinataires dans « À »', 'a@exemple.fr, b@exemple.fr', $m['a']);
 verifier('objet encodé en UTF-8', 'Maisons : 1 nouvelle — 02/11', mb_decode_mimeheader($m['objet']));
+verifier('en-têtes Date et Message-ID', 1, preg_match('/^Date: .+\r\nMessage-ID: <\d{14}\.[0-9a-f]{16}@damien-gustave\.fr>\r\n/', $m['entetes']));
 verifier('expéditeur et adresse de réponse', true, strpos($m['entetes'], '<maison@damien-gustave.fr>') !== false && strpos($m['entetes'], "Reply-To: a@exemple.fr") !== false);
 preg_match_all('#Content-Type: (text/\w+); charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n([A-Za-z0-9+/=\r\n]+)#', $m['corps'], $parties);
 verifier('deux parties : texte brut puis HTML', array('text/plain', 'text/html'), $parties[1]);
