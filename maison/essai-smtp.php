@@ -15,7 +15,8 @@ $page = $base . 'recapitulatif.php?id=20261102-124534';
 // P : accueil et réponse EHLO du serveur joint, sans authentification.
 if ($v === 'P') {
     $ctx = stream_context_create(array('ssl' => array('capture_peer_cert' => true)));
-    $flux = @stream_socket_client(RECAP_SMTP, $errno, $errstr, 30, STREAM_CLIENT_CONNECT, $ctx);
+    $hote = isset($in['hote']) && $in['hote'] === 'gmail' ? 'ssl://smtp.gmail.com:465' : RECAP_SMTP;
+    $flux = @stream_socket_client($hote, $errno, $errstr, 30, STREAM_CLIENT_CONNECT, $ctx);
     if (!$flux) { http_response_code(502); echo json_encode(array('erreur' => $errstr)); exit; }
     $accueil = smtp_lire($flux);
     fwrite($flux, "EHLO damien-gustave.fr\r\n");
