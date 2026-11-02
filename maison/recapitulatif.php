@@ -50,7 +50,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } catch (InvalidArgumentException $e) {
         http_response_code(400); echo json_encode(array('erreur' => $e->getMessage()), JSON_UNESCAPED_UNICODE); exit;
     }
-    if (!mail($m['a'], $m['objet'], $m['corps'], $m['entetes'], '-f' . RECAP_EXPEDITEUR)) {
+    // Sans -f : OVH garde son adresse de retour, et les refus vont à l'adresse « rapports d'erreur » de Scripts e-mail.
+    if (!mail($m['a'], $m['objet'], $m['corps'], $m['entetes'])) {
         http_response_code(502); echo '{"erreur":"le serveur n\'a pas accepté le courriel (mail)"}'; exit;
     }
     if ($essai) { echo json_encode(array('ok' => true, 'essai' => true, 'envoye_a' => $in['a']), JSON_UNESCAPED_UNICODE); exit; }
