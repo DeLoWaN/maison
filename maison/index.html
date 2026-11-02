@@ -1240,7 +1240,12 @@ function ecranConnexion() {
 
 fetch("login.php", { cache: "no-store" })
   .then(r => r.ok ? r.json() : null)
-  .then(u => { if (u && u.email) { AVISEUR = !!u.avis; demarrer(u.email); } else ecranConnexion(); })
+  .then(u => {
+    // Lien d'un Récapitulatif ouvert sans connexion : on y retourne une fois connecté.
+    const retour = new URLSearchParams(location.search).get("retour") || "";
+    if (u && u.email && /^recapitulatif\.php\?id=\d{8}-\d{6}$/.test(retour)) { location.replace(retour); return; }
+    if (u && u.email) { AVISEUR = !!u.avis; demarrer(u.email); } else ecranConnexion();
+  })
   .catch(() => ecranConnexion());
 
 function erreur() {
