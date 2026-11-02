@@ -37,6 +37,7 @@ function smtp_points($message) {
 
 /**
  * Envoie $message (en-têtes et corps, déjà formés) de $de à chaque adresse de $a, puis ferme la connexion.
+ * Renvoie la réponse du serveur au message, par exemple « 250 2.0.0 Ok: queued as 4F2… », qui identifie le message chez lui.
  * Lève SmtpException au premier refus du serveur ; le message n'est alors envoyé à personne.
  */
 function smtp_envoyer($flux, $utilisateur, $motDePasse, $de, $a, $message) {
@@ -49,11 +50,12 @@ function smtp_envoyer($flux, $utilisateur, $motDePasse, $de, $a, $message) {
         smtp_commande($flux, 'MAIL FROM:<' . $de . '>', array(250), 'expéditeur');
         foreach ($a as $x) smtp_commande($flux, 'RCPT TO:<' . $x . '>', array(250, 251), 'destinataire ' . $x);
         smtp_commande($flux, 'DATA', array(354), 'DATA');
-        smtp_commande($flux, rtrim(smtp_points($message), "\r\n") . "\r\n.", array(250), 'message');
+        $reponse = smtp_commande($flux, rtrim(smtp_points($message), "\r\n") . "\r\n.", array(250), 'message');
         @fwrite($flux, "QUIT\r\n");
     } catch (SmtpException $e) {
         fclose($flux);
         throw $e;
     }
     fclose($flux);
+    return trim($reponse);
 }

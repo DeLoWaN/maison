@@ -39,7 +39,7 @@ stream_wrapper_register('faux', 'FauxServeur');
 function dialogue($reponses, $de, $a, $message) {
     FauxServeur::$reponses = $reponses;
     $flux = fopen('faux://smtp', 'r+');
-    try { smtp_envoyer($flux, 'maison@exemple.fr', 'secret', $de, $a, $message); return null; }
+    try { return smtp_envoyer($flux, 'maison@exemple.fr', 'secret', $de, $a, $message); }
     catch (SmtpException $e) { return $e->getMessage(); }
 }
 $accepte = array("220 smtp prêt\r\n", "250-smtp bonjour\r\n250-AUTH LOGIN PLAIN\r\n250 8BITMIME\r\n", "334 VXNlcm5hbWU6\r\n", "334 UGFzc3dvcmQ6\r\n",
@@ -47,8 +47,8 @@ $accepte = array("220 smtp prêt\r\n", "250-smtp bonjour\r\n250-AUTH LOGIN PLAIN
 $message = "Subject: essai\r\n\r\nligne un\n.ligne avec un point\r\n.\r\nfin\r\n";
 
 // Envoi accepté.
-$erreur = dialogue($accepte, 'maison@exemple.fr', array('a@exemple.fr', 'b@exemple.fr'), $message);
-verifier('envoi accepté sans erreur', null, $erreur);
+$reponse = dialogue($accepte, 'maison@exemple.fr', array('a@exemple.fr', 'b@exemple.fr'), $message);
+verifier('envoi accepté : renvoie la réponse du serveur au message', '250 2.0.0 accepté', $reponse);
 verifier('commandes dans l\'ordre, identifiants en base64', implode("\r\n", array(
     'EHLO exemple.fr', 'AUTH LOGIN', base64_encode('maison@exemple.fr'), base64_encode('secret'),
     'MAIL FROM:<maison@exemple.fr>', 'RCPT TO:<a@exemple.fr>', 'RCPT TO:<b@exemple.fr>', 'DATA',

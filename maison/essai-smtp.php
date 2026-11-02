@@ -43,8 +43,8 @@ try {
         http_response_code(400); echo '{"erreur":"variante A, B ou C"}'; exit;
     }
     $smtp = recap_smtp_identifiants();
-    smtp_envoyer(smtp_ouvrir(RECAP_SMTP), $smtp['utilisateur'], $smtp['mot_de_passe'], RECAP_EXPEDITEUR, $m['destinataires'], $m['message']);
+    $reponse = smtp_envoyer(smtp_ouvrir(RECAP_SMTP), $smtp['utilisateur'], $smtp['mot_de_passe'], RECAP_EXPEDITEUR, $m['destinataires'], $m['message']);
 } catch (Exception $e) {
     http_response_code(502); echo json_encode(array('erreur' => $e->getMessage()), JSON_UNESCAPED_UNICODE); exit;
 }
-echo json_encode(array('ok' => true, 'variante' => $v, 'octets' => strlen($m['message'])), JSON_UNESCAPED_UNICODE);
+echo json_encode(array('ok' => true, 'variante' => $v, 'octets' => strlen($m['message']), 'reponse' => $reponse), JSON_UNESCAPED_UNICODE);
