@@ -12,6 +12,22 @@ $a = isset($in['a']) ? $in['a'] : null;
 $v = isset($in['variante']) ? (string) $in['variante'] : '';
 $base = 'https://' . $_SERVER['HTTP_HOST'] . rtrim(dirname($_SERVER['SCRIPT_NAME']), '/') . '/';
 $page = $base . 'recapitulatif.php?id=20261102-124534';
+// P : accueil et réponse EHLO du serveur joint, sans authentification.
+if ($v === 'P') {
+    $ctx = stream_context_create(array('ssl' => array('capture_peer_cert' => true)));
+    $flux = @stream_socket_client(RECAP_SMTP, $errno, $errstr, 30, STREAM_CLIENT_CONNECT, $ctx);
+    if (!$flux) { http_response_code(502); echo json_encode(array('erreur' => $errstr)); exit; }
+    $accueil = smtp_lire($flux);
+    fwrite($flux, "EHLO damien-gustave.fr\r\n");
+    $ehlo = smtp_lire($flux);
+    fwrite($flux, "QUIT\r\n");
+    $o = stream_context_get_options($ctx);
+    $cert = isset($o['ssl']['peer_certificate']) ? openssl_x509_parse($o['ssl']['peer_certificate']) : null;
+    echo json_encode(array('ip' => stream_socket_get_name($flux, true), 'accueil' => $accueil, 'ehlo' => $ehlo,
+        'certificat' => $cert ? $cert['subject'] : null, 'emetteur' => $cert ? $cert['issuer'] : null, 'local' => stream_socket_get_name($flux, false)), JSON_UNESCAPED_UNICODE);
+    fclose($flux);
+    exit;
+}
 try {
     if ($v === 'A') {
         $b = recap_courriel('Essai A', '<p>x</p>', $page, $a, $a[0]);
