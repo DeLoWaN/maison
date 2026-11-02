@@ -253,14 +253,15 @@ function recap_objet($nb, $jour) {
     return 'Maisons : ' . recap_resume_nb($nb) . ' — ' . recap_jour($jour);
 }
 
-// Boîte MX Plan d'OVH qui envoie le Récapitulatif ; OVH signe ses courriels avec DKIM. Personne ne lit cette boîte, d'où Reply-To.
-define('RECAP_EXPEDITEUR', 'maison@damien-gustave.fr');
-define('RECAP_SMTP', 'ssl://smtp.mail.ovh.net:465');
-
-/** Identifiants SMTP de RECAP_EXPEDITEUR, posés par Damien dans <home>/maison-data/recapitulatif/smtp.json : {utilisateur, mot_de_passe}. Lève RuntimeException si le fichier manque ou est incomplet. */
-function recap_smtp_identifiants() {
-    $x = json_decode((string) @file_get_contents(recap_dossier() . '/smtp.json'), true);
-    if (!is_array($x) || empty($x['utilisateur']) || empty($x['mot_de_passe'])) throw new RuntimeException('identifiants SMTP absents ou incomplets (maison-data/recapitulatif/smtp.json)');
+/**
+ * Compte SMTP qui envoie le Récapitulatif, posé par Damien dans <home>/maison-data/recapitulatif/smtp.json : {serveur, utilisateur, mot_de_passe}.
+ * serveur : par exemple ssl://smtp.gmail.com:465. utilisateur : l'adresse du compte, qui sert aussi d'expéditeur ; personne ne lit sa boîte, d'où Reply-To.
+ * Lève RuntimeException si le fichier manque ou est incomplet.
+ */
+function recap_smtp_compte($fichier = null) {
+    $x = json_decode((string) @file_get_contents($fichier === null ? recap_dossier() . '/smtp.json' : $fichier), true);
+    if (!is_array($x) || empty($x['mot_de_passe']) || !isset($x['serveur']) || strpos((string) $x['serveur'], 'ssl://') !== 0
+        || !isset($x['utilisateur']) || !filter_var($x['utilisateur'], FILTER_VALIDATE_EMAIL)) throw new RuntimeException('compte SMTP absent ou incomplet (maison-data/recapitulatif/smtp.json)');
     return $x;
 }
 
@@ -277,10 +278,10 @@ function recap_texte($html, $urlPage) {
 
 /**
  * Courriel du Récapitulatif pour smtp_envoyer() : {destinataires, message}, en texte brut et en HTML, encodé en UTF-8.
- * $a : destinataires, tous dans « À » ; $repondreA : adresse des réponses. message : en-têtes et corps, lignes en CRLF.
+ * $de : expéditeur ; $a : destinataires, tous dans « À » ; $repondreA : adresse des réponses. message : en-têtes et corps, lignes en CRLF.
  * Lève InvalidArgumentException si un destinataire ou $repondreA n'est pas un compte de la famille ($autorise, auth_autorise par défaut).
  */
-function recap_courriel($objet, $html, $urlPage, $a, $repondreA, $autorise = 'auth_autorise') {
+function recap_courriel($objet, $html, $urlPage, $de, $a, $repondreA, $autorise = 'auth_autorise') {
     if (!is_array($a) || !$a) throw new InvalidArgumentException('aucun destinataire');
     foreach (array_merge($a, array($repondreA)) as $x) {
         if (!is_string($x) || !filter_var($x, FILTER_VALIDATE_EMAIL) || !call_user_func($autorise, $x)) throw new InvalidArgumentException('adresse hors de la famille : ' . (is_string($x) ? $x : gettype($x)));
@@ -292,7 +293,7 @@ function recap_courriel($objet, $html, $urlPage, $a, $repondreA, $autorise = 'au
         'Subject: ' . recap_entete_utf8($objet),
         'Date: ' . date('r'),
         'Message-ID: <' . date('YmdHis') . '.' . bin2hex(openssl_random_pseudo_bytes(8)) . '@damien-gustave.fr>',
-        'From: ' . recap_entete_utf8('Recherche de maison') . ' <' . RECAP_EXPEDITEUR . '>',
+        'From: ' . recap_entete_utf8('Recherche de maison') . ' <' . $de . '>',
         'Reply-To: ' . $repondreA,
         'MIME-Version: 1.0',
         'Content-Type: multipart/alternative; boundary="' . $frontiere . '"',

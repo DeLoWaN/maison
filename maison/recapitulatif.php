@@ -3,10 +3,10 @@
 // GET  recapitulatif.php            -> {"envoyer": false, "raison": ...}
 //                                      ou {"envoyer": true, "id", "objet", "html", "octets", "nb", "page"}
 //      Prépare le Récapitulatif des changements jamais envoyés et le garde sous son id ; ne marque rien.
-// POST recapitulatif.php {"id", "a": [adresses], "repondre_a"} -> {"ok": true, "envoye_a"}
-//      Envoie le courriel de ce Récapitulatif par SMTP, depuis la boîte RECAP_EXPEDITEUR, puis marque ses changements : ils ne seront plus jamais renvoyés.
+// POST recapitulatif.php {"id", "a": [adresses], "repondre_a"} -> {"ok": true, "envoye_a", "reponse"}
+//      Envoie le courriel de ce Récapitulatif par SMTP, depuis le compte de recap_smtp_compte, puis marque ses changements : ils ne seront plus jamais renvoyés.
 //      Seuls les comptes de la famille (auth_autorise) sont acceptés. Un id déjà envoyé n'est pas renvoyé : {"ok": true, "deja": true}.
-//      Échec de l'envoi : 502, rien n'est marqué.
+//      reponse : réponse du serveur SMTP, qui identifie le message chez lui. Échec de l'envoi : 502, rien n'est marqué.
 //      Avec "essai": true, envoie le courriel de n'importe quel id, objet précédé de « [Essai] », sans rien marquer.
 // GET  recapitulatif.php?id=<id>    -> page HTML du Récapitulatif complet, sans limite de fiches.
 //      Sans connexion : renvoie vers la page de connexion du site, qui ramène ici.
@@ -46,23 +46,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$essai && isset($p['envoye_le'])) { echo json_encode(array('ok' => true, 'deja' => true, 'envoye_le' => $p['envoye_le']), JSON_UNESCAPED_UNICODE); exit; }
     $page = $base . 'recapitulatif.php?id=' . $id;
     try {
-        $m = recap_courriel(($essai ? '[Essai] ' : '') . $p['objet'], recap_html($p['calc'], $base, RECAP_FICHES_MAX, $page), $page,
+        $smtp = recap_smtp_compte();
+    } catch (RuntimeException $e) {
+        http_response_code(500); echo json_encode(array('erreur' => $e->getMessage()), JSON_UNESCAPED_UNICODE); exit;
+    }
+    try {
+        $m = recap_courriel(($essai ? '[Essai] ' : '') . $p['objet'], recap_html($p['calc'], $base, RECAP_FICHES_MAX, $page), $page, $smtp['utilisateur'],
             isset($in['a']) ? $in['a'] : null, isset($in['repondre_a']) ? $in['repondre_a'] : null);
     } catch (InvalidArgumentException $e) {
         http_response_code(400); echo json_encode(array('erreur' => $e->getMessage()), JSON_UNESCAPED_UNICODE); exit;
     }
     try {
-        $smtp = recap_smtp_identifiants();
-        smtp_envoyer(smtp_ouvrir(RECAP_SMTP), $smtp['utilisateur'], $smtp['mot_de_passe'], RECAP_EXPEDITEUR, $m['destinataires'], $m['message']);
+        $reponse = smtp_envoyer(smtp_ouvrir($smtp['serveur']), $smtp['utilisateur'], $smtp['mot_de_passe'], $smtp['utilisateur'], $m['destinataires'], $m['message']);
     } catch (RuntimeException $e) {
         http_response_code(502); echo json_encode(array('erreur' => 'courriel non envoyé : ' . $e->getMessage()), JSON_UNESCAPED_UNICODE); exit;
     }
-    if ($essai) { echo json_encode(array('ok' => true, 'essai' => true, 'envoye_a' => $in['a']), JSON_UNESCAPED_UNICODE); exit; }
+    if ($essai) { echo json_encode(array('ok' => true, 'essai' => true, 'envoye_a' => $in['a'], 'reponse' => $reponse), JSON_UNESCAPED_UNICODE); exit; }
     $etat = recap_modifier_etat(function ($etat) use ($p) { return recap_marquer($etat, $p['calc']['marques']); });
     $p['envoye_le'] = date('Y-m-d H:i'); $p['envoye_a'] = $in['a'];
     @file_put_contents($f, json_encode($p, JSON_UNESCAPED_UNICODE));
     if (isset($etat['erreur'])) { http_response_code(500); echo json_encode(array('erreur' => 'courriel envoyé, mais ' . $etat['erreur']), JSON_UNESCAPED_UNICODE); exit; }
-    echo json_encode(array('ok' => true, 'envoye_a' => $in['a']), JSON_UNESCAPED_UNICODE);
+    echo json_encode(array('ok' => true, 'envoye_a' => $in['a'], 'reponse' => $reponse), JSON_UNESCAPED_UNICODE);
     exit;
 }
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') { http_response_code(405); echo '{"erreur":"GET ou POST attendu"}'; exit; }

@@ -103,13 +103,13 @@ verifier('objet au singulier', 'Maisons : 1 baisse de prix, 1 vendue ou retirée
 
 // Courriel envoyé par le serveur.
 $famille = function ($x) { return in_array($x, array('a@exemple.fr', 'b@exemple.fr'), true); };
-$m = recap_courriel('Maisons : 1 nouvelle — 02/11', $html, $base . 'recapitulatif.php?id=20261103-093000', array('a@exemple.fr', 'b@exemple.fr'), 'a@exemple.fr', $famille);
+$m = recap_courriel('Maisons : 1 nouvelle — 02/11', $html, $base . 'recapitulatif.php?id=20261103-093000', 'envoi@exemple.fr', array('a@exemple.fr', 'b@exemple.fr'), 'a@exemple.fr', $famille);
 list($entetes, $corps) = explode("\r\n\r\n", $m['message'], 2);
 verifier('destinataires de l\'enveloppe SMTP', array('a@exemple.fr', 'b@exemple.fr'), $m['destinataires']);
 verifier('tous les destinataires dans « À »', 1, preg_match('/^To: a@exemple\.fr, b@exemple\.fr\r\n/', $entetes));
 verifier('objet encodé en UTF-8', true, (bool) preg_match('/\r\nSubject: (\S+)\r\n/', $entetes, $o) && mb_decode_mimeheader($o[1]) === 'Maisons : 1 nouvelle — 02/11');
 verifier('en-têtes Date et Message-ID', 1, preg_match('/\r\nDate: .+\r\nMessage-ID: <\d{14}\.[0-9a-f]{16}@damien-gustave\.fr>\r\n/', $entetes));
-verifier('expéditeur et adresse de réponse', true, strpos($entetes, '<maison@damien-gustave.fr>') !== false && strpos($entetes, "Reply-To: a@exemple.fr") !== false);
+verifier('expéditeur et adresse de réponse', true, strpos($entetes, "\r\nFrom: =?UTF-8?B?" . base64_encode('Recherche de maison') . "?= <envoi@exemple.fr>\r\n") !== false && strpos($entetes, "Reply-To: a@exemple.fr") !== false);
 verifier('lignes du message en CRLF', 0, preg_match('/(?<!\r)\n/', $m['message']));
 preg_match_all('#Content-Type: (text/\w+); charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n([A-Za-z0-9+/=\r\n]+)#', $corps, $parties);
 verifier('deux parties : texte brut puis HTML', array('text/plain', 'text/html'), $parties[1]);
@@ -122,9 +122,25 @@ foreach (array('inconnu hors de la famille' => array(array('a@exemple.fr', 'x@ex
                'adresse de réponse hors de la famille' => array(array('a@exemple.fr'), 'x@exemple.fr'),
                'aucun destinataire' => array(array(), 'a@exemple.fr'),
                'destinataire qui n\'est pas une adresse' => array(array('a@exemple.fr\r\nBcc: x@exemple.fr'), 'a@exemple.fr')) as $nom => $cas) {
-    try { recap_courriel('o', $html, '', $cas[0], $cas[1], $famille); $leve = false; } catch (InvalidArgumentException $e) { $leve = true; }
+    try { recap_courriel('o', $html, '', 'envoi@exemple.fr', $cas[0], $cas[1], $famille); $leve = false; } catch (InvalidArgumentException $e) { $leve = true; }
     verifier('refusé : ' . $nom, true, $leve);
 }
+
+// Compte SMTP lu dans smtp.json.
+$f = tempnam(sys_get_temp_dir(), 'smtp');
+file_put_contents($f, '{"serveur": "ssl://smtp.gmail.com:465", "utilisateur": "envoi@exemple.fr", "mot_de_passe": "secret"}');
+verifier('compte SMTP complet', array('serveur' => 'ssl://smtp.gmail.com:465', 'utilisateur' => 'envoi@exemple.fr', 'mot_de_passe' => 'secret'), recap_smtp_compte($f));
+foreach (array('fichier vide' => '', 'sans serveur' => '{"utilisateur": "envoi@exemple.fr", "mot_de_passe": "secret"}',
+               'serveur non chiffré' => '{"serveur": "tcp://smtp.gmail.com:25", "utilisateur": "envoi@exemple.fr", "mot_de_passe": "secret"}',
+               'utilisateur qui n\'est pas une adresse' => '{"serveur": "ssl://smtp.gmail.com:465", "utilisateur": "envoi", "mot_de_passe": "secret"}',
+               'sans mot de passe' => '{"serveur": "ssl://smtp.gmail.com:465", "utilisateur": "envoi@exemple.fr"}') as $nom => $contenu) {
+    file_put_contents($f, $contenu);
+    try { recap_smtp_compte($f); $erreur = null; } catch (RuntimeException $e) { $erreur = $e->getMessage(); }
+    verifier('compte SMTP refusé : ' . $nom, 'compte SMTP absent ou incomplet (maison-data/recapitulatif/smtp.json)', $erreur);
+}
+unlink($f);
+try { recap_smtp_compte($f); $erreur = null; } catch (RuntimeException $e) { $erreur = $e->getMessage(); }
+verifier('compte SMTP refusé : fichier absent', true, $erreur !== null);
 
 echo $echecs ? "\n$echecs test(s) en échec.\n" : "\nTous les tests passent.\n";
 exit($echecs ? 1 : 0);
