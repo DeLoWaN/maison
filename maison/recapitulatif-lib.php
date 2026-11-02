@@ -17,11 +17,15 @@ define('RECAP_FICHES_MAX', 10);
 
 function recap_dossier() { return dirname(dirname(__DIR__)) . '/maison-data/recapitulatif'; }
 
-// Prix d'avant $depuis dans l'historique (le dernier daté avant ce jour), ou null.
+// Prix d'avant $depuis dans l'historique (le dernier daté avant ce jour), ou null si aucun prix n'est daté de $depuis ou après.
+// Sans cette condition, un historique dont la dernière ligne n'est pas le prix actuel donne une fausse Baisse de prix.
 function recap_prix_avant($hist, $depuis) {
-    $p = null;
-    if (is_array($hist)) foreach ($hist as $h) if (isset($h['d'], $h['p']) && $h['d'] < $depuis) $p = (int) $h['p'];
-    return $p;
+    $p = null; $change = false;
+    if (is_array($hist)) foreach ($hist as $h) {
+        if (!isset($h['d'], $h['p'])) continue;
+        if ($h['d'] < $depuis) $p = (int) $h['p']; else $change = true;
+    }
+    return $change ? $p : null;
 }
 
 // Annonce à montrer : celle de l'agence vérifiée, sinon une vérifiée, sinon la première.

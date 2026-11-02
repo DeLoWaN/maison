@@ -54,6 +54,10 @@ $c = recap_calculer(array(recherche(array($baissee))), array('depuis' => '2026-1
 verifier('prix égal au dernier envoyé : rien', false, $c['envoyer']);
 $c = recap_calculer(array(recherche(array(bien('h', array('prix' => 320000, 'prix_hist' => array(array('d' => '2026-10-20', 'p' => 300000), array('d' => '2026-11-03', 'p' => 320000))))))), $etat);
 verifier('hausse de prix : rien', false, $c['envoyer']);
+// Cas réel (n° 33) : deux lignes le même jour, la dernière n'est pas le prix actuel, aucun changement depuis.
+$desordre = bien('e', array('prix' => 175000, 'prix_hist' => array(array('d' => '2026-10-19', 'p' => 175000), array('d' => '2026-10-19', 'p' => 196100))));
+$c = recap_calculer(array(recherche(array($desordre))), $etat);
+verifier('aucun prix daté depuis « depuis » : pas de Baisse de prix', false, $c['envoyer']);
 $c = recap_calculer(array(recherche(array($baissee), array('b' => array('statut' => 'pas_interesses')))), $etat);
 verifier('Baisse de prix d\'une maison « pas intéressés » : absente', false, $c['envoyer']);
 $c = recap_calculer(array(recherche(array(bien('n', array('repere_le' => '2026-11-03', 'prix' => 250000, 'prix_hist' => array(array('d' => '2026-11-03', 'p' => 270000), array('d' => '2026-11-04', 'p' => 250000))))))), $etat);
