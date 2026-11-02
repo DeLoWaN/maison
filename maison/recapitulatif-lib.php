@@ -125,16 +125,17 @@ function recap_jour($d) { return preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', (stri
 function recap_url_fiche($base, $r, $id) { return $base . '?r=' . rawurlencode($r) . '#' . rawurlencode($id); }
 
 // Couleurs et libellés de la page du site (index.html), répétés en styles en ligne : Gmail ignore les feuilles de style.
+// Toujours background-color, jamais le raccourci background : le connecteur Gmail le retire.
 function recap_libelle_verdict($v) {
     $l = array('top' => array('À appeler en priorité', '#2e6b3f', '#e3efe5'), 'presque' => array('À étudier de plus près', '#855a0b', '#f5ead1'));
     return isset($l[$v]) ? $l[$v] : null;
 }
 function recap_plaque($num, $taille) {
-    return $num ? '<span style="display:inline-block;background:#26323c;color:#f3f6f4;font-weight:bold;font-size:' . $taille . 'px;line-height:1.3;padding:1px 9px;border-radius:6px;margin-right:8px">' . recap_e($num) . '</span>' : '';
+    return $num ? '<span style="display:inline-block;background-color:#26323c;color:#f3f6f4;font-weight:bold;font-size:' . $taille . 'px;line-height:1.3;padding:1px 9px;border-radius:6px;margin-right:8px">' . recap_e($num) . '</span>' : '';
 }
 function recap_bouton($url, $texte, $plein) {
     return '<a href="' . recap_e($url) . '" style="display:inline-block;margin:4px 8px 0 0;padding:9px 16px;border-radius:8px;font-weight:bold;font-size:15px;text-decoration:none;'
-        . ($plein ? 'background:#1d4f9c;color:#ffffff;border:2px solid #1d4f9c' : 'background:#ffffff;color:#1d4f9c;border:2px solid #1d4f9c') . '">' . $texte . '</a>';
+        . ($plein ? 'background-color:#1d4f9c;color:#ffffff;border:2px solid #1d4f9c' : 'background-color:#ffffff;color:#1d4f9c;border:2px solid #1d4f9c') . '">' . $texte . '</a>';
 }
 function recap_titre_bloc($texte) {
     return '<tr><td style="padding:22px 0 8px;font-size:14px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:#55626b">' . $texte . '</td></tr>';
@@ -144,9 +145,9 @@ function recap_html_fiche($x, $r, $base) {
     $sym = array('ok' => '✓', 'warn' => '!', 'ko' => '✗', 'unk' => '?');
     $photo = $x['photo']
         ? '<img src="' . recap_e($base . 'photo.php?r=' . rawurlencode($r) . '&id=' . rawurlencode($x['id'])) . '" width="600" alt="Photo de la maison" style="display:block;width:100%;max-width:600px;height:auto;border:0;border-radius:10px 10px 0 0">'
-        : '<div style="padding:28px;text-align:center;color:#55626b;background:#e8ecea;border-radius:10px 10px 0 0">Pas de photo</div>';
+        : '<div style="padding:28px;text-align:center;color:#55626b;background-color:#e8ecea;border-radius:10px 10px 0 0">Pas de photo</div>';
     $v = recap_libelle_verdict($x['verdict']);
-    $puce = $v ? '<span style="display:inline-block;margin-top:6px;padding:2px 10px;border-radius:12px;font-size:14px;font-weight:bold;color:' . $v[1] . ';background:' . $v[2] . '">' . $v[0] . '</span>' : '';
+    $puce = $v ? '<span style="display:inline-block;margin-top:6px;padding:2px 10px;border-radius:12px;font-size:14px;font-weight:bold;color:' . $v[1] . ';background-color:' . $v[2] . '">' . $v[0] . '</span>' : '';
     $details = array();
     if ($x['surface']) $details[] = (int) $x['surface'] . "\xC2\xA0m²";
     if ($x['surface'] && $x['prix']) $details[] = recap_euros(round($x['prix'] / $x['surface'])) . ' le m²';
@@ -154,7 +155,7 @@ function recap_html_fiche($x, $r, $base) {
     foreach ($x['crit'] as $c) $crit .= '<tr><td width="24" valign="top" style="padding:6px 0;border-top:1px solid #eff2ef;font-weight:bold;color:#55626b">' . (isset($sym[$c['etat']]) ? $sym[$c['etat']] : '?') . '</td>'
         . '<td style="padding:6px 0;border-top:1px solid #eff2ef;font-size:15px"><b>' . recap_e($c['libelle']) . '</b> : ' . recap_e($c['texte']) . '</td></tr>';
     $boutons = ($x['annonce'] ? recap_bouton($x['annonce']['url'], 'Voir l\'annonce', true) : '') . recap_bouton(recap_url_fiche($base, $r, $x['id']), 'Voir la fiche sur le site', false);
-    return '<tr><td style="padding:0 0 18px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;border:1px solid #cfd6d2;border-radius:10px">'
+    return '<tr><td style="padding:0 0 18px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border:1px solid #cfd6d2;border-radius:10px">'
         . '<tr><td>' . $photo . '</td></tr><tr><td style="padding:14px 16px 16px">'
         . '<div style="font-size:21px;font-weight:bold">' . recap_plaque($x['num'], 18) . recap_e($x['commune'] !== '' ? $x['commune'] : $x['titre']) . '</div>' . $puce
         . '<div style="margin:6px 0 2px;color:#55626b">' . recap_e($x['titre']) . '</div>'
@@ -172,7 +173,7 @@ function recap_html_ligne($x, $r, $base, $texte, $dessous) {
         . '<div style="margin-top:2px;font-size:14px"><a href="' . recap_e(recap_url_fiche($base, $r, $x['id'])) . '" style="color:#1d4f9c">Voir la fiche sur le site</a></div></td></tr>';
 }
 function recap_html_liste($lignes) {
-    return '<tr><td><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;border:1px solid #cfd6d2;border-radius:10px">' . $lignes . '</table></td></tr>';
+    return '<tr><td><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border:1px solid #cfd6d2;border-radius:10px">' . $lignes . '</table></td></tr>';
 }
 
 /**
@@ -187,9 +188,9 @@ function recap_html($calc, $base, $fichesMax, $urlPage) {
     usort($toutes, 'recap_ordre_fiches');
     $gardees = array();
     foreach ($toutes as $i => $x) if ($fichesMax === null || $i < $fichesMax) $gardees[$x['_r'] . '/' . $x['id']] = 1;
-    $h = '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eff2ef"><tr><td align="center" style="padding:16px 8px">'
+    $h = '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#eff2ef" style="background-color:#eff2ef"><tr><td align="center" style="padding:16px 8px">'
         . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;font-family:Verdana,Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:#1f2a32;text-align:left">'
-        . '<tr><td style="background:#26323c;color:#f3f6f4;padding:18px 20px;border-radius:10px">'
+        . '<tr><td bgcolor="#26323c" style="background-color:#26323c;color:#f3f6f4;padding:18px 20px;border-radius:10px">'
         . '<div style="font-size:14px;letter-spacing:1px;text-transform:uppercase;color:#b9c6cf">Recherche de maison</div>'
         . '<div style="font-size:22px;font-weight:bold">' . ucfirst(recap_resume_nb($calc['nb'])) . '</div></td></tr>';
     foreach ($calc['sections'] as $s) {
@@ -221,7 +222,7 @@ function recap_html($calc, $base, $fichesMax, $urlPage) {
             $l = '';
             foreach ($s['baisses'] as $x) {
                 $t = '<b>' . recap_euros($x['prix']) . '</b> <span style="color:#55626b;text-decoration:line-through">' . recap_euros($x['ancien_prix']) . '</span>'
-                    . ' <span style="display:inline-block;padding:0 8px;border-radius:10px;font-size:14px;font-weight:bold;color:#2e6b3f;background:#e3efe5">−' . recap_euros($x['ancien_prix'] - $x['prix']) . '</span>';
+                    . ' <span style="display:inline-block;padding:0 8px;border-radius:10px;font-size:14px;font-weight:bold;color:#2e6b3f;background-color:#e3efe5">−' . recap_euros($x['ancien_prix'] - $x['prix']) . '</span>';
                 $dessous = $x['premier_prix'] !== null && $x['premier_prix'] > $x['ancien_prix'] ? 'Soit ' . recap_euros($x['premier_prix'] - $x['prix']) . ' de moins que le premier prix (' . recap_euros($x['premier_prix']) . ')' : '';
                 $l .= recap_html_ligne($x, $r, $base, $t, $dessous);
             }

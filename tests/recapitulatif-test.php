@@ -91,6 +91,7 @@ verifier('Baisse de prix : ancien et nouveau prix', true, strpos($html, "280\xC2
 verifier('maison vendue : une ligne', true, strpos($html, 'Vendue le 03/11') !== false);
 verifier('lien vers la fiche du site', true, strpos($html, $base . '?r=extensible#b') !== false);
 verifier('le courriel reste loin de la limite de Gmail (102 Ko)', true, strlen($html) < 60000);
+verifier('aucun raccourci background, que le connecteur Gmail retire', false, strpos($html, 'background:') !== false);
 $page = recap_html($c, $base, null, '');
 verifier('page complète : toutes les fiches', 12, substr_count($page, 'alt="Photo de la maison"'));
 verifier('texte échappé', true, strpos(recap_html(recap_calculer(array(recherche(array(bien('x', array('repere_le' => '2026-11-03', 'titre' => '<b>pierre</b>'))))), $etat), $base, 10, ''), '&lt;b&gt;pierre') !== false);
