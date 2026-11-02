@@ -8,6 +8,7 @@
 //      Seuls les comptes de la famille (auth_autorise) sont acceptés. Un id déjà envoyé n'est pas renvoyé : {"ok": true, "deja": true}.
 //      reponse : réponse du serveur SMTP, qui identifie le message chez lui. Échec de l'envoi : 502, rien n'est marqué.
 //      Avec "essai": true, envoie le courriel de n'importe quel id, objet précédé de « [Essai] », sans rien marquer.
+//      Avec "renvoi": true, envoie un id déjà envoyé à d'autres adresses, sans rien marquer ; elles s'ajoutent à envoye_a.
 // GET  recapitulatif.php?id=<id>    -> page HTML du Récapitulatif complet, sans limite de fiches.
 //      Sans connexion : renvoie vers la page de connexion du site, qui ramène ici.
 require_once __DIR__ . '/auth-lib.php';
@@ -43,7 +44,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $p = recap_id_valide($id) ? json_decode((string) @file_get_contents($f), true) : null;
     if (!is_array($p)) { http_response_code(404); echo '{"erreur":"récapitulatif inconnu"}'; exit; }
     $essai = !empty($in['essai']);
-    if (!$essai && isset($p['envoye_le'])) { echo json_encode(array('ok' => true, 'deja' => true, 'envoye_le' => $p['envoye_le']), JSON_UNESCAPED_UNICODE); exit; }
+    $renvoi = !$essai && !empty($in['renvoi']) && isset($p['envoye_le']);
+    if (!$essai && !$renvoi && isset($p['envoye_le'])) { echo json_encode(array('ok' => true, 'deja' => true, 'envoye_le' => $p['envoye_le']), JSON_UNESCAPED_UNICODE); exit; }
     $page = $base . 'recapitulatif.php?id=' . $id;
     try {
         $smtp = recap_smtp_compte();
@@ -62,6 +64,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         http_response_code(502); echo json_encode(array('erreur' => 'courriel non envoyé : ' . $e->getMessage()), JSON_UNESCAPED_UNICODE); exit;
     }
     if ($essai) { echo json_encode(array('ok' => true, 'essai' => true, 'envoye_a' => $in['a'], 'reponse' => $reponse), JSON_UNESCAPED_UNICODE); exit; }
+    if ($renvoi) {
+        $p['envoye_a'] = array_values(array_unique(array_merge((array) $p['envoye_a'], $in['a'])));
+        @file_put_contents($f, json_encode($p, JSON_UNESCAPED_UNICODE));
+        echo json_encode(array('ok' => true, 'renvoi' => true, 'envoye_a' => $p['envoye_a'], 'reponse' => $reponse), JSON_UNESCAPED_UNICODE);
+        exit;
+    }
     $etat = recap_modifier_etat(function ($etat) use ($p) { return recap_marquer($etat, $p['calc']['marques']); });
     $p['envoye_le'] = date('Y-m-d H:i'); $p['envoye_a'] = $in['a'];
     @file_put_contents($f, json_encode($p, JSON_UNESCAPED_UNICODE));
