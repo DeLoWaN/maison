@@ -7,6 +7,7 @@
 //   prix   : dernier prix montré à la famille ; une Baisse de prix se mesure à partir de lui.
 // Chaque Récapitulatif préparé est gardé dans <home>/maison-data/recapitulatif/<id>.json.
 require_once __DIR__ . '/donnees-lib.php';
+require_once __DIR__ . '/auth-lib.php';
 
 // Libellés par défaut des critères, les mêmes que ceux de la page ; data.json « libelles » les remplace.
 function recap_libelles_defaut() {
@@ -125,7 +126,6 @@ function recap_jour($d) { return preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', (stri
 function recap_url_fiche($base, $r, $id) { return $base . '?r=' . rawurlencode($r) . '#' . rawurlencode($id); }
 
 // Couleurs et libellés de la page du site (index.html), répétés en styles en ligne : Gmail ignore les feuilles de style.
-// Toujours background-color, jamais le raccourci background : le connecteur Gmail le retire.
 function recap_libelle_verdict($v) {
     $l = array('top' => array('À appeler en priorité', '#2e6b3f', '#e3efe5'), 'presque' => array('À étudier de plus près', '#855a0b', '#f5ead1'));
     return isset($l[$v]) ? $l[$v] : null;
@@ -251,6 +251,46 @@ function recap_resume_nb($nb) {
 // Objet du courriel, par exemple « Maisons : 3 nouvelles, 2 baisses de prix — 02/11 ».
 function recap_objet($nb, $jour) {
     return 'Maisons : ' . recap_resume_nb($nb) . ' — ' . recap_jour($jour);
+}
+
+// Adresse d'expédition : le SPF de damien-gustave.fr autorise les serveurs d'OVH. Le domaine n'a pas de boîte, d'où Reply-To.
+define('RECAP_EXPEDITEUR', 'maison@damien-gustave.fr');
+
+function recap_entete_utf8($s) { return '=?UTF-8?B?' . base64_encode($s) . '?='; }
+
+// Texte brut du courriel, pour les messageries qui n'affichent pas le HTML.
+function recap_texte($html, $urlPage) {
+    $t = preg_replace('#<(br|/tr|/div|/td)\b[^>]*>#i', "\n", $html);
+    $t = html_entity_decode(strip_tags($t), ENT_QUOTES, 'UTF-8');
+    $t = preg_replace("/[ \t]+/", ' ', $t);
+    $t = trim(preg_replace("/\n\s*\n+/", "\n\n", $t));
+    return $t . "\n\nLe Récapitulatif complet, avec les photos : " . $urlPage . "\n";
+}
+
+/**
+ * Courriel du Récapitulatif pour mail() : {a, objet, entetes, corps}, en texte brut et en HTML, encodé en UTF-8.
+ * $a : destinataires, tous dans « À » ; $repondreA : adresse des réponses.
+ * Lève InvalidArgumentException si un destinataire ou $repondreA n'est pas un compte de la famille ($autorise, auth_autorise par défaut).
+ */
+function recap_courriel($objet, $html, $urlPage, $a, $repondreA, $autorise = 'auth_autorise') {
+    if (!is_array($a) || !$a) throw new InvalidArgumentException('aucun destinataire');
+    foreach (array_merge($a, array($repondreA)) as $x) {
+        if (!is_string($x) || !filter_var($x, FILTER_VALIDATE_EMAIL) || !call_user_func($autorise, $x)) throw new InvalidArgumentException('adresse hors de la famille : ' . (is_string($x) ? $x : gettype($x)));
+    }
+    $frontiere = 'recap-' . md5($objet . $html);
+    $entetes = implode("\r\n", array(
+        'From: ' . recap_entete_utf8('Recherche de maison') . ' <' . RECAP_EXPEDITEUR . '>',
+        'Reply-To: ' . $repondreA,
+        'MIME-Version: 1.0',
+        'Content-Type: multipart/alternative; boundary="' . $frontiere . '"',
+    ));
+    $partie = function ($type, $contenu) use ($frontiere) {
+        return '--' . $frontiere . "\r\nContent-Type: " . $type . "; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n" . chunk_split(base64_encode($contenu)) . "\r\n";
+    };
+    $corps = $partie('text/plain', recap_texte($html, $urlPage))
+        . $partie('text/html', '<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body style="margin:0">' . $html . '</body></html>')
+        . '--' . $frontiere . "--\r\n";
+    return array('a' => implode(', ', $a), 'objet' => recap_entete_utf8($objet), 'entetes' => $entetes, 'corps' => $corps);
 }
 
 // Recherches actives (non archivées) avec leurs données et les statuts posés par la famille.

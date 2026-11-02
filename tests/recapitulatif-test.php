@@ -91,7 +91,7 @@ verifier('Baisse de prix : ancien et nouveau prix', true, strpos($html, "280\xC2
 verifier('maison vendue : une ligne', true, strpos($html, 'Vendue le 03/11') !== false);
 verifier('lien vers la fiche du site', true, strpos($html, $base . '?r=extensible#b') !== false);
 verifier('le courriel reste loin de la limite de Gmail (102 Ko)', true, strlen($html) < 60000);
-verifier('aucun raccourci background, que le connecteur Gmail retire', false, strpos($html, 'background:') !== false);
+verifier('aucun raccourci background, retiré par certaines messageries', false, strpos($html, 'background:') !== false);
 $page = recap_html($c, $base, null, '');
 verifier('page complète : toutes les fiches', 12, substr_count($page, 'alt="Photo de la maison"'));
 verifier('texte échappé', true, strpos(recap_html(recap_calculer(array(recherche(array(bien('x', array('repere_le' => '2026-11-03', 'titre' => '<b>pierre</b>'))))), $etat), $base, 10, ''), '&lt;b&gt;pierre') !== false);
@@ -100,6 +100,27 @@ echo 'Taille du courriel de test : ' . strlen($html) . " octets\n";
 // Objet.
 verifier('objet au pluriel', 'Maisons : 3 nouvelles, 2 baisses de prix — 02/11', recap_objet(array('nouvelles' => 3, 'baisses' => 2, 'fins' => 0), '2026-11-02'));
 verifier('objet au singulier', 'Maisons : 1 baisse de prix, 1 vendue ou retirée — 02/11', recap_objet(array('nouvelles' => 0, 'baisses' => 1, 'fins' => 1), '2026-11-02'));
+
+// Courriel envoyé par le serveur.
+$famille = function ($x) { return in_array($x, array('a@exemple.fr', 'b@exemple.fr'), true); };
+$m = recap_courriel('Maisons : 1 nouvelle — 02/11', $html, $base . 'recapitulatif.php?id=20261103-093000', array('a@exemple.fr', 'b@exemple.fr'), 'a@exemple.fr', $famille);
+verifier('tous les destinataires dans « À »', 'a@exemple.fr, b@exemple.fr', $m['a']);
+verifier('objet encodé en UTF-8', 'Maisons : 1 nouvelle — 02/11', mb_decode_mimeheader($m['objet']));
+verifier('expéditeur et adresse de réponse', true, strpos($m['entetes'], '<maison@damien-gustave.fr>') !== false && strpos($m['entetes'], "Reply-To: a@exemple.fr") !== false);
+preg_match_all('#Content-Type: (text/\w+); charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n([A-Za-z0-9+/=\r\n]+)#', $m['corps'], $parties);
+verifier('deux parties : texte brut puis HTML', array('text/plain', 'text/html'), $parties[1]);
+$texte = base64_decode($parties[2][0]); $htmlEnvoye = base64_decode($parties[2][1]);
+verifier('le HTML envoyé contient le Récapitulatif entier', true, strpos($htmlEnvoye, $html) !== false);
+verifier('les photos sont des liens directs vers photo.php', true, strpos($htmlEnvoye, 'src="' . $base . 'photo.php?r=maison&amp;id=n12"') !== false);
+verifier('texte brut : sans balise, avec le lien de la page complète', true, strpos($texte, '<') === false && strpos($texte, 'recapitulatif.php?id=20261103-093000') !== false && strpos($texte, '280') !== false);
+verifier('la frontière ferme le message', true, substr($m['corps'], -4) === "--\r\n");
+foreach (array('inconnu hors de la famille' => array(array('a@exemple.fr', 'x@exemple.fr'), 'a@exemple.fr'),
+               'adresse de réponse hors de la famille' => array(array('a@exemple.fr'), 'x@exemple.fr'),
+               'aucun destinataire' => array(array(), 'a@exemple.fr'),
+               'destinataire qui n\'est pas une adresse' => array(array('a@exemple.fr\r\nBcc: x@exemple.fr'), 'a@exemple.fr')) as $nom => $cas) {
+    try { recap_courriel('o', $html, '', $cas[0], $cas[1], $famille); $leve = false; } catch (InvalidArgumentException $e) { $leve = true; }
+    verifier('refusé : ' . $nom, true, $leve);
+}
 
 echo $echecs ? "\n$echecs test(s) en échec.\n" : "\nTous les tests passent.\n";
 exit($echecs ? 1 : 0);
