@@ -115,7 +115,7 @@ Leboncoin bloque la lecture de ses listes de résultats. Damien a créé sur Leb
 
 Quand le faire : à l'étape 4, à la place de toute liste Leboncoin.
 
-1. Avec le connecteur Gmail (search_threads), cherche : `(label:perso-lbc OR (leboncoin subject:"à vendre")) after:AAAA/MM/JJ`, où la date est la veille du dernier_ok de la source « Leboncoin ». Si dernier_ok est vide ou ancien de plus de 30 jours, remplace le filtre de date par `newer_than:30d`. Lis chaque fil en entier avec get_thread au format PLAIN_TEXT : la liste de recherche ne montre pas tout.
+1. Avec le connecteur Gmail (search_threads), cherche : `(label:perso-lbc OR (leboncoin subject:"à vendre")) after:AAAA/MM/JJ`, où la date est la veille du dernier_ok de la source « Leboncoin ». Si dernier_ok est vide ou ancien de plus de 30 jours, remplace le filtre de date par `newer_than:30d`. Lis chaque fil en entier avec get_thread au format FULL_CONTENT : la liste de recherche ne montre pas tout, et le format PLAIN_TEXT ne donne que les liens, sans prix, surface, terrain ni commune. Chaque courriel pèse 60 à 80 Ko dans ce format : extrais-en seulement les champs du point 2.
 2. Chaque annonce du courriel donne :
    - le lien `https://www.leboncoin.fr/vi/<numéro>.htm` : garde-le sans ce qui suit le # ;
    - le prix ;
