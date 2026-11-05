@@ -32,7 +32,7 @@ window.__go = async (pg) => {
   if (b && pg > 1) { b.click(); await new Promise(r => setTimeout(r, 4000)); }
   window.scrollTo(0, 0); for (let y = 0; y < 12; y++) { window.scrollBy(0, 1200); await new Promise(r => setTimeout(r, 200)); }
   const s = [...document.querySelectorAll('[data-testid="serp-core-classified-card-testid"]')].map(c => {
-    const a = c.querySelector('a'); const t = c.innerText.replace(/\s+/g, ' ');
+    const a = c.querySelector('a'); const t = c.innerText.replace(/\s+/g, ' ').replace(/\b\d+ ?\/ ?\d+\b/g, ' ');
     const p = +((t.match(/([\d  ]{5,}) €/) || [])[1] || '0').replace(/\D/g, '');
     const ter = +((t.match(/([\d  ]+) m² de terrain/) || [])[1] || '0').replace(/\D/g, '');
     return { pg, u: a ? a.href.split('?')[0] : '', p, ter, t: t.slice(0, 140) };
@@ -42,6 +42,7 @@ window.__go = async (pg) => {
 };
 ```
 
+  Le script retire le compteur de photos (« 1 / 8 ») de la carte : sans cela, il est lu avec le prix (8 325 000 € pour 325 000 €).
   Puis garde les cartes utiles : `window.__all.filter(x => /calvados-14|-14\//.test(x.u) && !/seloger-construire|selogerneuf/.test(x.u) && x.p <= 385000 && (x.ter === 0 || x.ter >= 900))`, sans doublon d'adresse.
 - Sur une fiche, attends 3 secondes ; la description commence après « Calculer un temps de trajet ». La photo est le og:image (mms.seloger.com).
 
